@@ -2,6 +2,13 @@
 
 Create powerful slideshows for talks and presentations. Each "slide" is a JS function that can do *anything*.
 
+If you only want a couple features while keeping the full power of JS, this might help you. This will:
+
+* Let you use arrow keys for going forward or back
+* Let you jump to any slide by number in the url hash
+* Keep the url hash synced with the slide you're on
+* Run the slide's function each time you navigate to it
+
 ## Example ##
 
 ```js
