@@ -41,8 +41,10 @@ module.exports = {
   },
 
   changeSlide: function (n) {
-    if (this.slides[n - 1]) {
-      this.slides[n - 1](this.el)
+    var slide = this.slides[n - 1]
+    if (slide) {
+      if (typeof slide === 'function') return slide(this.el)
+      if (typeof slide === 'string') return titleSlide(slide)(this.el)
     }
   },
 
