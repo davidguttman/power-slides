@@ -7,14 +7,41 @@ module.exports = {
   image: imageSlide,
   video: videoSlide,
 
-  start: function (el, slides) {
+  start: function (target, slides) {
     if (started) return
     started = true
+
+    this.target = target
+
+    var container = h('.ps-container', { style: {
+      width: window.innerWidth + 'px',
+      height: window.innerHeight + 'px',
+      position: 'absolute',
+      top: 0,
+      left: 0
+    }})
+
+    this.container = container
+    this.target.appendChild(this.container)
+
+    var el = h('.ps-slide', {style: {
+      'width': '100%',
+      'height': '100%',
+      'display': 'flex',
+      'justify-content': 'center',
+      'align-items': 'center'
+    }})
+
+    this.container.appendChild(el)
     this.el = el
     this.slides = slides || []
 
     window.addEventListener('hashchange', this.onHashChange.bind(this))
     window.addEventListener('keyup', this.onKeyup.bind(this))
+    window.addEventListener('resize', function () {
+      container.style.width = window.innerWidth + 'px'
+      container.style.height = window.innerHeight + 'px'
+    })
 
     if (window.location.hash === '') {
       window.location.hash = '/1'
@@ -65,24 +92,20 @@ function titleSlide (title) {
   return function (el) {
     el.innerHTML = ''
 
-    var div = h('div',
+    el.appendChild(h('div',
       h('h1', title)
-    )
-
-    el.appendChild(div)
-    var rect = div.getBoundingClientRect()
-    div.style.marginTop = (window.innerHeight - rect.height) / 2 - rect.height / 2 + 'px'
+    ))
   }
 }
 
 function imageSlide (url, method) {
   method = method || 'cover'
 
-  var slide = h('.full-img',
+  var slide = h('.ps-full-img',
     {
       style: {
-        'width': window.innerWidth + 'px',
-        'height': window.innerHeight + 'px',
+        'width': '100%',
+        'height': '100%',
         'background': 'url(' + url + ') no-repeat center center fixed',
         'background-size': method
       }
