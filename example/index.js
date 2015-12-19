@@ -1,5 +1,7 @@
 var PS = require('..')
 
+PS.on('changeSlide', console.log.bind(console))
+
 PS.start(document.body, [
   // large text
   PS.title('simple-slides'),

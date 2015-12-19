@@ -14,7 +14,8 @@
   "author": "David Guttman <david@guttman.io> (http://davidguttman.com/)",
   "license": "MIT",
   "dependencies": {
-    "hyperscript": "^1.4.7"
+    "hyperscript": "^1.4.7",
+    "wildemitter": "^1.2.0"
   },
   "devDependencies": {
     "standard": "^5.4.1",
