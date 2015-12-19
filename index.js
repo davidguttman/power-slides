@@ -1,8 +1,9 @@
 var h = require('hyperscript')
+var Emitter = require('wildemitter')
 
 var started
 
-module.exports = {
+var PowerSlides = module.exports = {
   title: titleSlide,
   image: imageSlide,
   video: videoSlide,
@@ -63,6 +64,8 @@ module.exports = {
   },
 
   changeSlide: function (n) {
+    this.emit('changeSlide', n)
+
     var note = this.notes[n - 1]
     var elNote = this.elNote
     elNote.innerHTML = ''
@@ -136,8 +139,9 @@ module.exports = {
 
     return h('.ps-notes', {style: style}, 'notes')
   }
-
 }
+
+Emitter.mixin(PowerSlides)
 
 function titleSlide (title) {
   return function (el) {
