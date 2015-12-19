@@ -5,7 +5,10 @@ PS.start(document.body, [
   PS.title('simple-slides'),
 
   // full-screen image
-  PS.image('/example/white-blue.png'),
+  [PS.image('/example/white-blue.png'),
+    'This is a note.',
+    'There can be more than one!'
+  ],
 
   // contained image
   PS.image('/example/wide-blue.png', 'contain'),

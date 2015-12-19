@@ -7,18 +7,31 @@ module.exports = {
   image: imageSlide,
   video: videoSlide,
 
-  start: function (target, slides) {
+  start: function (target, slideNotes, isPresenter) {
     if (started) return
     started = true
 
+    this.isPresenter = isPresenter
     this.target = target
-    this.slides = slides || []
+
+    var slides = this.slides = []
+    var notes = this.notes = []
+
+    slideNotes.forEach(function (slideNote, i) {
+      if (!Array.isArray(slideNote)) return slides[i] = slideNote
+
+      slides[i] = slideNote[0]
+      notes[i] = slideNote.slice(1)
+    })
 
     this.container = this.createContainer()
     this.target.appendChild(this.container)
 
-    this.el = this.createSlide()
-    this.container.appendChild(this.el)
+    this.slide = this.createSlide()
+    this.container.appendChild(this.slide)
+
+    this.note = this.createNotes()
+    this.container.appendChild(this.note)
 
     window.addEventListener('hashchange', this.onHashChange.bind(this))
     window.addEventListener('keyup', this.onKeyup.bind(this))
@@ -50,10 +63,20 @@ module.exports = {
   },
 
   changeSlide: function (n) {
+    var note = this.notes[n - 1]
+    var elNote = this.note
+    elNote.innerHTML = ''
+
+    if (note && note[0]) {
+      note.forEach(function (noteItem) {
+        elNote.appendChild(h('p', noteItem))
+      })
+    }
+
     var slide = this.slides[n - 1]
     if (slide) {
-      if (typeof slide === 'function') return slide(this.el)
-      if (typeof slide === 'string') return titleSlide(slide)(this.el)
+      if (typeof slide === 'function') return slide(this.slide)
+      if (typeof slide === 'string') return titleSlide(slide)(this.slide)
     }
   },
 
@@ -90,13 +113,28 @@ module.exports = {
   },
 
   createSlide: function () {
-    return h('.ps-slide', {style: {
+    var style = {
       'width': '100%',
       'height': '100%',
       'display': 'flex',
       'justify-content': 'center',
       'align-items': 'center'
-    }})
+    }
+
+    if (this.isPresenter) style.height = '50%'
+
+    return h('.ps-slide', {style: style})
+  },
+
+  createNotes: function () {
+    var style = {
+      'width': '100%',
+      'height': '50%'
+    }
+
+    if (!this.isPresenter) style.display = 'none'
+
+    return h('.ps-notes', {style: style}, 'notes')
   }
 
 }
@@ -119,7 +157,7 @@ function imageSlide (url, method) {
       style: {
         'width': '100%',
         'height': '100%',
-        'background': 'url(' + url + ') no-repeat center center fixed',
+        'background': 'url(' + url + ') no-repeat center center',
         'background-size': method
       }
     }
