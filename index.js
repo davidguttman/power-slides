@@ -27,11 +27,11 @@ module.exports = {
     this.container = this.createContainer()
     this.target.appendChild(this.container)
 
-    this.slide = this.createSlide()
-    this.container.appendChild(this.slide)
+    this.elSlide = this.createSlide()
+    this.container.appendChild(this.elSlide)
 
-    this.note = this.createNotes()
-    this.container.appendChild(this.note)
+    this.elNote = this.createNotes()
+    this.container.appendChild(this.elNote)
 
     window.addEventListener('hashchange', this.onHashChange.bind(this))
     window.addEventListener('keyup', this.onKeyup.bind(this))
@@ -64,7 +64,7 @@ module.exports = {
 
   changeSlide: function (n) {
     var note = this.notes[n - 1]
-    var elNote = this.note
+    var elNote = this.elNote
     elNote.innerHTML = ''
 
     if (note && note[0]) {
@@ -75,8 +75,8 @@ module.exports = {
 
     var slide = this.slides[n - 1]
     if (slide) {
-      if (typeof slide === 'function') return slide(this.slide)
-      if (typeof slide === 'string') return titleSlide(slide)(this.slide)
+      if (typeof slide === 'function') return slide(this.elSlide)
+      if (typeof slide === 'string') return titleSlide(slide)(this.elSlide)
     }
   },
 
