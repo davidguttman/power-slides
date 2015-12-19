@@ -4,7 +4,9 @@
   "description": "Create powerful slideshows for talks and presentations. Each \"slide\" is a JS function that can do *anything*.",
   "main": "index.js",
   "scripts": {
-    "example": "wzrd example/index.js",
+    "example": "npm run example-server & npm run example-client",
+    "example-client": "wzrd example/index.js",
+    "example-server": "node example/server.js",
     "test": "standard"
   },
   "keywords": [
@@ -18,6 +20,8 @@
     "wildemitter": "^1.2.0"
   },
   "devDependencies": {
+    "end-of-stream": "^1.1.0",
+    "shoe": "0.0.15",
     "standard": "^5.4.1",
     "wzrd": "^1.3.1"
   },

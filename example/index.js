@@ -1,6 +1,15 @@
 var PS = require('..')
+var shoe = require('shoe')
 
-PS.on('changeSlide', console.log.bind(console))
+var host = 'http://' + window.location.hostname + ':1337'
+var stream = shoe(host + '/rc')
+var isPresenter = window.navigator.userAgent.match(/iPhone|Android/)
+
+if (isPresenter) {
+  PS.on('changeSlide', stream.write.bind(stream))
+} else {
+  stream.on('data', function (n) { window.location.hash = '/' + n })
+}
 
 PS.start(document.body, [
   // large text
@@ -33,4 +42,4 @@ PS.start(document.body, [
       el.innerHTML += letter
     }, 250)
   }
-])
+], isPresenter)
