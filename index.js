@@ -11,43 +11,19 @@ module.exports = {
     if (started) return
     started = true
 
-    var self = this
     this.target = target
+    this.slides = slides || []
 
-    var container = h('.ps-container', { style: {
-      width: window.innerWidth + 'px',
-      height: window.innerHeight + 'px',
-      position: 'absolute',
-      top: 0,
-      left: 0
-    }})
-
-    this.container = container
+    this.container = this.createContainer()
     this.target.appendChild(this.container)
 
-    var el = h('.ps-slide', {style: {
-      'width': '100%',
-      'height': '100%',
-      'display': 'flex',
-      'justify-content': 'center',
-      'align-items': 'center'
-    }})
-
-    this.container.appendChild(el)
-    this.el = el
-    this.slides = slides || []
+    this.el = this.createSlide()
+    this.container.appendChild(this.el)
 
     window.addEventListener('hashchange', this.onHashChange.bind(this))
     window.addEventListener('keyup', this.onKeyup.bind(this))
-    window.addEventListener('resize', function () {
-      container.style.width = window.innerWidth + 'px'
-      container.style.height = window.innerHeight + 'px'
-    })
-    window.addEventListener('touchend', function (evt) {
-      var hPct = evt.layerX / window.innerWidth
-      if (hPct < 0.2) return self.prevSlide()
-      if (hPct > 0.8) return self.nextSlide()
-    })
+    window.addEventListener('resize', this.onResize.bind(this))
+    window.addEventListener('touchend', this.onTouchend.bind(this))
 
     if (window.location.hash === '') {
       window.location.hash = '/1'
@@ -90,6 +66,37 @@ module.exports = {
   onKeyup: function (evt) {
     if (evt.keyIdentifier === 'Right') return this.nextSlide()
     if (evt.keyIdentifier === 'Left') return this.prevSlide()
+  },
+
+  onResize: function (evt) {
+    this.container.style.width = window.innerWidth + 'px'
+    this.container.style.height = window.innerHeight + 'px'
+  },
+
+  onTouchend: function (evt) {
+    var hPct = evt.layerX / window.innerWidth
+    if (hPct < 0.2) return this.prevSlide()
+    if (hPct > 0.8) return this.nextSlide()
+  },
+
+  createContainer: function () {
+    return h('.ps-container', { style: {
+      width: window.innerWidth + 'px',
+      height: window.innerHeight + 'px',
+      position: 'absolute',
+      top: 0,
+      left: 0
+    }})
+  },
+
+  createSlide: function () {
+    return h('.ps-slide', {style: {
+      'width': '100%',
+      'height': '100%',
+      'display': 'flex',
+      'justify-content': 'center',
+      'align-items': 'center'
+    }})
   }
 
 }
