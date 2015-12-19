@@ -11,6 +11,7 @@ module.exports = {
     if (started) return
     started = true
 
+    var self = this
     this.target = target
 
     var container = h('.ps-container', { style: {
@@ -41,6 +42,11 @@ module.exports = {
     window.addEventListener('resize', function () {
       container.style.width = window.innerWidth + 'px'
       container.style.height = window.innerHeight + 'px'
+    })
+    window.addEventListener('touchend', function (evt) {
+      var hPct = evt.layerX / window.innerWidth
+      if (hPct < 0.2) return self.prevSlide()
+      if (hPct > 0.8) return self.nextSlide()
     })
 
     if (window.location.hash === '') {
