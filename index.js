@@ -173,13 +173,26 @@ function imageSlide (url, method) {
   }
 }
 
-function videoSlide (url, playAudio) {
+function videoSlide (url, opts) {
+  opts = opts || {}
+
   var video = h('video', {
     src: url,
-    controls: true,
-    autoplay: true,
-    muted: !playAudio
+    controls: opts.controls,
+    autoplay: false,
+    loop: opts.loop,
+    muted: true
   })
+
+  var isReady = false
+  video.addEventListener('loadeddata', function () { isReady = true })
+
+  function onReady (cb) {
+    console.log('isReady', isReady)
+    if (isReady) return setTimeout(cb, 0)
+
+    setTimeout(onReady, 1000, cb)
+  }
 
   return function (el) {
     el.innerHTML = ''
@@ -188,7 +201,7 @@ function videoSlide (url, playAudio) {
 
     var arWin = window.innerWidth / window.innerHeight
 
-    video.addEventListener('loadeddata', function () {
+    onReady(function () {
       var rect = video.getBoundingClientRect()
       var arVid = rect.width / rect.height
 
@@ -203,6 +216,9 @@ function videoSlide (url, playAudio) {
       var margin = (window.innerHeight - rect.height) / 2
       video.style.marginTop = margin + 'px'
       video.style.opacity = 1
+      video.currentTime = 0
+      video.muted = opts.muted
+      video.play()
     })
   }
 }
