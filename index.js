@@ -80,6 +80,8 @@ var PowerSlides = module.exports = {
     if (slide) {
       if (typeof slide === 'function') return slide(this.elSlide)
       if (typeof slide === 'string') return titleSlide(slide)(this.elSlide)
+      this.elSlide.innerHTML = ''
+      this.elSlide.appendChild(slide)
     }
   },
 
