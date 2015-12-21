@@ -11,27 +11,40 @@ if (isPresenter) {
   stream.on('data', function (n) { window.location.hash = '/' + n })
 }
 
-PS.start(document.body, [
-  // large text
-  PS.title('simple-slides'),
+// First create an array of slides
+var slides = [
+  // A "slide" can simply be text
+  'Introducing power-slides',
 
-  // full-screen image
-  [PS.image('/example/white-blue.png'),
-    'This is a note.',
-    'There can be more than one!'
+  // When an array, the first item is the "slide" and the rest are notes
+  [ 'I am a Title',
+    'This is note only viewable in presenter mode',
+    '...and so is this' ],
+
+  // power-slides has a helper for images
+  [ PS.image('/example/fist-bump.gif'),
+    'By default, the image is full-screen',
+    'It does this by using the "cover" background-size method' ],
+
+  [ PS.image('/example/multipass.gif', 'contain'),
+    'But you can choose how you would like the image sized',
+    'This image is "contained" to preserve the aspect ratio without cropping'],
+
+  // there's also a helper for video
+  [ PS.video('/example/spin.mp4', {loop: false, muted: false, controls: false}),
+    'By default the video will not loop, show controls, nor be muted',
+    '...but that can be changed easily'
   ],
 
-  // contained image
-  PS.image('/example/wide-blue.png', 'contain'),
+  // if you want to get fancy, pass in a function
+  function (slideContainer) {
+    // your function will receive the slide container as an argument
+    // we'll clear it out and add a "typewriter" effect
+    slideContainer.innerHTML = ''
 
-  // video (muted by default)
-  PS.video('/example/spin.mp4'),
-
-  // custom
-  function (slide) {
-    var el = document.createElement('div')
-    slide.innerHTML = ''
-    slide.appendChild(el)
+    var el = document.createElement('h1')
+    el.style.fontFamily = 'monospace'
+    slideContainer.appendChild(el)
 
     var letters = ('Custom effects!').split('')
 
@@ -42,4 +55,7 @@ PS.start(document.body, [
       el.innerHTML += letter
     }, 250)
   }
-], isPresenter)
+]
+
+
+PS.start(document.body, slides, isPresenter)
