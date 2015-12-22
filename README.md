@@ -4,6 +4,7 @@ Create powerful slideshows for talks and presentations. Each "slide" is a JS fun
 
 If you only want a couple features while keeping the full power of JS, this might help you. This will:
 
+* *NEW "Presenter Mode"*: View slide notes on your phone + remote control
 * Let you use arrow keys for going forward or back
 * Let you jump to any slide by number in the url hash
 * Keep the url hash synced with the slide you're on
@@ -16,23 +17,34 @@ var PS = require('power-slides')
 
 // Starts the show: left/right arrows to go forward/back
 PS.start(document.body, [
-  // large text
-  PS.title('power-slides'),
+  // A "slide" can simply be text
+  'Introducing power-slides',
 
-  // full-screen image
-  PS.image('/example/white-blue.png'),
+  // When an array, the first item is the "slide" and the rest are notes
+  [ 'I am a Title',
+    'This is note only viewable in presenter mode',
+    '...and so is this' ],
 
-  // contained image
-  PS.image('/example/wide-blue.png', 'contain'),
+  // power-slides has a helper for images
+  [ PS.image('/example/fist-bump.gif'),
+    'By default, the image is full-screen',
+    'It does this by using the "cover" background-size method' ],
 
-  // video (muted by default)
-  PS.video('/example/spin.mp4'),
+  // there's also a helper for video
+  [ PS.video('/example/spin.mp4', {loop: false, muted: false, controls: false}),
+    'By default the video will not loop, show controls, nor be muted',
+    '...but that can be changed easily'
+  ],
 
-  // custom function to alter an element
-  function (slide) {
-    var el = document.createElement('div')
-    slide.innerHTML = ''
-    slide.appendChild(el)
+  // if you want to get fancy, pass in a function
+  function (slideContainer) {
+    // your function will receive the slide container as an argument
+    // we'll clear it out and add a "typewriter" effect
+    slideContainer.innerHTML = ''
+
+    var el = document.createElement('h1')
+    el.style.fontFamily = 'monospace'
+    slideContainer.appendChild(el)
 
     var letters = ('Custom effects!').split('')
 
@@ -44,6 +56,7 @@ PS.start(document.body, [
     }, 250)
   }
 ])
+
 ```
 
 Edit `example/index.js` and run `npm run example` to try it out in your browser.
@@ -54,12 +67,12 @@ Edit `example/index.js` and run `npm run example` to try it out in your browser.
 
 This will start the slideshow with the specified element (usually `document.body`) and array of slide functions.
 
-Each item in the array will be a "slide helper" like `PS.title`, `PS.image`, or `PS.video` (explained below), or it will be a function that receives the element as an argument.
+Each item in the array will be text or a "slide helper" like `PS.image` or `PS.video` (explained below), a DOM element, or a function that receives the container element as an argument.
 
 ```js
 var slideshow = PS.start(document.body, [
-  // basic large text using PS.title helper
-  PS.title('power-slides'),
+  // basic large text
+  'power-slides',
 
   // or your own function
   function (slide) {
@@ -72,18 +85,13 @@ var slideshow = PS.start(document.body, [
 ])
 ```
 
-### PS.title(text) ###
-
-Standard "big text" card. Will make sure it's centered.
-
 ### PS.image(url[, backgroundSize]) ###
 
 Standard "big image". By default `backgroundSize` is "cover". Depending on the image you might want to use `"contain"`. For more info see [background-size on MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/background-size?redirectlocale=en-US&redirectslug=CSS%2Fbackground-size).
 
-### PS.video(url[, playAudio]) ###
+### PS.video(url[, videoOptions]) ###
 
-Standard "big movie". Will be muted by default, but you can set `playAudio` to `true` if you'd like sound.
-
+Standard "big movie". Default options are `{loop: false, muted: false, controls: false}`
 
 ## License ##
 
