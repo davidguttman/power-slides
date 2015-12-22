@@ -92,8 +92,8 @@ var PowerSlides = module.exports = {
   },
 
   onKeyup: function (evt) {
-    if (evt.keyIdentifier === 'Right') return this.nextSlide()
-    if (evt.keyIdentifier === 'Left') return this.prevSlide()
+    if (evt.keyIdentifier === 'Right' || evt.key === 'ArrowRight') return this.nextSlide()
+    if (evt.keyIdentifier === 'Left' || evt.key === 'ArrowLeft') return this.prevSlide()
   },
 
   onResize: function (evt) {
