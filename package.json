@@ -20,6 +20,7 @@
     "wildemitter": "^1.2.0"
   },
   "devDependencies": {
+    "browserify": "^14.0.0",
     "end-of-stream": "^1.1.0",
     "shoe": "0.0.15",
     "standard": "^5.4.1",
