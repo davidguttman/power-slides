@@ -1,6 +1,6 @@
 {
   "name": "power-slides",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "Create powerful slideshows for talks and presentations. Each \"slide\" is a JS function that can do *anything*.",
   "main": "index.js",
   "scripts": {
