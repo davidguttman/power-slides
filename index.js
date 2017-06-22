@@ -177,6 +177,7 @@ function imageSlide (url, method) {
 
 function videoSlide (url, opts) {
   opts = opts || {}
+  opts.size = opts.size || 'contain'
 
   var video = h('video', {
     src: url,
@@ -190,7 +191,6 @@ function videoSlide (url, opts) {
   video.addEventListener('loadeddata', function () { isReady = true })
 
   function onReady (cb) {
-    console.log('isReady', isReady)
     if (isReady) return setTimeout(cb, 0)
 
     setTimeout(onReady, 1000, cb)
@@ -207,10 +207,18 @@ function videoSlide (url, opts) {
       var rect = video.getBoundingClientRect()
       var arVid = rect.width / rect.height
 
-      if (arVid < arWin) {
-        video.style.height = window.innerHeight + 'px'
+      if (opts.size === 'contain') {
+        if (arVid < arWin) {
+          video.style.height = window.innerHeight + 'px'
+        } else {
+          video.style.width = window.innerWidth + 'px'
+        }
       } else {
-        video.style.width = window.innerWidth + 'px'
+        if (arVid >= arWin) {
+          video.style.height = window.innerHeight + 'px'
+        } else {
+          video.style.width = window.innerWidth + 'px'
+        }
       }
 
       rect = video.getBoundingClientRect()

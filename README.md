@@ -31,7 +31,13 @@ PS.start(document.body, [
     'It does this by using the "cover" background-size method' ],
 
   // there's also a helper for video
-  [ PS.video('/example/spin.mp4', {loop: false, muted: false, controls: false}),
+  [
+    PS.video('/example/spin.mp4', {
+      loop: false,
+      muted: false,
+      controls: false,
+      size: 'contain' // or 'cover'
+    }),
     'By default the video will not loop, show controls, nor be muted',
     '...but that can be changed easily'
   ],
@@ -91,7 +97,7 @@ Standard "big image". By default `backgroundSize` is "cover". Depending on the i
 
 ### PS.video(url[, videoOptions]) ###
 
-Standard "big movie". Default options are `{loop: false, muted: false, controls: false}`
+Standard "big movie". Default options are `{loop: false, muted: false, controls: false, size: 'contain'}`
 
 ## License ##
 
