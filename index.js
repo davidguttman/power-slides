@@ -169,6 +169,10 @@ function imageSlide (url, method) {
     }
   )
 
+  var preload = h('img', {src: url, style: {display: 'none'}})
+  document.body.appendChild(preload)
+  preload.onload = function () { document.body.removeChild(preload) }
+
   return function (el) {
     el.innerHTML = ''
     el.appendChild(slide)
@@ -186,6 +190,10 @@ function videoSlide (url, opts) {
     loop: opts.loop,
     muted: true
   })
+
+  var preload = h('video', {src: url, autoplay: false, style: {display: 'none'}})
+  document.body.appendChild(preload)
+  preload.addEventListener('loadeddata', () => document.body.removeChild(preload))
 
   var isReady = false
   video.addEventListener('loadeddata', function () { isReady = true })
