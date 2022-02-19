@@ -3,7 +3,7 @@ var Emitter = require('wildemitter')
 
 var started
 
-var PowerSlides = module.exports = {
+var PowerSlides = (module.exports = {
   title: titleSlide,
   image: imageSlide,
   video: videoSlide,
@@ -15,11 +15,11 @@ var PowerSlides = module.exports = {
     this.isPresenter = isPresenter
     this.target = target
 
-    var slides = this.slides = []
-    var notes = this.notes = []
+    var slides = (this.slides = [])
+    var notes = (this.notes = [])
 
     slideNotes.forEach(function (slideNote, i) {
-      if (!Array.isArray(slideNote)) return slides[i] = slideNote
+      if (!Array.isArray(slideNote)) return (slides[i] = slideNote)
 
       slides[i] = slideNote[0]
       notes[i] = slideNote.slice(1)
@@ -48,7 +48,9 @@ var PowerSlides = module.exports = {
 
   nextSlide: function () {
     var slideNumber = this.getCurrentSlideNumber()
-    if (slideNumber > this.slides.length - 1) slideNumber = this.slides.length - 1
+    if (slideNumber > this.slides.length - 1) {
+      slideNumber = this.slides.length - 1
+    }
     window.location.hash = '/' + (slideNumber + 1)
   },
 
@@ -92,8 +94,12 @@ var PowerSlides = module.exports = {
   },
 
   onKeyup: function (evt) {
-    if (evt.keyIdentifier === 'Right' || evt.key === 'ArrowRight') return this.nextSlide()
-    if (evt.keyIdentifier === 'Left' || evt.key === 'ArrowLeft') return this.prevSlide()
+    if (evt.keyIdentifier === 'Right' || evt.key === 'ArrowRight') {
+      return this.nextSlide()
+    }
+    if (evt.keyIdentifier === 'Left' || evt.key === 'ArrowLeft') {
+      return this.prevSlide()
+    }
   },
 
   onResize: function (evt) {
@@ -108,40 +114,42 @@ var PowerSlides = module.exports = {
   },
 
   createContainer: function () {
-    return h('.ps-container', { style: {
-      width: window.innerWidth + 'px',
-      height: window.innerHeight + 'px',
-      position: 'absolute',
-      top: 0,
-      left: 0
-    }})
+    return h('.ps-container', {
+      style: {
+        width: window.innerWidth + 'px',
+        height: window.innerHeight + 'px',
+        position: 'absolute',
+        top: 0,
+        left: 0
+      }
+    })
   },
 
   createSlide: function () {
     var style = {
-      'width': '100%',
-      'height': '100%',
-      'display': 'flex',
+      width: '100%',
+      height: '100%',
+      display: 'flex',
       'justify-content': 'center',
       'align-items': 'center'
     }
 
     if (this.isPresenter) style.height = '50%'
 
-    return h('.ps-slide', {style: style})
+    return h('.ps-slide', { style: style })
   },
 
   createNotes: function () {
     var style = {
-      'width': '100%',
-      'height': '50%'
+      width: '100%',
+      height: '50%'
     }
 
     if (!this.isPresenter) style.display = 'none'
 
-    return h('.ps-notes', {style: style}, 'notes')
+    return h('.ps-notes', { style: style }, 'notes')
   }
-}
+})
 
 Emitter.mixin(PowerSlides)
 
@@ -149,29 +157,27 @@ function titleSlide (title) {
   return function (el) {
     el.innerHTML = ''
 
-    el.appendChild(h('div',
-      h('h1', title)
-    ))
+    el.appendChild(h('div', h('h1', title)))
   }
 }
 
 function imageSlide (url, method) {
   method = method || 'cover'
 
-  var slide = h('.ps-full-img',
-    {
-      style: {
-        'width': '100%',
-        'height': '100%',
-        'background': 'url(' + url + ') no-repeat center center',
-        'background-size': method
-      }
+  var slide = h('.ps-full-img', {
+    style: {
+      width: '100%',
+      height: '100%',
+      background: 'url(' + url + ') no-repeat center center',
+      'background-size': method
     }
-  )
+  })
 
-  var preload = h('img', {src: url, style: {display: 'none'}})
+  var preload = h('img', { src: url, style: { display: 'none' } })
   document.body.appendChild(preload)
-  preload.onload = function () { document.body.removeChild(preload) }
+  preload.onload = function () {
+    document.body.removeChild(preload)
+  }
 
   return function (el) {
     el.innerHTML = ''
@@ -191,12 +197,20 @@ function videoSlide (url, opts) {
     muted: true
   })
 
-  var preload = h('video', {src: url, autoplay: false, style: {display: 'none'}})
+  var preload = h('video', {
+    src: url,
+    autoplay: false,
+    style: { display: 'none' }
+  })
   document.body.appendChild(preload)
-  preload.addEventListener('loadeddata', () => document.body.removeChild(preload))
+  preload.addEventListener('loadeddata', () =>
+    document.body.removeChild(preload)
+  )
 
   var isReady = false
-  video.addEventListener('loadeddata', function () { isReady = true })
+  video.addEventListener('loadeddata', function () {
+    isReady = true
+  })
 
   function onReady (cb) {
     if (isReady) return setTimeout(cb, 0)
