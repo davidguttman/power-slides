@@ -153,11 +153,11 @@ var PowerSlides = (module.exports = {
 
 Emitter.mixin(PowerSlides)
 
-function titleSlide (title) {
+function titleSlide (title, style = { padding: '10%' }) {
   return function (el) {
     el.innerHTML = ''
 
-    el.appendChild(h('div', h('h1', title)))
+    el.appendChild(h('div', { style: { padding: '10%' } }, h('h1', title)))
   }
 }
 
