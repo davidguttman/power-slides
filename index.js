@@ -82,6 +82,9 @@ var PowerSlides = (module.exports = {
     if (slide) {
       if (typeof slide === 'function') return slide(this.elSlide)
       if (typeof slide === 'string') return titleSlide(slide)(this.elSlide)
+      if (Array.isArray(slide)) {
+        return multiTitleSlide(multiTitleSlide)(this.elSlide)
+      }
       this.elSlide.innerHTML = ''
       this.elSlide.appendChild(slide)
     }
@@ -158,6 +161,22 @@ function titleSlide (title, style = { padding: '10%' }) {
     el.innerHTML = ''
 
     el.appendChild(h('div', { style: { padding: '10%' } }, h('h1', title)))
+  }
+}
+
+function multiTitleSlide (titles, style = { padding: '10%' }) {
+  return function (el) {
+    el.innerHTML = ''
+
+    el.appendChild(
+      h(
+        'div',
+        { style: { padding: '10%' } },
+        titles.map(function (title) {
+          return h('h1', title)
+        })
+      )
+    )
   }
 }
 
