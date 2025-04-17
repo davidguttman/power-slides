@@ -17,7 +17,8 @@
   "license": "MIT",
   "dependencies": {
     "hyperscript": "^1.4.7",
-    "wildemitter": "^1.2.0"
+    "wildemitter": "^1.2.0",
+    "xtend": "^4.0.2"
   },
   "devDependencies": {
     "browserify": "^14.0.0",

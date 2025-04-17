@@ -1,6 +1,13 @@
 var PS = require('..')
 var shoe = require('shoe')
 
+window.document.body.style.cssText = `
+  background-color: black;
+  color: white;
+  font-family:
+  monospace; font-size: 2vw;
+`
+
 var host = 'http://' + window.location.hostname + ':1337'
 var stream = shoe(host + '/rc')
 var isPresenter = window.navigator.userAgent.match(/iPhone|Android/)
@@ -35,6 +42,13 @@ var slides = [
     'By default the video will not loop, show controls, nor be muted',
     '...but that can be changed easily'
   ],
+
+  // layered title example
+  PS.layeredTitle(
+    PS.title('Layers!', { color: 'white' }),
+    PS.image('https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExejM2NWZrbm15czNybzB5MmRlZmZrbnRkOWMzbmQxcmNxaWlsNjVkcyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/pKBZfGcYcgzrG/giphy.gif'),
+    { brightness: 0.75 }
+  ),
 
   // if you want to get fancy, pass in a function
   function (slideContainer) {

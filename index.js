@@ -1,5 +1,6 @@
 var h = require('hyperscript')
 var Emitter = require('wildemitter')
+var xtend = require('xtend')
 
 var started
 
@@ -7,6 +8,7 @@ var PowerSlides = (module.exports = {
   title: titleSlide,
   image: imageSlide,
   video: videoSlide,
+  layeredTitle: layeredTitleSlide,
 
   start: function (target, slideNotes, isPresenter) {
     if (started) return
@@ -153,11 +155,69 @@ var PowerSlides = (module.exports = {
 
 Emitter.mixin(PowerSlides)
 
+function layeredTitleSlide (fgContent, bgSlide, opts) {
+  opts = opts || { brightness: 0.6 }
+  var fgSlide
+
+  // Determine the foreground slide function based on the type of fgContent
+  if (typeof fgContent === 'string') {
+    fgSlide = titleSlide(fgContent) // Default behavior: treat string as title
+  } else if (typeof fgContent === 'function') {
+    fgSlide = fgContent // Use the provided function directly
+  } else if (fgContent instanceof Element || fgContent instanceof DocumentFragment) {
+    // If it's a DOM element or fragment, create a function to append it
+    fgSlide = function (el) {
+      el.innerHTML = ''
+      el.appendChild(fgContent)
+    }
+  } else {
+    // Fallback or error handling if needed, for now, just use titleSlide with stringified content
+    console.warn('Unsupported foreground content type for layeredTitleSlide, treating as text:', fgContent)
+    fgSlide = titleSlide(String(fgContent))
+  }
+
+  var outerOpts = {
+    style: {
+      position: 'relative',
+      width: '100%',
+      height: '100%'
+    }
+  }
+
+  var innerStyle = {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    display: 'flex',
+    'justify-content': 'center',
+    'align-items': 'center'
+  }
+
+  var fg = h('div', {
+    style: xtend(innerStyle, { 'text-shadow': '3px 3px 5px rgba(0, 0, 0, 0.7)' })
+  })
+  var bg = h('div', {
+    style: xtend(innerStyle, { filter: `brightness(${opts.brightness})` })
+  })
+  var slide = h('div', outerOpts, [ bg, fg ])
+
+  return function (el) {
+    el.innerHTML = ''
+    fgSlide(fg)
+    bgSlide(bg)
+    el.appendChild(slide)
+  }
+}
+
 function titleSlide (title, style = { padding: '10%' }) {
+  var defaultStyle = { padding: '10%' }
+  console.log(style, defaultStyle, xtend(defaultStyle, style))
   return function (el) {
     el.innerHTML = ''
 
-    el.appendChild(h('div', { style: { padding: '10%' } }, h('h1', title)))
+    el.appendChild(h('div', {style: xtend(defaultStyle, style)}, h('h1', title)))
   }
 }
 

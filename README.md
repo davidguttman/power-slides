@@ -42,6 +42,13 @@ PS.start(document.body, [
     '...but that can be changed easily'
   ],
 
+  // layered title example
+  PS.layeredTitle(
+    'Layered Title!',
+    PS.image('/example/multipass.gif'),
+    { brightness: 0.4 }
+  ),
+
   // if you want to get fancy, pass in a function
   function (slideContainer) {
     // your function will receive the slide container as an argument
@@ -98,6 +105,20 @@ Standard "big image". By default `backgroundSize` is "cover". Depending on the i
 ### PS.video(url[, videoOptions]) ###
 
 Standard "big movie". Default options are `{loop: false, muted: false, controls: false, size: 'contain'}`
+
+### PS.layeredTitle(text, backgroundSlideFn[, options]) ###
+
+Creates a slide with large `text` layered on top of another slide (`backgroundSlideFn`). The `backgroundSlideFn` should be another slide helper like `PS.image` or `PS.video`, or a custom slide function.
+
+The `options` object currently only supports `brightness` (default `0.6`) which controls the brightness of the background slide.
+
+```js
+PS.layeredTitle(
+  'Title Over Image',
+  PS.image('/path/to/background.jpg'),
+  { brightness: 0.5 }
+)
+```
 
 ## License ##
 
