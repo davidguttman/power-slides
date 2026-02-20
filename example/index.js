@@ -1,5 +1,4 @@
 var PS = require('..')
-var shoe = require('shoe')
 
 window.document.body.style.cssText = `
   background-color: black;
@@ -8,15 +7,7 @@ window.document.body.style.cssText = `
   monospace; font-size: 2vw;
 `
 
-var host = 'http://' + window.location.hostname + ':1337'
-var stream = shoe(host + '/rc')
 var isPresenter = window.navigator.userAgent.match(/iPhone|Android/)
-
-if (isPresenter) {
-  PS.on('changeSlide', stream.write.bind(stream))
-} else {
-  stream.on('data', function (n) { window.location.hash = '/' + n })
-}
 
 // First create an array of slides
 var slides = [
