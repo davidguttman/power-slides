@@ -36,6 +36,7 @@ for (const type of ['overlay', 'title', 'image', 'video', 'quote', 'chart', 'sum
 }
 assert(packageReadme.includes('deviceWidth') && packageReadme.includes('navControlOpacity'), 'package README documents iframe detail fields')
 assert(packageReadme.includes('slides(slides, PS)') && packageReadme.includes('renderers'), 'package README documents talk.js hooks')
+assert(packageReadme.includes('npm install') && packageReadme.includes('npm run dev') && packageReadme.includes('powerslides dev .'), 'package README documents npm install/scripts flow')
 
 runCliWithBlockedBuildDeps(['init', talk])
 
@@ -51,8 +52,21 @@ for (const type of ['overlay', 'title', 'image', 'video', 'quote', 'chart', 'sum
 }
 assert(initializedReadme.includes('Custom renderers in talk.js'), 'generated talk README documents custom renderers')
 assert(initializedReadme.includes('deviceWidth') && initializedReadme.includes('navControlOpacity'), 'generated talk README documents iframe detail fields')
+assert(initializedReadme.includes('npm install') && initializedReadme.includes('npm run dev') && initializedReadme.includes('powerslides dev .'), 'generated talk README documents npm scripts flow')
 
-assert(!fs.existsSync(path.join(talk, 'package.json')), 'init stays content-only')
+assert(fs.existsSync(path.join(talk, 'package.json')), 'init writes package.json')
+const initializedPackage = JSON.parse(fs.readFileSync(path.join(talk, 'package.json'), 'utf8'))
+const rootPackage = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
+assert.strictEqual(initializedPackage.name, 'talk', 'init derives safe package name from target directory')
+assert.strictEqual(initializedPackage.private, true, 'init marks talk package private')
+assert.deepStrictEqual(initializedPackage.scripts, {
+  dev: 'powerslides dev .',
+  build: 'powerslides build .',
+  start: 'npm run dev'
+}, 'init writes runner-friendly powerslides npm scripts')
+assert.deepStrictEqual(initializedPackage.devDependencies, {
+  'power-slides': '^' + rootPackage.version
+}, 'init writes devDependency on current power-slides package version')
 assert(!fs.existsSync(path.join(talk, 'package-lock.json')), 'init does not copy lockfile')
 assert(!fs.existsSync(path.join(talk, 'node_modules')), 'init does not copy node_modules')
 assert(!fs.existsSync(path.join(talk, '.power-slides')), 'init does not copy generated entry directory')
@@ -91,8 +105,11 @@ fs.mkdirSync(nonEmpty)
 fs.writeFileSync(path.join(nonEmpty, 'keep.txt'), 'keep')
 assert.throws(() => execFileSync(process.execPath, [cli, 'init', nonEmpty], { stdio: 'pipe' }), /Refusing to init into non-empty directory/, 'init refuses non-empty dirs without --force')
 fs.writeFileSync(path.join(nonEmpty, 'slides.yaml'), 'custom slides')
+const customPackageJson = '{\n  "name": "custom-talk"\n}\n'
+fs.writeFileSync(path.join(nonEmpty, 'package.json'), customPackageJson)
 execFileSync(process.execPath, [cli, 'init', nonEmpty, '--force'], { stdio: 'pipe' })
 assert.strictEqual(fs.readFileSync(path.join(nonEmpty, 'slides.yaml'), 'utf8'), 'custom slides', 'init --force does not overwrite existing files')
+assert.strictEqual(fs.readFileSync(path.join(nonEmpty, 'package.json'), 'utf8'), customPackageJson, 'init --force preserves existing package.json')
 assert.strictEqual(fs.readFileSync(path.join(nonEmpty, 'keep.txt'), 'utf8'), 'keep', 'init --force preserves unrelated existing files')
 assert(fs.existsSync(path.join(nonEmpty, 'talk.js')), 'init --force fills missing example files')
 
@@ -148,6 +165,11 @@ try {
   const installedEsmify = path.join(installedPrefix, 'node_modules', 'esmify', 'esmify.js')
 
   execFileSync(installedCli, ['init', installedTalk], { cwd: tmp, stdio: 'pipe' })
+  assert(fs.existsSync(path.join(installedTalk, 'package.json')), 'installed power-slides init writes package.json')
+  const installedTalkPackage = JSON.parse(fs.readFileSync(path.join(installedTalk, 'package.json'), 'utf8'))
+  assert.strictEqual(installedTalkPackage.devDependencies['power-slides'], '^' + rootPackage.version, 'installed power-slides init uses current package version in generated devDependency')
+  assert.strictEqual(installedTalkPackage.scripts.dev, 'powerslides dev .', 'installed power-slides init writes powerslides dev script')
+  assert.strictEqual(installedTalkPackage.scripts.build, 'powerslides build .', 'installed power-slides init writes powerslides build script')
   assert(fs.existsSync(path.join(installedTalk, 'public', 'spin.mp4')), 'installed power-slides init copies example media')
   assert(!fs.existsSync(path.join(installedTalk, 'public', 'index.html')), 'installed power-slides init excludes generated public index')
   const installedAliasTalk = path.join(tmp, 'installed-alias-talk')

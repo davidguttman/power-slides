@@ -70,10 +70,11 @@ async function init (argv) {
   copyExampleStarter(target)
   mkdirp(path.join(target, 'assets'))
   mkdirp(path.join(target, 'public'))
+  writeNew(path.join(target, 'package.json'), samplePackageJson(target))
   writeNew(path.join(target, 'README.md'), sampleReadme())
 
-  console.log('Created content-only talk at ' + target)
-  console.log('Next: power-slides dev ' + target)
+  console.log('Created power-slides talk at ' + target)
+  console.log('Next: cd ' + target + ' && npm install && npm run dev')
 }
 
 async function build (argv) {
@@ -293,6 +294,35 @@ function shouldSkipExampleStarterPath (relative, stat) {
   return false
 }
 
+function samplePackageJson (target) {
+  const packageInfo = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8'))
+  const version = packageInfo.version || '0.0.0'
+  return JSON.stringify({
+    name: safePackageName(path.basename(target) || 'power-slides-talk'),
+    private: true,
+    scripts: {
+      dev: 'powerslides dev .',
+      build: 'powerslides build .',
+      start: 'npm run dev'
+    },
+    devDependencies: {
+      'power-slides': '^' + version
+    }
+  }, null, 2) + '\n'
+}
+
+function safePackageName (name) {
+  const safe = String(name)
+    .toLowerCase()
+    .replace(/^@+/, '')
+    .replace(/[^a-z0-9._~-]+/g, '-')
+    .replace(/^[._~-]+|[._~-]+$/g, '')
+    .slice(0, 214)
+
+  if (safe && !safe.startsWith('.') && !safe.startsWith('_')) return safe
+  return 'power-slides-talk'
+}
+
 function escapeHtml (value) {
   return String(value).replace(/[&<>"']/g, function (ch) {
     return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]
@@ -302,20 +332,34 @@ function escapeHtml (value) {
 function sampleReadme () {
   return `# Talk
 
-This is a content-only power-slides talk based on the packaged example starter.
+This is a power-slides talk based on the packaged example starter. The content stays in \`slides.yaml\`, optional custom behavior stays in \`talk.js\`, and the local \`package.json\` lets npm-compatible runners install and run the talk.
 
 ## Files
 
+- \`package.json\` installs the published \`power-slides\` package as a dev dependency and exposes runner-friendly npm scripts.
 - \`slides.yaml\` contains slide content and presenter notes.
 - \`talk.js\` is optional ESM for theming, custom renderers, and escape hatches.
 - \`public/\` is served at the web root for example media, generated images, video, fonts, etc.
 - \`assets/\` is for source assets you do not serve directly.
 
-Run from anywhere with power-slides installed:
+Install once, then run with npm scripts:
 
 \`\`\`bash
-power-slides dev .
-power-slides build .
+npm install
+npm run dev
+npm run build
+\`\`\`
+
+The scripts call the \`powerslides\` bin alias:
+
+\`\`\`json
+{
+  "scripts": {
+    "dev": "powerslides dev .",
+    "build": "powerslides build .",
+    "start": "npm run dev"
+  }
+}
 \`\`\`
 
 ## Authoring schema quick reference

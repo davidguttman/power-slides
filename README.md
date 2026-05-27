@@ -17,30 +17,51 @@ ESM-first reusable talk kit for browser slide decks, with the original tiny Java
 
 ## Install
 
+Install globally or run with your package manager's executor to create a talk:
+
 ```bash
-npm install power-slides
+npm install -g power-slides
+powerslides init my-talk
 ```
 
 ## Create a talk
 
 ```bash
-power-slides init my-talk
+powerslides init my-talk
 cd my-talk
-power-slides dev .      # starts budo; do not use for CI
-power-slides build .    # writes public/index.html + cache-busted bundle
+npm install
+npm run dev      # starts budo; runners such as jump.sh can use npm start
+npm run build    # writes public/index.html + cache-busted bundle
 ```
 
-`power-slides dev .` uses the port from `--port <port>`, then `$PORT`, then `9966`.
+The generated `package.json` is intentionally minimal and runner-friendly:
 
-`init` creates a content-only talk folder by copying the packaged `example/` starter authoring files:
+```json
+{
+  "private": true,
+  "scripts": {
+    "dev": "powerslides dev .",
+    "build": "powerslides build .",
+    "start": "npm run dev"
+  },
+  "devDependencies": {
+    "power-slides": "^2.0.4"
+  }
+}
+```
 
+`powerslides dev .` uses the port from `--port <port>`, then `$PORT`, then `9966`.
+
+`init` creates a talk folder by generating the local `package.json` and copying the packaged `example/` starter authoring files:
+
+- `package.json` — local npm scripts plus a dev dependency on the published `power-slides` package
 - `slides.yaml` — content and notes
 - `talk.js` — optional ESM custom renderers / escape hatch
 - `public/` — example media and files served at `/` (videos, generated images, fonts)
 - `assets/` — source assets not served directly
 - `README.md` — talk-local authoring notes
 
-It refuses to run in a non-empty directory unless you pass `--force`, and it does not overwrite existing files. It copies the packaged example media needed by the starter, but does **not** copy a `package.json`, lockfile, `node_modules`, generated bundles, or `public/index.html` into the talk.
+It refuses to run in a non-empty directory unless you pass `--force`, and it does not overwrite existing files. It copies the packaged example media needed by the starter, but does **not** copy a lockfile, `node_modules`, generated bundles, or `public/index.html` into the talk.
 
 ## ESM runtime
 
