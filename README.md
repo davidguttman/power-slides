@@ -1,125 +1,180 @@
-# power-slides #
+# power-slides
 
-Create powerful slideshows for talks and presentations. Each "slide" is a JS function that can do *anything*.
+> Slides that are just JavaScript. Each slide is a function — so it can do *anything*.
 
-If you only want a couple features while keeping the full power of JS, this might help you. This will:
-
-* *NEW "Presenter Mode"*: View slide notes on your phone + remote control
-* Let you use arrow keys for going forward or back
-* Let you jump to any slide by number in the url hash
-* Keep the url hash synced with the slide you're on
-* Run the slide's function each time you navigate to it
-
-## Example ##
+`power-slides` is a tiny (~300 LOC), dependency-light slideshow library for people who would rather write a presentation in JS than fight a WYSIWYG. You get the few things you actually want from a slide deck — arrow-key nav, deep-linkable slides, presenter notes — and the full power of the browser for everything else.
 
 ```js
-var PS = require('power-slides')
+const PS = require('power-slides')
 
-// Starts the show: left/right arrows to go forward/back
 PS.start(document.body, [
-  // A "slide" can simply be text
+  'Hello, world',
+  PS.image('/cat.gif'),
+  function (slide) {
+    slide.innerHTML = '<h1>Anything you can do in JS, you can do on a slide.</h1>'
+  }
+])
+```
+
+---
+
+## Why power-slides?
+
+- **A slide is a function.** Want a typewriter effect, a live D3 chart, a WebGL toy, a fetch from your own API? Just write it.
+- **Tiny surface area.** Five things to learn: `start`, `image`, `video`, `title`, `layeredTitle`.
+- **Keyboard + touch nav out of the box.** Left/right arrows, tap the edges on mobile.
+- **Deep links.** Every slide has a URL hash (`#/7`). Reload, share, jump.
+- **Presenter mode.** Split view with your speaker notes underneath the slide.
+- **No framework, no build opinions.** It's just CommonJS + DOM. Bundle it however you want.
+
+---
+
+## Install
+
+```bash
+npm install power-slides
+```
+
+You'll want a bundler (browserify, esbuild, webpack, vite, etc.) because the package uses CommonJS `require` and is meant for the browser.
+
+---
+
+## Quickstart
+
+Create an `index.js`:
+
+```js
+const PS = require('power-slides')
+
+document.body.style.cssText = `
+  background: black;
+  color: white;
+  font-family: monospace;
+  font-size: 2vw;
+`
+
+PS.start(document.body, [
   'Introducing power-slides',
 
-  // When an array, the first item is the "slide" and the rest are notes
-  [ 'I am a Title',
-    'This is note only viewable in presenter mode',
-    '...and so is this' ],
+  // [slide, ...notes] — notes show in presenter mode
+  ['I am a Title',
+    'This note is only visible in presenter mode',
+    '...and so is this'],
 
-  // power-slides has a helper for images
-  [ PS.image('/example/fist-bump.gif'),
-    'By default, the image is full-screen',
-    'It does this by using the "cover" background-size method' ],
+  // image helper, full-bleed by default
+  PS.image('/cat.gif'),
 
-  // there's also a helper for video
-  [
-    PS.video('/example/spin.mp4', {
-      loop: false,
-      muted: false,
-      controls: false,
-      size: 'contain' // or 'cover'
-    }),
-    'By default the video will not loop, show controls, nor be muted',
-    '...but that can be changed easily'
-  ],
+  // video helper
+  PS.video('/clip.mp4', { loop: true, muted: true }),
 
-  // layered title example
-  PS.layeredTitle(
-    'Layered Title!',
-    PS.image('/example/multipass.gif'),
-    { brightness: 0.4 }
-  ),
+  // title layered over an image
+  PS.layeredTitle('Big Idea', PS.image('/background.jpg'), { brightness: 0.5 }),
 
-  // if you want to get fancy, pass in a function
-  function (slideContainer) {
-    // your function will receive the slide container as an argument
-    // we'll clear it out and add a "typewriter" effect
-    slideContainer.innerHTML = ''
-
-    var el = document.createElement('h1')
-    el.style.fontFamily = 'monospace'
-    slideContainer.appendChild(el)
-
-    var letters = ('Custom effects!').split('')
-
-    var interval = setInterval(function () {
-      var letter = letters.shift()
-      if (!letter) return clearInterval(interval)
-
-      el.innerHTML += letter
-    }, 250)
+  // anything else — just a function
+  function (slide) {
+    slide.innerHTML = '<h1 style="font-family: monospace">Custom effects!</h1>'
   }
 ])
-
 ```
 
-Edit `example/index.js` and run `npm run example` to try it out in your browser.
+Bundle it and open it in a browser. Use the arrow keys to navigate.
 
-## API ##
+### Try the included example
 
-### PS.start(el, slideFns) ###
+```bash
+git clone https://github.com/davidguttman/power-slides.git
+cd power-slides
+npm install
+npm run example
+```
 
-This will start the slideshow with the specified element (usually `document.body`) and array of slide functions.
+This runs [`budo`](https://github.com/mattdesl/budo) on port `9966` and opens the example deck in your browser. Edit `example/index.js` and the page live-reloads.
 
-Each item in the array will be text or a "slide helper" like `PS.image` or `PS.video` (explained below), a DOM element, or a function that receives the container element as an argument.
+---
+
+## API
+
+### `PS.start(el, slides, [isPresenter])`
+
+Mounts the slideshow into `el` (usually `document.body`).
+
+- `el` — DOM element to render into.
+- `slides` — array. Each entry is one of:
+  - a **string** → rendered as a big title slide
+  - a **DOM element** → appended into the slide container
+  - a **function** `(slideContainer) => void` → called every time you navigate to the slide; you own the DOM
+  - an **array** `[slide, ...notes]` → first item is any of the above; remaining items are presenter notes (strings)
+- `isPresenter` — optional boolean. When truthy, splits the view so the slide takes the top half and notes appear underneath. A common pattern is to flip it on based on user agent (`/iPhone|Android/`) so your phone becomes the notes screen.
+
+The returned `PowerSlides` object is also an event emitter:
 
 ```js
-var slideshow = PS.start(document.body, [
-  // basic large text
-  'power-slides',
-
-  // or your own function
-  function (slide) {
-    var el = document.createElement('h1')
-    el.innerHTML = 'Custom Slide!'
-
-    slide.innerHTML = ''
-    slide.appendChild(el)
-  }
-])
+PS.on('changeSlide', n => console.log('now on slide', n))
 ```
 
-### PS.image(url[, backgroundSize]) ###
+### `PS.image(url, [backgroundSize])`
 
-Standard "big image". By default `backgroundSize` is "cover". Depending on the image you might want to use `"contain"`. For more info see [background-size on MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/background-size?redirectlocale=en-US&redirectslug=CSS%2Fbackground-size).
+Full-bleed image slide. `backgroundSize` defaults to `"cover"`. Use `"contain"` if you want the whole image visible without cropping. See [`background-size` on MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/background-size).
 
-### PS.video(url[, videoOptions]) ###
+### `PS.video(url, [options])`
 
-Standard "big movie". Default options are `{loop: false, muted: false, controls: false, size: 'contain'}`
+Full-bleed video slide. Default options: `{ loop: false, muted: false, controls: false, size: 'contain' }`. `size` can be `'contain'` or `'cover'`. The video resets and plays each time you navigate to the slide.
 
-### PS.layeredTitle(text, backgroundSlideFn[, options]) ###
+### `PS.title(text, [style])`
 
-Creates a slide with large `text` layered on top of another slide (`backgroundSlideFn`). The `backgroundSlideFn` should be another slide helper like `PS.image` or `PS.video`, or a custom slide function.
+A plain centered title slide. Useful as the foreground of `layeredTitle` when you want custom styling:
 
-The `options` object currently only supports `brightness` (default `0.6`) which controls the brightness of the background slide.
+```js
+PS.title('Hello', { color: 'white', fontSize: '5vw' })
+```
+
+### `PS.layeredTitle(foreground, background, [options])`
+
+Stacks a title on top of another slide (typically an image or video).
+
+- `foreground` — a string, a DOM element, or a slide function (e.g. `PS.title(...)`).
+- `background` — any slide function, but usually `PS.image(...)` or `PS.video(...)`.
+- `options.brightness` — multiplies the background brightness (default `0.6`). Lower = darker = title more readable.
 
 ```js
 PS.layeredTitle(
   'Title Over Image',
-  PS.image('/path/to/background.jpg'),
+  PS.image('/bg.jpg'),
   { brightness: 0.5 }
 )
 ```
 
-## License ##
+### Navigation
 
-MIT
+- `PS.nextSlide()` / `PS.prevSlide()` — programmatic nav.
+- Arrow keys — left/right.
+- Touch — tap the left 20% / right 20% of the screen.
+- URL hash — `#/3` jumps to slide 3, and the hash updates as you navigate.
+
+---
+
+## Patterns
+
+**Live demos.** A slide is a function, so plug in anything: a sandboxed iframe, a CodeMirror editor, a WebSocket-driven dashboard. Whatever runs in a browser tab runs on a slide.
+
+**Reactive slides.** Subscribe to `changeSlide` to pause videos, stop timers, or trigger analytics when the audience moves on.
+
+**Presenter mode on your phone.** Open the deck on your laptop normally, and again on your phone (sniff the UA, like the example does, to flip on `isPresenter`). Use the phone as your notes screen.
+
+---
+
+## Development
+
+```bash
+npm install
+npm run example   # live-reloading example deck
+npm test          # standard linting
+```
+
+PRs welcome. The whole library is a single `index.js`.
+
+---
+
+## License
+
+MIT © David Guttman
