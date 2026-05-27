@@ -1,27 +1,34 @@
 {
   "name": "power-slides",
   "version": "1.6.0",
-  "description": "Create powerful slideshows for talks and presentations. Each \"slide\" is a JS function that can do *anything*.",
+  "description": "ESM-first reusable talk kit and tiny slideshow runtime for content-only browser talks.",
   "main": "index.js",
   "scripts": {
-    "example": "budo example/index.js --port ${PORT:-9966} --open",
-    "test": "standard"
+    "example": "node bin/power-slides.js dev example",
+    "build": "node bin/power-slides.js build example",
+    "test": "standard && node test/cli-smoke.js"
   },
   "keywords": [
     "slides",
-    "slideshow"
+    "slideshow",
+    "talks",
+    "presentations",
+    "esm"
   ],
   "author": "David Guttman <david@guttman.io> (http://davidguttman.com/)",
   "license": "MIT",
   "dependencies": {
     "hyperscript": "^1.4.7",
+    "js-yaml": "^4.1.1",
     "wildemitter": "^1.2.0",
     "xtend": "^4.0.2"
   },
   "devDependencies": {
     "browserify": "^17.0.1",
     "budo": "^11.8.4",
-    "standard": "^17.1.2"
+    "esmify": "^2.1.1",
+    "standard": "^17.1.2",
+    "terser": "^5.48.0"
   },
   "directories": {
     "example": "example"
@@ -36,7 +43,35 @@
   "homepage": "https://github.com/davidguttman/power-slides#readme",
   "standard": {
     "env": [
-      "browser"
+      "browser",
+      "node",
+      "es2021"
+    ],
+    "ignore": [
+      "example/public/power-slides.*.js"
     ]
-  }
+  },
+  "module": "index.mjs",
+  "exports": {
+    ".": {
+      "import": "./index.mjs",
+      "require": "./index.js"
+    },
+    "./cli": "./bin/power-slides.js"
+  },
+  "bin": {
+    "power-slides": "./bin/power-slides.js"
+  },
+  "files": [
+    "index.js",
+    "index.mjs",
+    "bin",
+    "example/slides.yaml",
+    "example/talk.js",
+    "example/assets",
+    "example/public/fist-bump.gif",
+    "example/public/multipass.gif",
+    "example/public/spin.mp4",
+    "README.md"
+  ]
 }

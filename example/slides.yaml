@@ -1,0 +1,65 @@
+slides:
+  - type: overlay
+    eyebrow: power-slides example
+    title: Content-only talks
+    subtitle: slides.yaml + optional ESM talk.js
+    background: https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1800&q=80
+    brightness: 0.55
+  - type: overlay
+    eyebrow: Reusable app
+    title: No copied app directory
+    subtitle: The CLI supplies HTML, bundling, minification, dev server wiring, and runtime helpers.
+    notes:
+      - This folder has content and media only. No package.json, package-lock, node_modules, or public/index.html source file.
+  - type: quote
+    quote: Slide 1 shows immediately. Remote images preload in the background.
+    image: https://placehold.co/900x600/png?text=remote+image
+    background: https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=1800&q=80
+    notes:
+      - Both remote URLs are discovered from slides.yaml and scheduled after the first paint.
+  - type: custom
+    name: glitchTerminal
+    title: Slides can run code
+    notes:
+      - This one is rendered by example/talk.js with local CSS animation.
+  - type: custom
+    name: particleField
+    eyebrow: Dynamic JS
+    title: Generative canvas
+    subtitle: A small requestAnimationFrame sketch lives in talk.js, not the shared package.
+  - type: custom
+    name: cssCascade
+    eyebrow: Authoring ladder
+    title: Start simple, add code only when needed
+    subtitle: Most slides are just YAML. Custom JavaScript is optional. The CLI turns the folder into a static deck.
+    cards:
+      - - 1 · slides.yaml
+        - Write normal slides
+        - Titles, bullets, images, video, and iframes stay as content.
+      - - 2 · talk.js
+        - Add code for special moments
+        - Only custom slides need DOM, canvas, or animation.
+      - - 3 · CLI
+        - Build or preview the deck
+        - Run dev while editing, then build static files to share.
+  - type: video
+    src: /spin.mp4
+    controls: true
+    muted: true
+    size: contain
+  - type: iframe
+    src: https://david.app/
+    title: david.app external iframe
+    device: iphone
+    layout: phone-right
+    side:
+      eyebrow: External app demo
+      title: A real site in the deck
+      subtitle: The iframe stays inside a clean phone frame; the story lives on the slide.
+      bullets:
+        - Cross-origin page stays untouched
+        - Parent arrows remain available
+        - Reusable YAML, not one-off markup
+  - type: custom
+    name: end
+    title: Ship talks, not boilerplate

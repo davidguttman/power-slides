@@ -1,0 +1,349 @@
+const fs = require('fs')
+const os = require('os')
+const path = require('path')
+const assert = require('assert')
+const yaml = require('js-yaml')
+const { execFileSync } = require('child_process')
+
+const root = path.resolve(__dirname, '..')
+const cli = path.join(root, 'bin', 'power-slides.js')
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'power-slides-'))
+const talk = path.join(tmp, 'talk')
+
+const help = execFileSync(process.execPath, [cli, '--help'], { encoding: 'utf8' })
+assert(help.includes('Dev server port (default: $PORT, then 9966)'), 'help documents $PORT dev port fallback')
+assert(help.includes('default: slides.yaml, slides.yml, or slides.json'), 'help documents YAML default lookup order')
+
+execFileSync(process.execPath, [cli, 'init', talk], { stdio: 'pipe' })
+
+assert(fs.existsSync(path.join(talk, 'slides.yaml')), 'init writes slides.yaml')
+assert(!fs.existsSync(path.join(talk, 'slides.yml')), 'init does not write slides.yml by default')
+assert(!fs.existsSync(path.join(talk, 'slides.json')), 'init does not write slides.json by default')
+assert(fs.existsSync(path.join(talk, 'talk.js')), 'init writes optional talk.js')
+assert(fs.existsSync(path.join(talk, 'assets')), 'init creates assets convention')
+assert(fs.existsSync(path.join(talk, 'public')), 'init creates public convention')
+assert(!fs.existsSync(path.join(talk, 'package.json')), 'init stays content-only')
+assert(!fs.existsSync(path.join(talk, 'package-lock.json')), 'init does not copy lockfile')
+assert(!fs.existsSync(path.join(talk, 'node_modules')), 'init does not copy node_modules')
+
+const initializedSpec = yaml.load(fs.readFileSync(path.join(talk, 'slides.yaml'), 'utf8'))
+assert(!Object.prototype.hasOwnProperty.call(initializedSpec, 'title'), 'init sample has no top-level title metadata')
+assert.strictEqual(initializedSpec.slides[0].title, 'A content-only talk', 'init sample uses first slide as title slide')
+assert.strictEqual(initializedSpec.slides[0].subtitle, 'slides.yaml + optional talk.js', 'init sample advertises YAML by default')
+const initializedIframe = initializedSpec.slides.find(slide => slide.type === 'iframe')
+assert(initializedIframe, 'init sample includes an iframe slide')
+assert(initializedIframe.srcdoc && initializedIframe.srcdoc.includes('Iframe demo'), 'init sample iframe is visible without network')
+assert(!initializedIframe.hint, 'init sample iframe does not use a text navigation hint')
+assert(!/deck hint|click here to resume|external iframe focused/i.test(initializedIframe.srcdoc), 'init sample iframe copy avoids distracting hint text')
+assert(/corner arrows/i.test(initializedIframe.srcdoc), 'init sample iframe copy points to subtle parent arrow controls')
+
+const exampleSpec = yaml.load(fs.readFileSync(path.join(root, 'example', 'slides.yaml'), 'utf8'))
+assert(!Object.prototype.hasOwnProperty.call(exampleSpec, 'title'), 'example has no top-level title metadata')
+assert.strictEqual(exampleSpec.slides[0].title, 'Content-only talks', 'example uses first slide as title slide')
+const exampleIframe = exampleSpec.slides.find(slide => slide.type === 'iframe')
+assert(exampleIframe, 'example includes an iframe slide')
+assert.strictEqual(exampleIframe.src, 'https://david.app/', 'example iframe embeds david.app as an external URL')
+assert.strictEqual(exampleIframe.device, 'iphone', 'example iframe uses the reusable iPhone device frame')
+assert.strictEqual(exampleIframe.layout, 'phone-right', 'example iframe demonstrates phone plus side-copy layout')
+assert(exampleIframe.side && exampleIframe.side.title && exampleIframe.side.bullets.length, 'example iframe includes reusable side copy')
+assert(!exampleIframe.srcdoc, 'example iframe is a real external iframe, not srcdoc')
+assert(!exampleIframe.hint, 'example iframe does not render distracting text hint copy')
+
+fs.writeFileSync(path.join(talk, 'talk.js'), [
+  'import { overlay } from \'power-slides\'',
+  '',
+  'export default {',
+  '  renderers: {',
+  '    thanks (slide) {',
+  '      return overlay({ title: slide.title || \'Imported helper works\' })',
+  '    }',
+  '  }',
+  '}',
+  ''
+].join('\n'))
+
+execFileSync(process.execPath, [cli, 'build', talk], { stdio: 'pipe' })
+
+const publicDir = path.join(talk, 'public')
+const html = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8')
+const match = html.match(/power-slides\.[a-f0-9]{10}\.js/)
+assert(match, 'build writes cache-busted script URL')
+assert(fs.existsSync(path.join(publicDir, match[0])), 'build writes bundle')
+assert(!html.includes('entry.js'), 'build HTML points at production bundle')
+
+assert(html.includes('<title>A content-only talk</title>'), 'build infers HTML title from first YAML slide')
+
+const priority = path.join(tmp, 'priority')
+execFileSync(process.execPath, [cli, 'init', priority], { stdio: 'pipe' })
+fs.writeFileSync(path.join(priority, 'slides.yml'), yaml.dump({ slides: [{ type: 'overlay', title: 'YML title' }] }, { lineWidth: -1, noRefs: true }))
+fs.writeFileSync(path.join(priority, 'slides.json'), JSON.stringify({ slides: [{ type: 'overlay', title: 'JSON title' }] }, null, 2))
+execFileSync(process.execPath, [cli, 'build', priority], { stdio: 'pipe' })
+const priorityHtml = fs.readFileSync(path.join(priority, 'public', 'index.html'), 'utf8')
+assert(priorityHtml.includes('<title>A content-only talk</title>'), 'default build prefers slides.yaml over slides.yml and slides.json')
+execFileSync(process.execPath, [cli, 'build', priority, '--slides', 'slides.json'], { stdio: 'pipe' })
+const explicitHtml = fs.readFileSync(path.join(priority, 'public', 'index.html'), 'utf8')
+assert(explicitHtml.includes('<title>JSON title</title>'), 'explicit --slides can select JSON spec')
+
+const ymlPreferred = path.join(tmp, 'yml-preferred')
+fs.mkdirSync(ymlPreferred)
+fs.mkdirSync(path.join(ymlPreferred, 'public'))
+fs.writeFileSync(path.join(ymlPreferred, 'slides.yml'), yaml.dump({ slides: [{ type: 'overlay', title: 'Legacy YML title' }] }, { lineWidth: -1, noRefs: true }))
+fs.writeFileSync(path.join(ymlPreferred, 'slides.json'), JSON.stringify({ slides: [{ type: 'overlay', title: 'YML fallback JSON title' }] }, null, 2))
+execFileSync(process.execPath, [cli, 'build', ymlPreferred], { stdio: 'pipe' })
+const ymlPreferredHtml = fs.readFileSync(path.join(ymlPreferred, 'public', 'index.html'), 'utf8')
+assert(ymlPreferredHtml.includes('<title>Legacy YML title</title>'), 'default build supports slides.yml and prefers it over slides.json')
+
+const jsonOnly = path.join(tmp, 'json-only')
+fs.mkdirSync(jsonOnly)
+fs.mkdirSync(path.join(jsonOnly, 'public'))
+fs.writeFileSync(path.join(jsonOnly, 'slides.json'), JSON.stringify({ slides: [{ type: 'overlay', title: 'Unambiguous JSON title' }] }, null, 2))
+execFileSync(process.execPath, [cli, 'build', jsonOnly], { stdio: 'pipe' })
+const jsonOnlyHtml = fs.readFileSync(path.join(jsonOnly, 'public', 'index.html'), 'utf8')
+assert(jsonOnlyHtml.includes('<title>Unambiguous JSON title</title>'), 'unambiguous slides.json still builds by default')
+
+import(path.join(root, 'index.mjs')).then(async mod => {
+  const assets = mod.collectAssets({
+    slides: [
+      { type: 'overlay', background: 'https://cdn.example/bg.png' },
+      { type: 'quote', image: '/local.png' }
+    ]
+  })
+  assert.deepStrictEqual(assets.sort(), ['/local.png', 'https://cdn.example/bg.png'].sort())
+
+  const previousDocument = global.document
+  global.document = createFakeDocument()
+  try {
+    const target = new FakeElement('section')
+    let nextCount = 0
+    let prevCount = 0
+    const originalNext = mod.default.nextSlide
+    const originalPrev = mod.default.prevSlide
+    mod.default.nextSlide = function () { nextCount++ }
+    mod.default.prevSlide = function () { prevCount++ }
+
+    const slide = mod.iframe(null, { srcdoc: '<button>same origin</button>', title: 'Srcdoc test' })
+    slide(target)
+
+    const rootEl = target.children[0]
+    const frame = findDeep(rootEl, child => child.tagName === 'iframe')
+    const textHint = findDeep(rootEl, child => String(child.className).includes('ps-iframe-nav-hint'))
+    const controls = findDeep(rootEl, child => String(child.className).includes('ps-iframe-nav-controls'))
+    const prevButton = findDeep(rootEl, child => String(child.className).includes('ps-iframe-nav-prev'))
+    const nextButton = findDeep(rootEl, child => String(child.className).includes('ps-iframe-nav-next'))
+    assert(frame, 'iframe helper renders iframe')
+    assert.strictEqual(frame.attributes.srcdoc, '<button>same origin</button>', 'iframe helper preserves srcdoc')
+    assert(!textHint, 'iframe helper does not render the old text navigation hint')
+    assert(controls && controls.style.pointerEvents === 'none', 'iframe helper renders parent-level navigation controls')
+    assert(prevButton && nextButton, 'iframe helper renders subtle previous/next arrow buttons')
+    assert.strictEqual(prevButton.children[0], '‹', 'previous iframe nav control is an arrow, not talk copy')
+    assert.strictEqual(nextButton.children[0], '›', 'next iframe nav control is an arrow, not talk copy')
+
+    const srcTarget = new FakeElement('section')
+    mod.iframe('https://example.test/demo', { title: 'Src test', navigationControls: false })(srcTarget)
+    const srcRoot = srcTarget.children[0]
+    const srcFrame = findDeep(srcRoot, child => child.tagName === 'iframe')
+    assert.strictEqual(srcFrame.attributes.src, 'https://example.test/demo', 'iframe helper preserves normal src URLs')
+    assert(!findDeep(srcRoot, child => String(child.className).includes('ps-iframe-nav-controls')), 'iframe navigation controls can be disabled')
+
+    const phoneTarget = new FakeElement('section')
+    mod.iframe('https://david.app/', {
+      title: 'Phone demo',
+      device: 'iphone',
+      layout: 'phone-right',
+      side: {
+        eyebrow: 'External demo',
+        title: 'Copy beside phone',
+        subtitle: 'Parent slide copy, not iframe copy.',
+        bullets: ['Reusable YAML', 'No iframe overlay']
+      }
+    })(phoneTarget)
+    const phoneRoot = phoneTarget.children[0]
+    const phoneLayout = findDeep(phoneRoot, child => String(child.className).includes('ps-iframe-phone-layout'))
+    const phoneSideCopy = findDeep(phoneRoot, child => String(child.className).includes('ps-iframe-side-copy'))
+    const phoneSideTitle = findDeep(phoneRoot, child => String(child.className).includes('ps-iframe-side-title'))
+    const phoneBullets = findDeep(phoneRoot, child => String(child.className).includes('ps-iframe-side-bullets'))
+    const phoneDevice = findDeep(phoneRoot, child => String(child.className).includes('ps-iframe-device-iphone'))
+    const phoneControls = phoneRoot.children.find(child => String(child.className).includes('ps-iframe-nav-controls'))
+    const phoneScreen = findDeep(phoneRoot, child => String(child.className).includes('ps-iframe-device-screen'))
+    const phoneSpeaker = findDeep(phoneRoot, child => String(child.className).includes('ps-iframe-device-speaker'))
+    const phoneSafeArea = findDeep(phoneRoot, child => String(child.className).includes('ps-iframe-device-safe-area'))
+    const phoneFrame = findDeep(phoneRoot, child => child.tagName === 'iframe')
+    assert(String(phoneRoot.className).includes('ps-iframe-layout-phone-right'), 'phone side-copy layout is marked on the root')
+    assert(phoneLayout, 'phone side-copy layout renders a reusable parent container')
+    assert(phoneSideCopy && phoneSideTitle && phoneSideTitle.children.includes('Copy beside phone'), 'phone side-copy layout renders talk copy beside the device')
+    assert(phoneBullets && phoneBullets.children.length === 2, 'phone side-copy layout renders bullets')
+    assert(phoneDevice, 'iframe helper renders an iPhone-like device frame when requested')
+    assert.strictEqual(phoneLayout.children[0], phoneSideCopy, 'phone-right layout puts side copy before the phone')
+    assert.strictEqual(phoneLayout.children[1], phoneDevice, 'phone-right layout puts the phone on the right')
+    assert.strictEqual(phoneFrame.attributes.src, 'https://david.app/', 'phone-framed iframe preserves external src URL')
+    assert(phoneScreen && phoneScreen.children.includes(phoneFrame), 'phone-framed iframe renders inside the rounded device screen')
+    assert(phoneControls && !containsDeep(phoneDevice, phoneControls), 'phone-framed iframe keeps arrow controls outside/over the device frame')
+    assert(!containsDeep(phoneFrame, phoneControls), 'phone-framed iframe keeps nav controls on the parent slide')
+    assert(!phoneSpeaker, 'phone frame does not add a fake speaker/notch overlay')
+    assert(!phoneSafeArea, 'phone frame does not add a notch safe-area overlay')
+
+    const phoneLeftTarget = new FakeElement('section')
+    mod.iframe('https://example.test/mobile', { device: 'iphone', layout: 'phone-left', side: { title: 'Phone first' } })(phoneLeftTarget)
+    const phoneLeftRoot = phoneLeftTarget.children[0]
+    const phoneLeftLayout = findDeep(phoneLeftRoot, child => String(child.className).includes('ps-iframe-phone-layout'))
+    const phoneLeftDevice = findDeep(phoneLeftRoot, child => String(child.className).includes('ps-iframe-device-iphone'))
+    const phoneLeftSideCopy = findDeep(phoneLeftRoot, child => String(child.className).includes('ps-iframe-side-copy'))
+    assert(String(phoneLeftRoot.className).includes('ps-iframe-layout-phone-left'), 'phone-left layout is marked on the root')
+    assert.strictEqual(phoneLeftLayout.children[0], phoneLeftDevice, 'phone-left layout puts the phone first')
+    assert.strictEqual(phoneLeftLayout.children[1], phoneLeftSideCopy, 'phone-left layout puts side copy after the phone')
+
+    const talkSource = fs.readFileSync(path.join(root, 'example', 'talk.js'), 'utf8')
+    const talkConfig = (await import('data:text/javascript;base64,' + Buffer.from(talkSource).toString('base64'))).default
+    const talkSlides = talkConfig.slides([
+      { type: 'iframe', src: 'https://david.app/', device: 'iphone', layout: 'phone-right', side: { title: 'Columns' } },
+      { type: 'custom', name: 'end', title: 'Summary columns' }
+    ])
+    const talkIframe = talkSlides[0]
+    assert.strictEqual(talkIframe.stagePadding, 'clamp(2.2rem, 5vh, 4.2rem) clamp(3.5rem, 7vw, 7rem)', 'example iframe puts stage padding on the outer slide')
+    assert.strictEqual(talkIframe.layoutWidth, 'min(1180px, 92vw)', 'example iframe uses the shared column container width')
+    assert.strictEqual(talkIframe.layoutPadding, '0', 'example iframe leaves the inner grid unpadded')
+    assert.strictEqual(talkIframe.layoutGap, 'clamp(2.4rem, 4.8vw, 5rem)', 'example iframe uses the shared column gap')
+    assert.strictEqual(talkIframe.layoutStyle.gridTemplateColumns, 'minmax(0, 0.92fr) minmax(20rem, 0.78fr)', 'example iframe uses shared two-column proportions')
+    assert.strictEqual(talkIframe.deviceWidth, 'min(54vh, 30vw, 430px)', 'example iframe makes the phone frame larger than the previous narrow default')
+    assert.strictEqual(talkIframe.side.maxWidth, '35rem', 'example iframe side copy is capped to the shared copy rail')
+    assert.strictEqual(talkIframe.side.style.borderTop, undefined, 'example iframe side copy has no horizontal top border')
+    assert.strictEqual(talkIframe.side.style.borderBottom, undefined, 'example iframe side copy has no horizontal bottom border')
+
+    const themedPhoneTarget = new FakeElement('section')
+    mod.iframe(talkIframe.src, talkIframe)(themedPhoneTarget)
+    const themedPhoneRoot = themedPhoneTarget.children[0]
+    const themedPhoneLayout = findDeep(themedPhoneRoot, child => String(child.className).includes('ps-iframe-phone-layout'))
+    const themedPhoneSideCopy = findDeep(themedPhoneRoot, child => String(child.className).includes('ps-iframe-side-copy'))
+    const themedPhoneDevice = findDeep(themedPhoneRoot, child => String(child.className).includes('ps-iframe-device-iphone'))
+    assert.strictEqual(themedPhoneRoot.style.padding, talkIframe.stagePadding, 'rendered example phone slide applies padding to the outer stage')
+    assert.strictEqual(themedPhoneRoot.style.boxSizing, 'border-box', 'rendered example phone slide keeps stage padding inside the slide')
+    assert.strictEqual(themedPhoneLayout.style.width, talkIframe.layoutWidth, 'rendered example phone slide uses the shared column container')
+    assert.strictEqual(themedPhoneLayout.style.maxWidth, '100%', 'rendered example phone slide can shrink within the padded stage')
+    assert.strictEqual(themedPhoneLayout.style.padding, '0', 'rendered example phone slide does not shrink columns with inner grid padding')
+    assert.strictEqual(themedPhoneLayout.style.gridTemplateColumns, talkIframe.layoutStyle.gridTemplateColumns, 'rendered example phone slide uses shared column proportions')
+    assert.strictEqual(themedPhoneSideCopy.style.borderTop, undefined, 'rendered example phone side copy has no horizontal top border')
+    assert.strictEqual(themedPhoneSideCopy.style.borderBottom, undefined, 'rendered example phone side copy has no horizontal bottom border')
+    assert.strictEqual(themedPhoneDevice.style.width, talkIframe.deviceWidth, 'rendered example phone frame uses the larger themed width')
+
+    const summaryTarget = new FakeElement('section')
+    talkConfig.renderers.end(talkSlides[1])(summaryTarget)
+    const summaryRoot = summaryTarget.children[0]
+    const summaryColumns = findDeep(summaryRoot, child => String(child.className).includes('talk-columns'))
+    const summaryPanel = findDeep(summaryRoot, child => String(child.className).includes('talk-panel'))
+    const summaryStyle = findDeep(summaryRoot, child => child.tagName === 'style')
+    assert(summaryColumns && summaryColumns.children.length === 2, 'summary slide renders copy and card inside the shared two-column wrapper')
+    assert(summaryPanel, 'summary slide still renders the closing card')
+    assert(summaryStyle.textContent.includes(`padding: ${talkIframe.stagePadding};`), 'summary slide uses the same outer stage padding as the phone slide')
+    assert(summaryStyle.textContent.includes(`width: ${talkIframe.layoutWidth};`), 'summary slide uses the same column container width as the phone slide')
+    assert(summaryStyle.textContent.includes('max-width: 100%;'), 'summary slide can shrink columns within the padded stage')
+    assert(summaryStyle.textContent.includes(`grid-template-columns: ${talkIframe.layoutStyle.gridTemplateColumns};`), 'summary slide uses the same column proportions as the phone slide')
+    assert(summaryStyle.textContent.includes('max-width: 31rem;'), 'summary slide caps the card width so it does not stretch to the edge')
+
+    prevButton.onclick(fakeKey('click'))
+    nextButton.onclick(fakeKey('click'))
+    assert.strictEqual(prevCount, 1, 'previous iframe arrow calls PowerSlides.prevSlide')
+    assert.strictEqual(nextCount, 1, 'next iframe arrow calls PowerSlides.nextSlide')
+
+    frame.dispatch('load')
+    frame.contentWindow.dispatch('keydown', fakeKey('ArrowRight'))
+    frame.contentWindow.dispatch('keydown', fakeKey('ArrowLeft'))
+    frame.contentWindow.dispatch('keydown', fakeKey('Escape'))
+    assert.strictEqual(nextCount, 2, 'same-origin iframe ArrowRight forwards to deck')
+    assert.strictEqual(prevCount, 2, 'same-origin iframe ArrowLeft forwards to deck')
+    assert(rootEl.focused, 'same-origin iframe Escape returns focus to deck')
+
+    mod.default.nextSlide = originalNext
+    mod.default.prevSlide = originalPrev
+  } finally {
+    global.document = previousDocument
+  }
+
+  console.log('cli smoke ok')
+}).catch(err => {
+  console.error(err.stack || err)
+  process.exit(1)
+})
+
+function fakeKey (key) {
+  return {
+    key,
+    prevented: false,
+    stopped: false,
+    preventDefault () { this.prevented = true },
+    stopPropagation () { this.stopped = true }
+  }
+}
+
+function findDeep (root, predicate) {
+  if (!root) return undefined
+  if (predicate(root)) return root
+  for (const child of root.children || []) {
+    const found = findDeep(child, predicate)
+    if (found) return found
+  }
+}
+
+function containsDeep (root, target) {
+  if (!root || !target) return false
+  if (root === target) return true
+  return (root.children || []).some(child => containsDeep(child, target))
+}
+
+function createFakeDocument () {
+  return {
+    createElement (tagName) {
+      return new FakeElement(tagName)
+    },
+    createTextNode (text) {
+      return String(text)
+    }
+  }
+}
+
+function createFakeContentWindow () {
+  return {
+    listeners: {},
+    addEventListener (name, fn) {
+      this.listeners[name] = this.listeners[name] || []
+      this.listeners[name].push(fn)
+    },
+    dispatch (name, event) {
+      ;(this.listeners[name] || []).forEach(fn => fn(event))
+    }
+  }
+}
+
+class FakeElement {
+  constructor (tagName) {
+    this.tagName = tagName
+    this.children = []
+    this.attributes = {}
+    this.listeners = {}
+    this.style = {}
+    this.onclick = null
+    this.focused = false
+    if (tagName === 'iframe') this.contentWindow = createFakeContentWindow()
+  }
+
+  appendChild (child) {
+    this.children.push(child)
+    return child
+  }
+
+  setAttribute (key, value) {
+    this.attributes[key] = value
+  }
+
+  addEventListener (name, fn) {
+    this.listeners[name] = this.listeners[name] || []
+    this.listeners[name].push(fn)
+  }
+
+  dispatch (name, event) {
+    ;(this.listeners[name] || []).forEach(fn => fn(event))
+  }
+
+  focus () {
+    this.focused = true
+  }
+}

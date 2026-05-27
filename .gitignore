@@ -1,1 +1,5 @@
 node_modules/
+.power-slides/
+*/.power-slides/
+**/public/power-slides.*.js
+**/public/index.html
