@@ -60,7 +60,8 @@
     "./cli": "./bin/power-slides.js"
   },
   "bin": {
-    "power-slides": "bin/power-slides.js"
+    "power-slides": "bin/power-slides.js",
+    "powerslides": "bin/power-slides.js"
   },
   "files": [
     "index.js",
