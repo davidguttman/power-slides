@@ -67,13 +67,9 @@ async function init (argv) {
   }
 
   mkdirp(target)
+  copyExampleStarter(target)
   mkdirp(path.join(target, 'assets'))
   mkdirp(path.join(target, 'public'))
-
-  writeNew(path.join(target, 'slides.yaml'), yaml.dump(sampleSlides(), { lineWidth: -1, noRefs: true }))
-  writeNew(path.join(target, 'talk.js'), sampleTalkJs())
-  writeNew(path.join(target, 'assets', '.gitkeep'), '')
-  writeNew(path.join(target, 'public', '.gitkeep'), '')
   writeNew(path.join(target, 'README.md'), sampleReadme())
 
   console.log('Created content-only talk at ' + target)
@@ -255,93 +251,64 @@ function writeNew (file, content) {
   fs.writeFileSync(file, content)
 }
 
+function copyExampleStarter (target) {
+  const exampleRoot = path.join(packageRoot, 'example')
+  copyTreeNew(exampleRoot, target, exampleRoot)
+}
+
+function copyTreeNew (source, target, root) {
+  const stat = fs.statSync(source)
+  const relative = path.relative(root, source)
+  if (relative && shouldSkipExampleStarterPath(relative, stat)) return
+
+  if (stat.isDirectory()) {
+    mkdirp(target)
+    for (const entry of fs.readdirSync(source)) {
+      copyTreeNew(path.join(source, entry), path.join(target, entry), root)
+    }
+    return
+  }
+
+  if (!stat.isFile()) return
+  if (fs.existsSync(target)) return
+  mkdirp(path.dirname(target))
+  fs.copyFileSync(source, target)
+}
+
+function shouldSkipExampleStarterPath (relative, stat) {
+  const normalized = relative.split(path.sep).join('/')
+  const basename = path.basename(normalized)
+
+  if (basename === '.DS_Store' || basename.startsWith('._')) return true
+  if (normalized === '.power-slides' || normalized.startsWith('.power-slides/')) return true
+  if (normalized === 'node_modules' || normalized.startsWith('node_modules/')) return true
+
+  if (stat.isFile()) {
+    if (/^(package(?:-lock)?|npm-shrinkwrap)\.json$/.test(basename)) return true
+    if (/^(yarn|pnpm)-lock\.yaml$/.test(basename)) return true
+    if (normalized === 'public/index.html') return true
+    if (/^public\/power-slides\.[a-f0-9]+\.js$/.test(normalized)) return true
+  }
+
+  return false
+}
+
 function escapeHtml (value) {
   return String(value).replace(/[&<>"']/g, function (ch) {
     return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]
   })
 }
 
-function sampleSlides () {
-  return {
-    slides: [
-      {
-        type: 'overlay',
-        eyebrow: 'Your Name',
-        title: 'A content-only talk',
-        subtitle: 'slides.yaml + optional talk.js',
-        background: 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1800&q=80',
-        brightness: 0.55
-      },
-      {
-        type: 'overlay',
-        eyebrow: 'Big idea',
-        title: 'Write content. Reuse the app.',
-        subtitle: 'No copied package.json, public/index.html, lockfile, or bundler scripts.',
-        notes: ['Slide notes show in presenter mode.']
-      },
-      {
-        type: 'quote',
-        quote: 'A slide can still be anything the browser can render.',
-        image: 'https://placehold.co/900x600/png?text=asset+or+CDN+image',
-        notes: ['Remote image preloading starts after slide 1 is already visible.']
-      },
-      {
-        type: 'custom',
-        name: 'spark',
-        title: 'Custom JS when JSON is not enough',
-        subtitle: 'talk.js can add local animation without changing the shared deck runtime.'
-      },
-      {
-        type: 'iframe',
-        srcdoc: '<!doctype html><html><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:linear-gradient(135deg,#13081f,#2d1b4e);color:white;font:24px system-ui"><main style="max-width:680px;padding:2rem"><h1>Iframe demo</h1><p>Click inside to capture focus. Parent-level corner arrows stay available for slide navigation.</p><input value="iframe focus"></main></body></html>',
-        title: 'Custom embedded demo'
-      },
-      {
-        type: 'custom',
-        name: 'thanks',
-        title: 'Thank you!'
-      }
-    ]
-  }
-}
-
-function sampleTalkJs () {
-  return `// Optional ESM escape hatch for custom slide rendering.
-// You can delete this file if slides.yaml covers your whole talk.
-
-export default {
-  renderers: {
-    spark (slide) {
-      return function (target) {
-        target.innerHTML = ''
-        const root = document.createElement('div')
-        root.style.cssText = 'position:relative;width:100%;height:100%;overflow:hidden;display:grid;place-items:center;background:radial-gradient(circle at 20% 20%,#ff6ec766,transparent 28%),linear-gradient(135deg,#11091e,#2d1b4e);color:white;font-family:system-ui,sans-serif'
-        root.innerHTML = '<style>@keyframes spin{to{transform:rotate(1turn)}}.spark-orb{position:absolute;width:34vmin;height:34vmin;border-radius:50%;background:conic-gradient(#ff6ec7,#5ffbf1,#f9f871,#ff6ec7);filter:blur(.15rem);animation:spin 6s linear infinite}.spark-copy{position:relative;z-index:1;max-width:58vw;padding:2rem;border:1px solid #ffffff38;border-radius:1.25rem;background:#0008;box-shadow:0 1rem 3rem #0008}.spark-copy h1{font-size:5vw;line-height:.95;margin:0 0 1rem;letter-spacing:-.06em}.spark-copy p{font-size:1.5vw;color:#d4a5ff}</style><div class="spark-orb"></div><div class="spark-copy"><h1></h1><p></p></div>'
-        root.querySelector('h1').textContent = slide.title || 'Custom JS slide'
-        root.querySelector('p').textContent = slide.subtitle || 'Rendered by talk.js'
-        target.appendChild(root)
-      }
-    },
-    thanks (slide, PS) {
-      return PS.overlay({
-        title: slide.title || 'Thank you!',
-        subtitle: 'Questions?',
-        brightness: 0.6
-      })
-    }
-  }
-}
-`
-}
-
 function sampleReadme () {
   return `# Talk
 
-This is a content-only power-slides talk.
+This is a content-only power-slides talk based on the packaged example starter.
 
-- \`slides.yaml\` contains slide content.
-- \`talk.js\` is optional ESM for custom renderers/escape hatches.
-- \`public/\` is served at the web root for generated images, video, fonts, etc.
+## Files
+
+- \`slides.yaml\` contains slide content and presenter notes.
+- \`talk.js\` is optional ESM for theming, custom renderers, and escape hatches.
+- \`public/\` is served at the web root for example media, generated images, video, fonts, etc.
 - \`assets/\` is for source assets you do not serve directly.
 
 Run from anywhere with power-slides installed:
@@ -350,5 +317,42 @@ Run from anywhere with power-slides installed:
 power-slides dev .
 power-slides build .
 \`\`\`
+
+## Authoring schema quick reference
+
+The talk file is a YAML object with a \`slides\` array. If a slide omits \`type\`, it renders as \`overlay\`. Every slide may include \`notes\` or \`note\` for presenter mode. \`renderer\`, \`name\`, or \`kind\` selects a \`talk.js\` renderer before built-ins.
+
+Built-in slide types:
+
+- \`overlay\` — normal copy slide. Fields: \`eyebrow\`, \`title\`/\`text\`, \`subtitle\`, \`background\`/\`image\`/\`src\`, \`brightness\`, \`align\`, \`font\`, \`color\`, \`backgroundColor\`, \`padding\`, \`maxWidth\`, \`titleSize\`, \`subtitleSize\`, \`subtitleOpacity\`, \`subtitleMaxWidth\`, \`eyebrowSize\`, \`backgroundSize\`, \`backgroundPosition\`.
+- \`title\` — simple centered title. Fields: \`title\`/\`text\`/\`quote\`, \`style\`.
+- \`image\` — full-slide image. Fields: \`src\`/\`img\`/\`image\`/\`background\`, \`fit\`/\`size\` (\`cover\` or \`contain\`).
+- \`video\` — full-slide video. Fields: \`src\`/\`video\`, \`controls\`, \`muted\`, \`loop\`, \`autoplay\`, \`preload\`, \`poster\`, \`size\`.
+- \`quote\` — quote/text plus optional image column. Fields: \`quote\`/\`text\`, \`eyebrow\`, \`image\`/\`img\`/\`src\`, \`background\`, \`brightness\`, \`font\`, \`color\`, \`size\`, \`fit\`, \`maxHeight\`, \`radius\`, \`shadow\`.
+- \`chart\` — quote-style chart/screenshot slide. Same fields as \`quote\`; image aliases become the chart image.
+- \`summary\` — recap with right-side card. Fields: \`eyebrow\`, \`title\`/\`quote\`, \`background\`, \`brightness\`, \`font\`, \`color\`, \`accent\`, \`card.title\`, \`card.bullets\`, \`card.pull\`.
+- \`iframe\` — external URL or \`srcdoc\`. Fields: \`src\`/\`url\`, \`srcdoc\`, \`title\`, \`allow\`, \`allowFullscreen\`, \`loading\`, \`referrerPolicy\`, \`sandbox\`, \`navigationControls\`, \`forwardKeys\`, \`background\`, \`iframeStyle\`, \`stagePadding\`/\`rootPadding\`. Phone frame: \`device: iphone\` or \`frame: phone\`, plus \`deviceWidth\`/\`frameWidth\`, \`deviceAspectRatio\`, \`devicePadding\`, \`deviceBorder\`, \`deviceRadius\`, \`deviceBackground\`, \`deviceShadow\`, \`deviceStyle\`, \`screenRadius\`, \`screenBackground\`. Side-copy layout: \`layout\`/\`phoneLayout\` (\`phone-right\` or \`phone-left\`), \`layoutWidth\`, \`layoutMaxWidth\`, \`layoutGap\`, \`layoutPadding\`, \`layoutStyle\`, and \`side\` with \`eyebrow\`, \`title\`, \`subtitle\`, \`body\`/\`text\`, \`bullets\`, \`position\`/\`side\`, \`color\`, \`font\`, \`accent\`, \`maxWidth\`, \`style\`, plus \`eyebrowColor\`, \`eyebrowSize\`, \`titleColor\`, \`titleSize\`, \`subtitleColor\`, \`subtitleSize\`, \`bodyColor\`, \`bodySize\`, \`bulletColor\`, \`bulletSize\`, \`bulletGap\` and matching weight/opacity/letter-spacing knobs. Arrow styling: \`navControlInset\`, \`navControlSize\`, \`navControlOpacity\`.
+- \`html\` — trusted raw markup. Fields: \`html\`/\`markup\`.
+- \`custom\` — render with \`talk.js\`. Fields: \`name\`/\`kind\`/\`renderer\`; all other fields pass through.
+
+## Custom renderers in talk.js
+
+\`talk.js\` exports an object. Use \`renderers\` for named custom slides, \`slides(slides, PS)\` to theme/transform all parsed slides, \`bodyStyle\` for page CSS, and \`beforeStart(PS, spec)\` for setup.
+
+\`\`\`js
+export default {
+  bodyStyle: 'margin:0;background:#000;color:white;overflow:hidden',
+  renderers: {
+    demo (slide, PS) {
+      return PS.overlay({
+        title: slide.title || 'Demo',
+        subtitle: 'Rendered by talk.js'
+      })
+    }
+  }
+}
+\`\`\`
+
+See the package README for the longer reference and more examples.
 `
 }

@@ -32,15 +32,15 @@ power-slides build .    # writes public/index.html + cache-busted bundle
 
 `power-slides dev .` uses the port from `--port <port>`, then `$PORT`, then `9966`.
 
-`init` creates a content-only talk folder with starter files:
+`init` creates a content-only talk folder by copying the packaged `example/` starter authoring files:
 
 - `slides.yaml` — content and notes
 - `talk.js` — optional ESM custom renderers / escape hatch
-- `public/` — files served at `/` (videos, generated images, fonts)
+- `public/` — example media and files served at `/` (videos, generated images, fonts)
 - `assets/` — source assets not served directly
 - `README.md` — talk-local authoring notes
 
-It refuses to run in a non-empty directory unless you pass `--force`, and it does not overwrite existing files. It does **not** copy a `package.json`, lockfile, or `node_modules` into the talk.
+It refuses to run in a non-empty directory unless you pass `--force`, and it does not overwrite existing files. It copies the packaged example media needed by the starter, but does **not** copy a `package.json`, lockfile, `node_modules`, generated bundles, or `public/index.html` into the talk.
 
 ## ESM runtime
 
@@ -59,7 +59,7 @@ CommonJS `require('power-slides')` remains available for older decks, but new ta
 
 ## slides.yaml
 
-A talk is an object with a `slides` array. The title slide is just the first slide:
+A talk is an object with a `slides` array. The title slide is just the first slide. YAML and JSON use the same schema; without `--slides`, the CLI picks `slides.yaml`, then `slides.yml`, then `slides.json`.
 
 ```yaml
 slides:
@@ -69,14 +69,8 @@ slides:
     subtitle: Optional subtitle
     background: /generated/title.png
     brightness: 0.5
-  - type: overlay
-    title: Agents need the web
-    subtitle: The useful work happens inside real websites.
     notes:
       - Presenter note.
-  - type: quote
-    quote: A slide can still be anything the browser can render.
-    image: https://placehold.co/900x600/png?text=remote
   - type: iframe
     src: https://example.com/demo
     device: iphone
@@ -90,35 +84,164 @@ slides:
     name: demo
 ```
 
-YAML is an authoring convenience: the CLI parses `slides.yaml`/`slides.yml` into the same JavaScript object it gets from `slides.json`. JSON is still supported as a format choice. Without `--slides`, the CLI uses the first file it finds in this order: `slides.yaml`, `slides.yml`, then `slides.json`. Use `--slides <file>` to choose a different supported spec.
+### Common slide fields
 
-Built-in slide types for this first reusable slice: `overlay`, `title`, `image`, `video`, `quote`, `chart`, `summary`, `iframe`, `html`, and `custom`.
+Every YAML slide is an object. If `type` is omitted, `overlay` is used. Unknown `type` values also fall back to `overlay` unless `talk.js` supplies a renderer for that key.
 
-### Iframe slides
+- `type` — built-in type: `overlay`, `title`, `image`, `video`, `quote`, `chart`, `summary`, `iframe`, `html`, `custom`.
+- `notes` or `note` — string or array of strings for presenter mode.
+- `renderer`, `name`, or `kind` — renderer key checked before built-ins. This is how `type: custom` selects `talk.js` renderers, and it can also override a built-in slide for one slide.
 
-Iframe slides accept normal `src` URLs for external embeds or `srcdoc` markup for local demos. Use `device: "iphone"` or `frame: "phone"` when a mobile website/demo should sit inside a clean rounded phone-like frame. The frame does not draw a fake notch or speaker over the page.
+### Built-in slide type reference
 
-For talk slides where the phone needs explanation beside it, add `layout: "phone-right"` or `layout: "phone-left"` plus a `side` copy object. The layout name says where the phone goes; the side copy stays on the parent slide, outside the iframe/device component. `side` supports `eyebrow`, `title`, `subtitle`, `body`/`text`, and `bullets`.
+#### `overlay` (default) / `title`
 
-Iframe slides render subtle parent-level left/right arrow controls by default. They sit above the iframe so cross-origin embeds cannot swallow basic deck navigation. Disable them with `navigationControls: false` when a slide provides its own parent-page controls. Same-origin/`srcdoc` frames may also forward `ArrowLeft`/`ArrowRight` and let `Escape` return focus, but treat that as a best-effort demo enhancement rather than the external-embed guarantee.
+Use `overlay` for normal title/copy slides, optionally over a dimmed background. `title` is a simpler centered title slide that accepts only text plus `style`.
 
-```json
-{
-  "type": "iframe",
-  "src": "https://example.com/embedded-demo",
-  "device": "iphone",
-  "layout": "phone-right",
-  "side": {
-    "eyebrow": "Live demo",
-    "title": "A real app in the deck",
-    "subtitle": "The page runs in the phone; the slide carries the story.",
-    "bullets": [
-      "Cross-origin iframe stays untouched",
-      "Parent arrows remain available"
-    ]
-  }
-}
+```yaml
+- type: overlay
+  eyebrow: Section
+  title: Write content. Reuse the app.
+  subtitle: Optional subtitle copy
+  background: /hero.png
+  brightness: 0.45
+  align: left
 ```
+
+`overlay` fields:
+
+- Copy: `eyebrow`, `title` (or `text`), `subtitle`.
+- Background asset: `background` (or `image`/`src`), `backgroundSize` (default `cover`), `backgroundPosition` (default `center`), `backgroundColor`.
+- Layout/theme: `brightness`, `align` (`center` or `left`), `font`, `color`, `padding`, `maxWidth`, `titleSize`, `subtitleSize`, `subtitleOpacity`, `subtitleMaxWidth`, `eyebrowSize`.
+
+`title` fields:
+
+- Text: `title` (or `text`/`quote`).
+- `style` — CSS style object applied to the centered title wrapper.
+
+#### `image`
+
+Full-slide background image.
+
+```yaml
+- type: image
+  src: /diagram.png
+  fit: contain
+```
+
+Fields: `src` (or `img`/`image`/`background`) and `fit` (or `size`), defaulting to `cover`. Use `contain` to avoid cropping.
+
+#### `video`
+
+Full-slide video.
+
+```yaml
+- type: video
+  src: /demo.mp4
+  controls: true
+  muted: true
+  loop: true
+  size: contain
+```
+
+Fields: `src` (or `video`), `controls`, `muted`, `loop`, `autoplay` (`false` disables default autoplay), `preload`, `poster`, and `size` (`contain` or `cover`, default `contain`).
+
+#### `quote`
+
+Large quote/text slide with an optional image column and optional background.
+
+```yaml
+- type: quote
+  eyebrow: Key idea
+  quote: Slide 1 shows immediately.
+  image: /screenshot.png
+  background: /dark-bg.png
+```
+
+Fields: `quote` (or `text`), `eyebrow`, side image `image` (or `img`/`src`), `background`, `brightness`, `font`, `color`, `size`, and image styling `fit`, `maxHeight`, `radius`, `shadow` (`false` removes shadow).
+
+#### `chart`
+
+A quote-style slide tuned for chart/screenshot images. Same fields as `quote`; `src`/`img`/`image` becomes the image column and the default text size is slightly smaller.
+
+```yaml
+- type: chart
+  quote: Revenue by month
+  src: /chart.png
+```
+
+#### `summary`
+
+Two-column recap slide with copy on the left and a card on the right.
+
+```yaml
+- type: summary
+  eyebrow: Recap
+  title: Ship talks, not boilerplate
+  accent: '#ffcc6a'
+  card:
+    title: What changed
+    bullets:
+      - YAML stays content-only
+      - talk.js handles special moments
+    pull: Build static files to share.
+```
+
+Fields: left copy `eyebrow`, `title` (or `quote`), `background`, `brightness`, `font`, `color`, `accent`, and `card` with `title`, `bullets`, and `pull`.
+
+#### `iframe`
+
+Embeds an external URL or inline `srcdoc`. Parent-level corner arrows remain available by default so cross-origin iframes cannot trap deck navigation.
+
+```yaml
+- type: iframe
+  src: https://example.com/embedded-demo
+  title: Example app
+  device: iphone
+  layout: phone-right
+  side:
+    eyebrow: Live demo
+    title: A real app in the deck
+    subtitle: The page runs in the phone; the slide carries the story.
+    bullets:
+      - Cross-origin iframe stays untouched
+      - Parent arrows remain available
+```
+
+Core fields:
+
+- Content: `src` (or `url`) for external pages, or `srcdoc` for inline HTML; `title` for iframe accessibility.
+- Browser permissions: `allow`, `allowFullscreen` (`false` disables), `loading`, `referrerPolicy`, `sandbox`.
+- Frame/nav behavior: `navigationControls` (`false` hides parent arrows), `forwardKeys` (`false` disables best-effort same-origin key forwarding), `background`, `iframeStyle`, `stagePadding`/`rootPadding`.
+- Phone frame: `device: iphone` or `frame: phone`; style with `deviceWidth`/`frameWidth`, `deviceAspectRatio`, `devicePadding`, `deviceBorder`, `deviceRadius`, `deviceBackground`, `deviceShadow`, `deviceStyle`, `screenRadius`, `screenBackground`.
+- Phone + side-copy layout: `layout` or `phoneLayout` as `phone-right`/`phone-left`; layout style with `layoutWidth`, `layoutMaxWidth`, `layoutGap`, `layoutPadding`, `layoutStyle`.
+- `side` copy: `eyebrow`, `title`, `subtitle`, `body`/`text`, `bullets`, `position`/`side`, `color`, `font`, `accent`, `maxWidth`, `style`, plus size/color knobs `eyebrowColor`, `eyebrowSize`, `titleColor`, `titleSize`, `subtitleColor`, `subtitleSize`, `bodyColor`, `bodySize`, `bulletColor`, `bulletSize`, `bulletGap` and matching `*Weight`, `*Opacity`, `*LetterSpacing` fields where used.
+- Arrow styling: `navControlInset`, `navControlSize`, `navControlOpacity`.
+
+#### `html`
+
+Injects trusted HTML directly into the slide container.
+
+```yaml
+- type: html
+  html: '<main style="padding:8vw;color:white"><h1>Raw HTML</h1></main>'
+```
+
+Fields: `html` (or `markup`). Treat this as trusted content; do not put untrusted user input here.
+
+#### `custom`
+
+Delegates rendering to `talk.js`. `name`, `kind`, or `renderer` chooses the renderer. If no renderer matches, the deck shows a “Missing custom renderer” title slide.
+
+```yaml
+- type: custom
+  name: particleField
+  title: Generative canvas
+  assets:
+    - /texture.png
+```
+
+Any extra fields are passed through to the renderer. Asset-like fields (`src`, `url`, `image`, `img`, `background`, `poster`, `video`, `qr`, `chart`) and URLs inside CSS `url(...)` strings are discovered for background preloading; custom JS renderers can also set `slide.assets` on the slide function they return.
 
 ## Optional talk.js
 
@@ -137,7 +260,16 @@ export default {
 }
 ```
 
-The build exposes the package as `power-slides`, so advanced `talk.js` files may also import helpers directly.
+`talk.js` may export these hooks:
+
+- `renderers` — map renderer names to `(slide, PS) => slideFunction`. `PS` is the power-slides helper object.
+- `custom` — alias map for renderers.
+- `renderSlide(slide, PS)` — optional catch-all; return a rendered slide to override normal dispatch, or return nothing to continue.
+- `slides(slides, PS)` — transform/theme the parsed slide array before rendering.
+- `bodyStyle` — CSS text applied to `document.body` by the CLI entry.
+- `beforeStart(PS, spec)` — setup hook called by the CLI entry just before `startTalk()`.
+
+Renderer return values can be slide functions, DOM nodes, or strings. The build exposes the package as `power-slides`, so advanced `talk.js` files may also import helpers directly.
 
 ## Preloading behavior
 

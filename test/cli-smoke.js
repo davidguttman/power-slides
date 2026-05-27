@@ -29,6 +29,14 @@ const help = runCliWithBlockedBuildDeps(['--help'])
 assert(help.includes('Dev server port (default: $PORT, then 9966)'), 'help documents $PORT dev port fallback')
 assert(help.includes('default: slides.yaml, slides.yml, or slides.json'), 'help documents YAML default lookup order')
 
+const packageReadme = fs.readFileSync(path.join(root, 'README.md'), 'utf8')
+assert(packageReadme.includes('Built-in slide type reference'), 'package README has slide type reference')
+for (const type of ['overlay', 'title', 'image', 'video', 'quote', 'chart', 'summary', 'iframe', 'html', 'custom']) {
+  assert(packageReadme.includes('`' + type + '`'), 'package README documents ' + type + ' slide type')
+}
+assert(packageReadme.includes('deviceWidth') && packageReadme.includes('navControlOpacity'), 'package README documents iframe detail fields')
+assert(packageReadme.includes('slides(slides, PS)') && packageReadme.includes('renderers'), 'package README documents talk.js hooks')
+
 runCliWithBlockedBuildDeps(['init', talk])
 
 assert(fs.existsSync(path.join(talk, 'slides.yaml')), 'init writes slides.yaml')
@@ -37,22 +45,57 @@ assert(!fs.existsSync(path.join(talk, 'slides.json')), 'init does not write slid
 assert(fs.existsSync(path.join(talk, 'talk.js')), 'init writes optional talk.js')
 assert(fs.existsSync(path.join(talk, 'assets')), 'init creates assets convention')
 assert(fs.existsSync(path.join(talk, 'public')), 'init creates public convention')
+const initializedReadme = fs.readFileSync(path.join(talk, 'README.md'), 'utf8')
+for (const type of ['overlay', 'title', 'image', 'video', 'quote', 'chart', 'summary', 'iframe', 'html', 'custom']) {
+  assert(initializedReadme.includes('`' + type + '`'), 'generated talk README documents ' + type + ' slide type')
+}
+assert(initializedReadme.includes('Custom renderers in talk.js'), 'generated talk README documents custom renderers')
+assert(initializedReadme.includes('deviceWidth') && initializedReadme.includes('navControlOpacity'), 'generated talk README documents iframe detail fields')
+
 assert(!fs.existsSync(path.join(talk, 'package.json')), 'init stays content-only')
 assert(!fs.existsSync(path.join(talk, 'package-lock.json')), 'init does not copy lockfile')
 assert(!fs.existsSync(path.join(talk, 'node_modules')), 'init does not copy node_modules')
+assert(!fs.existsSync(path.join(talk, '.power-slides')), 'init does not copy generated entry directory')
+assert(!fs.existsSync(path.join(talk, 'public', 'index.html')), 'init does not copy generated public index')
+assert(!fs.readdirSync(path.join(talk, 'public')).some(name => /^power-slides\.[a-f0-9]+\.js$/.test(name)), 'init does not copy generated public bundle')
+
+const exampleSlidesSource = fs.readFileSync(path.join(root, 'example', 'slides.yaml'), 'utf8')
+const exampleTalkSource = fs.readFileSync(path.join(root, 'example', 'talk.js'), 'utf8')
+assert.strictEqual(fs.readFileSync(path.join(talk, 'slides.yaml'), 'utf8'), exampleSlidesSource, 'init copies packaged example slides.yaml')
+assert.strictEqual(fs.readFileSync(path.join(talk, 'talk.js'), 'utf8'), exampleTalkSource, 'init copies packaged example talk.js')
+for (const media of ['fist-bump.gif', 'multipass.gif', 'spin.mp4']) {
+  assert.deepStrictEqual(
+    fs.readFileSync(path.join(talk, 'public', media)),
+    fs.readFileSync(path.join(root, 'example', 'public', media)),
+    'init copies example public media ' + media
+  )
+}
 
 const initializedSpec = yaml.load(fs.readFileSync(path.join(talk, 'slides.yaml'), 'utf8'))
-assert(!Object.prototype.hasOwnProperty.call(initializedSpec, 'title'), 'init sample has no top-level title metadata')
-assert.strictEqual(initializedSpec.slides[0].title, 'A content-only talk', 'init sample uses first slide as title slide')
-assert.strictEqual(initializedSpec.slides[0].subtitle, 'slides.yaml + optional talk.js', 'init sample advertises YAML by default')
+const exampleSpec = yaml.load(exampleSlidesSource)
+assert.deepStrictEqual(initializedSpec, exampleSpec, 'init slides parse identically to packaged example')
+assert(!Object.prototype.hasOwnProperty.call(initializedSpec, 'title'), 'init example has no top-level title metadata')
+assert.strictEqual(initializedSpec.slides[0].title, 'Content-only talks', 'init example uses first slide as title slide')
+assert.strictEqual(initializedSpec.slides[0].subtitle, 'slides.yaml + optional ESM talk.js', 'init example advertises YAML by default')
 const initializedIframe = initializedSpec.slides.find(slide => slide.type === 'iframe')
-assert(initializedIframe, 'init sample includes an iframe slide')
-assert(initializedIframe.srcdoc && initializedIframe.srcdoc.includes('Iframe demo'), 'init sample iframe is visible without network')
-assert(!initializedIframe.hint, 'init sample iframe does not use a text navigation hint')
-assert(!/deck hint|click here to resume|external iframe focused/i.test(initializedIframe.srcdoc), 'init sample iframe copy avoids distracting hint text')
-assert(/corner arrows/i.test(initializedIframe.srcdoc), 'init sample iframe copy points to subtle parent arrow controls')
+assert(initializedIframe, 'init example includes an iframe slide')
+assert.strictEqual(initializedIframe.src, 'https://david.app/', 'init example iframe embeds david.app as an external URL')
+assert.strictEqual(initializedIframe.device, 'iphone', 'init example uses the reusable iPhone device frame')
+assert.strictEqual(initializedIframe.layout, 'phone-right', 'init example demonstrates phone plus side-copy layout')
+assert(initializedIframe.side && initializedIframe.side.title && initializedIframe.side.bullets.length, 'init example includes reusable side copy')
+assert(!initializedIframe.srcdoc, 'init example iframe is a real external iframe, not srcdoc')
+assert(!initializedIframe.hint, 'init example does not render distracting text hint copy')
 
-const exampleSpec = yaml.load(fs.readFileSync(path.join(root, 'example', 'slides.yaml'), 'utf8'))
+const nonEmpty = path.join(tmp, 'non-empty')
+fs.mkdirSync(nonEmpty)
+fs.writeFileSync(path.join(nonEmpty, 'keep.txt'), 'keep')
+assert.throws(() => execFileSync(process.execPath, [cli, 'init', nonEmpty], { stdio: 'pipe' }), /Refusing to init into non-empty directory/, 'init refuses non-empty dirs without --force')
+fs.writeFileSync(path.join(nonEmpty, 'slides.yaml'), 'custom slides')
+execFileSync(process.execPath, [cli, 'init', nonEmpty, '--force'], { stdio: 'pipe' })
+assert.strictEqual(fs.readFileSync(path.join(nonEmpty, 'slides.yaml'), 'utf8'), 'custom slides', 'init --force does not overwrite existing files')
+assert.strictEqual(fs.readFileSync(path.join(nonEmpty, 'keep.txt'), 'utf8'), 'keep', 'init --force preserves unrelated existing files')
+assert(fs.existsSync(path.join(nonEmpty, 'talk.js')), 'init --force fills missing example files')
+
 assert(!Object.prototype.hasOwnProperty.call(exampleSpec, 'title'), 'example has no top-level title metadata')
 assert.strictEqual(exampleSpec.slides[0].title, 'Content-only talks', 'example uses first slide as title slide')
 const exampleIframe = exampleSpec.slides.find(slide => slide.type === 'iframe')
@@ -86,7 +129,7 @@ assert(match, 'build writes cache-busted script URL')
 assert(fs.existsSync(path.join(publicDir, match[0])), 'build writes bundle')
 assert(!html.includes('entry.js'), 'build HTML points at production bundle')
 
-assert(html.includes('<title>A content-only talk</title>'), 'build infers HTML title from first YAML slide')
+assert(html.includes('<title>Content-only talks</title>'), 'build infers HTML title from first YAML slide')
 
 const installedPrefix = path.join(tmp, 'installed-prefix')
 const installedTalk = path.join(tmp, 'installed-talk')
@@ -105,6 +148,12 @@ try {
   const installedEsmify = path.join(installedPrefix, 'node_modules', 'esmify', 'esmify.js')
 
   execFileSync(installedCli, ['init', installedTalk], { cwd: tmp, stdio: 'pipe' })
+  assert(fs.existsSync(path.join(installedTalk, 'public', 'spin.mp4')), 'installed power-slides init copies example media')
+  assert(!fs.existsSync(path.join(installedTalk, 'public', 'index.html')), 'installed power-slides init excludes generated public index')
+  const installedAliasTalk = path.join(tmp, 'installed-alias-talk')
+  const installedAliasCli = path.join(binDir, process.platform === 'win32' ? 'powerslides.cmd' : 'powerslides')
+  execFileSync(installedAliasCli, ['init', installedAliasTalk], { cwd: tmp, stdio: 'pipe' })
+  assert.strictEqual(fs.readFileSync(path.join(installedAliasTalk, 'slides.yaml'), 'utf8'), exampleSlidesSource, 'installed powerslides alias init copies example slides')
   execFileSync(installedCli, ['build', installedTalk], { cwd: tmp, stdio: 'pipe' })
   const installedHtml = fs.readFileSync(path.join(installedTalk, 'public', 'index.html'), 'utf8')
   const installedMatch = installedHtml.match(/power-slides\.[a-f0-9]{10}\.js/)
@@ -131,7 +180,7 @@ fs.writeFileSync(path.join(priority, 'slides.yml'), yaml.dump({ slides: [{ type:
 fs.writeFileSync(path.join(priority, 'slides.json'), JSON.stringify({ slides: [{ type: 'overlay', title: 'JSON title' }] }, null, 2))
 execFileSync(process.execPath, [cli, 'build', priority], { stdio: 'pipe' })
 const priorityHtml = fs.readFileSync(path.join(priority, 'public', 'index.html'), 'utf8')
-assert(priorityHtml.includes('<title>A content-only talk</title>'), 'default build prefers slides.yaml over slides.yml and slides.json')
+assert(priorityHtml.includes('<title>Content-only talks</title>'), 'default build prefers slides.yaml over slides.yml and slides.json')
 execFileSync(process.execPath, [cli, 'build', priority, '--slides', 'slides.json'], { stdio: 'pipe' })
 const explicitHtml = fs.readFileSync(path.join(priority, 'public', 'index.html'), 'utf8')
 assert(explicitHtml.includes('<title>JSON title</title>'), 'explicit --slides can select JSON spec')
