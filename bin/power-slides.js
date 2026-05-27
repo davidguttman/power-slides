@@ -7,6 +7,7 @@ const { spawn } = require('child_process')
 const yaml = require('js-yaml')
 
 const packageRoot = path.resolve(__dirname, '..')
+const esmifyRoot = resolveEsmifyRoot(packageRoot)
 const defaultSlideSpecNames = ['slides.yaml', 'slides.yml', 'slides.json']
 
 main().catch(function (err) {
@@ -102,7 +103,7 @@ async function dev (argv) {
   const budoBin = path.join(packageRoot, 'node_modules', '.bin', process.platform === 'win32' ? 'budo.cmd' : 'budo')
   const args = [entryPath, '--dir', outDir, '--serve', serve, '--live', '--port', String(opts.port || process.env.PORT || 9966)]
   if (opts.open) args.push('--open')
-  args.push('--', '-p', require.resolve('esmify'), '-r', path.join(packageRoot, 'index.mjs') + ':power-slides')
+  args.push('--', '-p', '[', require.resolve('esmify'), '--basedir', esmifyRoot, ']', '-r', path.join(packageRoot, 'index.mjs') + ':power-slides')
 
   console.log('Starting budo for ' + talkDir)
   console.log('Serving ' + outDir)
@@ -129,13 +130,24 @@ async function buildTalk (talkDir, outDir, opts) {
   return { htmlPath, bundlePath, scriptName }
 }
 
+function resolveEsmifyRoot (root) {
+  const parts = path.resolve(root).split(path.sep)
+  for (let i = parts.length - 1; i >= 0; i--) {
+    if (parts[i] === 'node_modules') {
+      const parent = parts.slice(0, i).join(path.sep)
+      return parent || path.sep
+    }
+  }
+  return root
+}
+
 function bundle (entryPath) {
   return new Promise(function (resolve, reject) {
     const browserify = require('browserify')
     const esmify = require('esmify')
     const b = browserify(entryPath, {
       debug: false,
-      plugin: [esmify],
+      plugin: [[esmify, { basedir: esmifyRoot }]],
       basedir: path.dirname(entryPath)
     })
     b.require(path.join(packageRoot, 'index.mjs'), { expose: 'power-slides' })

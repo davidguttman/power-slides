@@ -88,6 +88,43 @@ assert(!html.includes('entry.js'), 'build HTML points at production bundle')
 
 assert(html.includes('<title>A content-only talk</title>'), 'build infers HTML title from first YAML slide')
 
+const installedPrefix = path.join(tmp, 'installed-prefix')
+const installedTalk = path.join(tmp, 'installed-talk')
+let packedTarball
+try {
+  packedTarball = execFileSync('npm', ['pack', '--silent'], { cwd: root, encoding: 'utf8' }).trim().split(/\r?\n/).pop()
+  const packedPath = path.join(root, packedTarball)
+  execFileSync('npm', ['install', '--silent', '--prefix', installedPrefix, '--omit=dev', packedPath], { stdio: 'pipe' })
+  fs.unlinkSync(packedPath)
+  packedTarball = null
+
+  const binDir = path.join(installedPrefix, 'node_modules', '.bin')
+  const installedCli = path.join(binDir, process.platform === 'win32' ? 'power-slides.cmd' : 'power-slides')
+  const installedBrowserify = path.join(binDir, process.platform === 'win32' ? 'browserify.cmd' : 'browserify')
+  const installedPackageRoot = path.join(installedPrefix, 'node_modules', 'power-slides')
+  const installedEsmify = path.join(installedPrefix, 'node_modules', 'esmify', 'esmify.js')
+
+  execFileSync(installedCli, ['init', installedTalk], { cwd: tmp, stdio: 'pipe' })
+  execFileSync(installedCli, ['build', installedTalk], { cwd: tmp, stdio: 'pipe' })
+  const installedHtml = fs.readFileSync(path.join(installedTalk, 'public', 'index.html'), 'utf8')
+  const installedMatch = installedHtml.match(/power-slides\.[a-f0-9]{10}\.js/)
+  assert(installedMatch, 'installed package build writes cache-busted script URL')
+  assert(fs.existsSync(path.join(installedTalk, 'public', installedMatch[0])), 'installed package build writes bundle')
+
+  const devStyleBundle = path.join(installedTalk, 'public', 'power-slides-dev-smoke.js')
+  execFileSync(installedBrowserify, [
+    path.join(installedTalk, '.power-slides', 'entry.js'),
+    '-p', '[', installedEsmify, '--basedir', installedPrefix, ']',
+    '-r', path.join(installedPackageRoot, 'index.mjs') + ':power-slides',
+    '-o', devStyleBundle
+  ], { cwd: tmp, stdio: 'pipe' })
+  assert(fs.existsSync(devStyleBundle), 'installed package dev-style browserify args bundle ESM package entry')
+} finally {
+  if (packedTarball) {
+    try { fs.unlinkSync(path.join(root, packedTarball)) } catch (err) {}
+  }
+}
+
 const priority = path.join(tmp, 'priority')
 execFileSync(process.execPath, [cli, 'init', priority], { stdio: 'pipe' })
 fs.writeFileSync(path.join(priority, 'slides.yml'), yaml.dump({ slides: [{ type: 'overlay', title: 'YML title' }] }, { lineWidth: -1, noRefs: true }))
