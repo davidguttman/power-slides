@@ -1,10 +1,10 @@
-var h = require('hyperscript')
-var Emitter = require('wildemitter')
-var xtend = require('xtend')
+const h = require('hyperscript')
+const Emitter = require('wildemitter')
+const xtend = require('xtend')
 
-var started
+let started
 
-var PowerSlides = (module.exports = {
+const PowerSlides = (module.exports = {
   title: titleSlide,
   image: imageSlide,
   video: videoSlide,
@@ -17,8 +17,8 @@ var PowerSlides = (module.exports = {
     this.isPresenter = isPresenter
     this.target = target
 
-    var slides = (this.slides = [])
-    var notes = (this.notes = [])
+    const slides = (this.slides = [])
+    const notes = (this.notes = [])
 
     slideNotes.forEach(function (slideNote, i) {
       if (!Array.isArray(slideNote)) return (slides[i] = slideNote)
@@ -49,7 +49,7 @@ var PowerSlides = (module.exports = {
   },
 
   nextSlide: function () {
-    var slideNumber = this.getCurrentSlideNumber()
+    let slideNumber = this.getCurrentSlideNumber()
     if (slideNumber > this.slides.length - 1) {
       slideNumber = this.slides.length - 1
     }
@@ -57,21 +57,21 @@ var PowerSlides = (module.exports = {
   },
 
   prevSlide: function () {
-    var slideNumber = this.getCurrentSlideNumber()
+    let slideNumber = this.getCurrentSlideNumber()
     if (slideNumber < 2) slideNumber = 2
     window.location.hash = '/' + (slideNumber - 1)
   },
 
   onHashChange: function (evt) {
-    var slideNumber = this.getCurrentSlideNumber()
+    const slideNumber = this.getCurrentSlideNumber()
     this.changeSlide(slideNumber)
   },
 
   changeSlide: function (n) {
     this.emit('changeSlide', n)
 
-    var note = this.notes[n - 1]
-    var elNote = this.elNote
+    const note = this.notes[n - 1]
+    const elNote = this.elNote
     elNote.innerHTML = ''
 
     if (note && note[0]) {
@@ -80,7 +80,7 @@ var PowerSlides = (module.exports = {
       })
     }
 
-    var slide = this.slides[n - 1]
+    const slide = this.slides[n - 1]
     if (slide) {
       if (typeof slide === 'function') return slide(this.elSlide)
       if (typeof slide === 'string') return titleSlide(slide)(this.elSlide)
@@ -90,8 +90,8 @@ var PowerSlides = (module.exports = {
   },
 
   getCurrentSlideNumber: function () {
-    var slideNumberStr = window.location.hash.replace(/^#\/?/, '')
-    var slideNumber = parseFloat(slideNumberStr)
+    const slideNumberStr = window.location.hash.replace(/^#\/?/, '')
+    const slideNumber = parseFloat(slideNumberStr)
     return isFinite(slideNumber) ? slideNumber : 0
   },
 
@@ -110,7 +110,7 @@ var PowerSlides = (module.exports = {
   },
 
   onTouchend: function (evt) {
-    var hPct = evt.layerX / window.innerWidth
+    const hPct = evt.layerX / window.innerWidth
     if (hPct < 0.2) return this.prevSlide()
     if (hPct > 0.8) return this.nextSlide()
   },
@@ -128,7 +128,7 @@ var PowerSlides = (module.exports = {
   },
 
   createSlide: function () {
-    var style = {
+    const style = {
       width: '100%',
       height: '100%',
       display: 'flex',
@@ -138,18 +138,18 @@ var PowerSlides = (module.exports = {
 
     if (this.isPresenter) style.height = '50%'
 
-    return h('.ps-slide', { style: style })
+    return h('.ps-slide', { style })
   },
 
   createNotes: function () {
-    var style = {
+    const style = {
       width: '100%',
       height: '50%'
     }
 
     if (!this.isPresenter) style.display = 'none'
 
-    return h('.ps-notes', { style: style }, 'notes')
+    return h('.ps-notes', { style }, 'notes')
   }
 })
 
@@ -157,7 +157,7 @@ Emitter.mixin(PowerSlides)
 
 function layeredTitleSlide (fgContent, bgSlide, opts) {
   opts = opts || { brightness: 0.6 }
-  var fgSlide
+  let fgSlide
 
   // Determine the foreground slide function based on the type of fgContent
   if (typeof fgContent === 'string') {
@@ -176,7 +176,7 @@ function layeredTitleSlide (fgContent, bgSlide, opts) {
     fgSlide = titleSlide(String(fgContent))
   }
 
-  var outerOpts = {
+  const outerOpts = {
     style: {
       position: 'relative',
       width: '100%',
@@ -184,7 +184,7 @@ function layeredTitleSlide (fgContent, bgSlide, opts) {
     }
   }
 
-  var innerStyle = {
+  const innerStyle = {
     position: 'absolute',
     top: 0,
     left: 0,
@@ -195,13 +195,13 @@ function layeredTitleSlide (fgContent, bgSlide, opts) {
     'align-items': 'center'
   }
 
-  var fg = h('div', {
+  const fg = h('div', {
     style: xtend(innerStyle, { 'text-shadow': '3px 3px 5px rgba(0, 0, 0, 0.7)' })
   })
-  var bg = h('div', {
+  const bg = h('div', {
     style: xtend(innerStyle, { filter: `brightness(${opts.brightness})` })
   })
-  var slide = h('div', outerOpts, [ bg, fg ])
+  const slide = h('div', outerOpts, [bg, fg])
 
   return function (el) {
     el.innerHTML = ''
@@ -212,19 +212,19 @@ function layeredTitleSlide (fgContent, bgSlide, opts) {
 }
 
 function titleSlide (title, style = { padding: '10%' }) {
-  var defaultStyle = { padding: '10%' }
+  const defaultStyle = { padding: '10%' }
   console.log(style, defaultStyle, xtend(defaultStyle, style))
   return function (el) {
     el.innerHTML = ''
 
-    el.appendChild(h('div', {style: xtend(defaultStyle, style)}, h('h1', title)))
+    el.appendChild(h('div', { style: xtend(defaultStyle, style) }, h('h1', title)))
   }
 }
 
 function imageSlide (url, method) {
   method = method || 'cover'
 
-  var slide = h('.ps-full-img', {
+  const slide = h('.ps-full-img', {
     style: {
       width: '100%',
       height: '100%',
@@ -233,7 +233,7 @@ function imageSlide (url, method) {
     }
   })
 
-  var preload = h('img', { src: url, style: { display: 'none' } })
+  const preload = h('img', { src: url, style: { display: 'none' } })
   document.body.appendChild(preload)
   preload.onload = function () {
     document.body.removeChild(preload)
@@ -249,7 +249,7 @@ function videoSlide (url, opts) {
   opts = opts || {}
   opts.size = opts.size || 'contain'
 
-  var video = h('video', {
+  const video = h('video', {
     src: url,
     controls: opts.controls,
     autoplay: false,
@@ -257,7 +257,7 @@ function videoSlide (url, opts) {
     muted: true
   })
 
-  var preload = h('video', {
+  const preload = h('video', {
     src: url,
     autoplay: false,
     style: { display: 'none' }
@@ -267,7 +267,7 @@ function videoSlide (url, opts) {
     document.body.removeChild(preload)
   )
 
-  var isReady = false
+  let isReady = false
   video.addEventListener('loadeddata', function () {
     isReady = true
   })
@@ -283,11 +283,11 @@ function videoSlide (url, opts) {
     video.style.opacity = 0
     el.appendChild(video)
 
-    var arWin = window.innerWidth / window.innerHeight
+    const arWin = window.innerWidth / window.innerHeight
 
     onReady(function () {
-      var rect = video.getBoundingClientRect()
-      var arVid = rect.width / rect.height
+      let rect = video.getBoundingClientRect()
+      const arVid = rect.width / rect.height
 
       if (opts.size === 'contain') {
         if (arVid < arWin) {
@@ -305,7 +305,7 @@ function videoSlide (url, opts) {
 
       rect = video.getBoundingClientRect()
 
-      var margin = (window.innerHeight - rect.height) / 2
+      const margin = (window.innerHeight - rect.height) / 2
       video.style.marginTop = margin + 'px'
       video.style.opacity = 1
       video.currentTime = 0

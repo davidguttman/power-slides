@@ -1,4 +1,4 @@
-var PS = require('..')
+const PS = require('..')
 
 window.document.body.style.cssText = `
   background-color: black;
@@ -7,29 +7,29 @@ window.document.body.style.cssText = `
   monospace; font-size: 2vw;
 `
 
-var isPresenter = window.navigator.userAgent.match(/iPhone|Android/)
+const isPresenter = window.navigator.userAgent.match(/iPhone|Android/)
 
 // First create an array of slides
-var slides = [
+const slides = [
   // A "slide" can simply be text
   'Introducing power-slides',
 
   // When an array, the first item is the "slide" and the rest are notes
-  [ 'I am a Title',
+  ['I am a Title',
     'This is note only viewable in presenter mode',
-    '...and so is this' ],
+    '...and so is this'],
 
   // power-slides has a helper for images
-  [ PS.image('/example/fist-bump.gif'),
+  [PS.image('/example/fist-bump.gif'),
     'By default, the image is full-screen',
-    'It does this by using the "cover" background-size method' ],
+    'It does this by using the "cover" background-size method'],
 
-  [ PS.image('/example/multipass.gif', 'contain'),
+  [PS.image('/example/multipass.gif', 'contain'),
     'But you can choose how you would like the image sized',
     'This image is "contained" to preserve the aspect ratio without cropping'],
 
   // there's also a helper for video
-  [ PS.video('/example/spin.mp4', {loop: false, muted: false, controls: false}),
+  [PS.video('/example/spin.mp4', { loop: false, muted: false, controls: false }),
     'By default the video will not loop, show controls, nor be muted',
     '...but that can be changed easily'
   ],
@@ -47,20 +47,19 @@ var slides = [
     // we'll clear it out and add a "typewriter" effect
     slideContainer.innerHTML = ''
 
-    var el = document.createElement('h1')
+    const el = document.createElement('h1')
     el.style.fontFamily = 'monospace'
     slideContainer.appendChild(el)
 
-    var letters = ('Custom effects!').split('')
+    const letters = ('Custom effects!').split('')
 
-    var interval = setInterval(function () {
-      var letter = letters.shift()
+    const interval = setInterval(function () {
+      const letter = letters.shift()
       if (!letter) return clearInterval(interval)
 
       el.innerHTML += letter
     }, 250)
   }
 ]
-
 
 PS.start(document.body, slides, isPresenter)
