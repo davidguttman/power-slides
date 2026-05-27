@@ -4,9 +4,6 @@ const fs = require('fs')
 const path = require('path')
 const crypto = require('crypto')
 const { spawn } = require('child_process')
-const browserify = require('browserify')
-const esmify = require('esmify')
-const terser = require('terser')
 const yaml = require('js-yaml')
 
 const packageRoot = path.resolve(__dirname, '..')
@@ -118,7 +115,7 @@ async function buildTalk (talkDir, outDir, opts) {
   mkdirp(outDir)
   const entryPath = prepareEntry(talkDir, { slides: opts.slides })
   const bundled = await bundle(entryPath)
-  const code = opts.minify ? (await terser.minify(String(bundled))).code : String(bundled)
+  const code = opts.minify ? (await require('terser').minify(String(bundled))).code : String(bundled)
   if (!code) throw new Error('Terser produced an empty bundle')
 
   const hash = crypto.createHash('sha256').update(code).digest('hex').slice(0, 10)
@@ -134,6 +131,8 @@ async function buildTalk (talkDir, outDir, opts) {
 
 function bundle (entryPath) {
   return new Promise(function (resolve, reject) {
+    const browserify = require('browserify')
+    const esmify = require('esmify')
     const b = browserify(entryPath, {
       debug: false,
       plugin: [esmify],

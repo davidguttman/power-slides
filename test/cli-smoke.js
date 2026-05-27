@@ -10,11 +10,26 @@ const cli = path.join(root, 'bin', 'power-slides.js')
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'power-slides-'))
 const talk = path.join(tmp, 'talk')
 
-const help = execFileSync(process.execPath, [cli, '--help'], { encoding: 'utf8' })
+function runCliWithBlockedBuildDeps (args) {
+  const script = `
+const Module = require('module')
+const blocked = new Set(['browserify', 'budo', 'esmify', 'terser'])
+const originalLoad = Module._load
+Module._load = function (request, parent, isMain) {
+  if (blocked.has(request)) throw new Error('unexpected build/dev dependency before command dispatch: ' + request)
+  return originalLoad.apply(this, arguments)
+}
+process.argv = [process.execPath, ${JSON.stringify(cli)}, ...${JSON.stringify(args)}]
+require(${JSON.stringify(cli)})
+`
+  return execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })
+}
+
+const help = runCliWithBlockedBuildDeps(['--help'])
 assert(help.includes('Dev server port (default: $PORT, then 9966)'), 'help documents $PORT dev port fallback')
 assert(help.includes('default: slides.yaml, slides.yml, or slides.json'), 'help documents YAML default lookup order')
 
-execFileSync(process.execPath, [cli, 'init', talk], { stdio: 'pipe' })
+runCliWithBlockedBuildDeps(['init', talk])
 
 assert(fs.existsSync(path.join(talk, 'slides.yaml')), 'init writes slides.yaml')
 assert(!fs.existsSync(path.join(talk, 'slides.yml')), 'init does not write slides.yml by default')

@@ -18,17 +18,17 @@
   "author": "David Guttman <david@guttman.io> (http://davidguttman.com/)",
   "license": "MIT",
   "dependencies": {
+    "browserify": "^17.0.1",
+    "budo": "^11.8.4",
+    "esmify": "^2.1.1",
     "hyperscript": "^1.4.7",
     "js-yaml": "^4.1.1",
+    "terser": "^5.48.0",
     "wildemitter": "^1.2.0",
     "xtend": "^4.0.2"
   },
   "devDependencies": {
-    "browserify": "^17.0.1",
-    "budo": "^11.8.4",
-    "esmify": "^2.1.1",
-    "standard": "^17.1.2",
-    "terser": "^5.48.0"
+    "standard": "^17.1.2"
   },
   "directories": {
     "example": "example"
