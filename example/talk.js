@@ -85,7 +85,7 @@ function themeSlide (slide, index) {
       font: theme.font,
       color: palette.white,
       backgroundColor: palette.void,
-      eyebrow: 'Preload behavior',
+      eyebrow: 'Remote image',
       size: 'clamp(2.4rem, 4.15vw, 4.7rem)',
       brightness: 0.58
     }, slide)

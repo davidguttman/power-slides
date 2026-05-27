@@ -12,11 +12,12 @@ slides:
     notes:
       - This folder has content and media only. No package.json, package-lock, node_modules, or public/index.html source file.
   - type: quote
-    quote: Slide 1 shows immediately. Remote images preload in the background.
+    eyebrow: Visual proof
+    quote: Drop in remote images, screenshots, or generated assets.
     image: https://placehold.co/900x600/png?text=remote+image
     background: https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=1800&q=80
     notes:
-      - Both remote URLs are discovered from slides.yaml and scheduled after the first paint.
+      - Remote URLs can live directly in slides.yaml; no copied app shell required.
   - type: custom
     name: glitchTerminal
     title: Slides can run code

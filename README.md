@@ -2,7 +2,7 @@
 
 ESM-first reusable talk kit for browser slide decks, with the original tiny JavaScript slideshow runtime still available for custom decks.
 
-`power-slides` lets new talks stay content-only: `slides.yaml` (or JSON), optional `talk.js`, and assets. The package owns the shared HTML shell, Browserify + Terser build, budo dev wiring, slide helpers, and background preloading. If you want to author directly in JS, a slide can still be a function that does *anything* the browser can do.
+`power-slides` lets new talks stay content-only: `slides.yaml` (or JSON), optional `talk.js`, and assets. The package owns the shared HTML shell, Browserify + Terser build, budo dev wiring, slide helpers, and asset loading. If you want to author directly in JS, a slide can still be a function that does *anything* the browser can do.
 
 ## Why power-slides?
 
@@ -262,7 +262,7 @@ Delegates rendering to `talk.js`. `name`, `kind`, or `renderer` chooses the rend
     - /texture.png
 ```
 
-Any extra fields are passed through to the renderer. Asset-like fields (`src`, `url`, `image`, `img`, `background`, `poster`, `video`, `qr`, `chart`) and URLs inside CSS `url(...)` strings are discovered for background preloading; custom JS renderers can also set `slide.assets` on the slide function they return.
+Any extra fields are passed through to the renderer.
 
 ## Optional talk.js
 
@@ -292,17 +292,9 @@ export default {
 
 Renderer return values can be slide functions, DOM nodes, or strings. The build exposes the package as `power-slides`, so advanced `talk.js` files may also import helpers directly.
 
-## Preloading behavior
+## Asset loading
 
-`startTalk()` renders slide 1 immediately. After that first render, it scans the remaining slide specs/functions for image/video assets and preloads them in the background, including remote/CDN URLs. This avoids “pop-in” on later slides without blocking the first slide.
-
-Helpers attach `slide.assets` automatically; custom renderers can do the same:
-
-```js
-const slide = (el) => { /* render */ }
-slide.assets = ['https://cdn.example.com/background.png']
-export default { renderers: { custom: () => slide } }
-```
+The first slide renders immediately. After that, power-slides starts loading image/video assets referenced by later slides so the deck feels smoother without blocking the first paint.
 
 ## Legacy CommonJS API
 
