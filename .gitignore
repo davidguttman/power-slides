@@ -3,3 +3,5 @@ node_modules/
 */.power-slides/
 **/public/power-slides.*.js
 **/public/index.html
+
+**/public/peerjs.min.js

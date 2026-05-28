@@ -1,3 +1,5 @@
+import createRemote from './remote.js'
+
 let started = false
 
 const listeners = Object.create(null)
@@ -7,6 +9,11 @@ const PowerSlides = {
   image,
   video,
   layeredTitle,
+  remote: function (opts) {
+    if (this.remoteState) return this.remoteState
+    this.remoteState = createRemote(this, opts)
+    return this.remoteState
+  },
   overlay,
   quote,
   chart,
@@ -21,12 +28,20 @@ const PowerSlides = {
   preloadAssets,
   preloadSlideAssets,
 
-  start: function (target, slideNotes, isPresenter) {
+  start: function (target, slideNotes, isPresenter, opts) {
     if (started) return this
     started = true
 
+    if (isPresenter && typeof isPresenter === 'object') {
+      opts = isPresenter
+      isPresenter = opts.isPresenter
+    }
+
+    opts = opts || {}
+
     this.isPresenter = isPresenter
     this.target = target
+    this.opts = opts
 
     const slides = (this.slides = [])
     const notes = (this.notes = [])
@@ -51,6 +66,9 @@ const PowerSlides = {
     window.addEventListener('keyup', this.onKeyup.bind(this))
     window.addEventListener('resize', this.onResize.bind(this))
     window.addEventListener('touchend', this.onTouchend.bind(this))
+
+    const remoteOpts = opts.remote === true ? {} : (opts.remote || {})
+    if (opts.remote || createRemote.hasControllerUrl(remoteOpts)) this.remote(remoteOpts)
 
     if (window.location.hash === '') {
       window.location.hash = '/1'
@@ -122,6 +140,8 @@ const PowerSlides = {
   },
 
   onKeyup: function (evt) {
+    if (createRemote.isOptionsKey(evt)) return this.openOptions()
+
     if (evt.keyIdentifier === 'Right' || evt.key === 'ArrowRight') {
       return this.nextSlide()
     }
@@ -166,6 +186,14 @@ const PowerSlides = {
     if (this.isPresenter) style.height = '50%'
 
     return element('div', { className: 'ps-slide', style })
+  },
+
+  openOptions: function () {
+    if (!this.remoteState && this.opts && this.opts.remote) {
+      this.remote(this.opts.remote === true ? {} : this.opts.remote)
+    }
+
+    if (this.remoteState && this.remoteState.openOptions) return this.remoteState.openOptions()
   },
 
   createNotes: function () {
@@ -966,7 +994,7 @@ export function startTalk (target, spec, opts) {
   const slides = Array.isArray(spec) && (typeof spec[0] === 'function' || Array.isArray(spec[0]) || typeof spec[0] === 'string')
     ? spec
     : createTalk(spec, opts.talk)
-  const deck = PowerSlides.start(target, slides, opts.isPresenter)
+  const deck = PowerSlides.start(target, slides, opts)
 
   setTimeout(function () {
     preloadSlideAssets(slides, { startIndex: 1 })

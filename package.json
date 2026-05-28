@@ -23,6 +23,7 @@
     "esmify": "^2.1.1",
     "hyperscript": "^1.4.7",
     "js-yaml": "^4.1.1",
+    "peerjs": "^1.5.5",
     "qrcode-generator": "^1.4.4",
     "terser": "^5.48.0",
     "wildemitter": "^1.2.0",
@@ -67,6 +68,7 @@
   "files": [
     "index.js",
     "index.mjs",
+    "remote.js",
     "bin",
     "example/slides.yaml",
     "example/talk.js",

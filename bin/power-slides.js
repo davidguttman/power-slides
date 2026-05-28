@@ -11,6 +11,7 @@ const packageInfo = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.j
 const packageVersion = packageInfo.version || '0.0.0'
 const esmifyRoot = resolveEsmifyRoot(packageRoot)
 const defaultSlideSpecNames = ['slides.yaml', 'slides.yml', 'slides.json']
+const peerScriptName = 'peerjs.min.js'
 
 main().catch(function (err) {
   console.error(err.stack || err.message || err)
@@ -99,12 +100,14 @@ async function dev (argv) {
   const htmlPath = path.join(outDir, 'index.html')
 
   mkdirp(outDir)
-  writeHtml(htmlPath, serve, { title: titleFromSpec(prepared.spec) })
+  copyPeerScript(outDir)
+  writeHtml(htmlPath, serve, { title: titleFromSpec(prepared.spec), scripts: [peerScriptName] })
 
   const watcher = watchSlideSpec(prepared.slidesPath, function () {
     try {
       const next = prepareEntry(talkDir, { slides: opts.slides })
-      writeHtml(htmlPath, serve, { title: titleFromSpec(next.spec) })
+      copyPeerScript(outDir)
+      writeHtml(htmlPath, serve, { title: titleFromSpec(next.spec), scripts: [peerScriptName] })
       console.log('Regenerated power-slides entry from ' + path.relative(talkDir, next.slidesPath))
     } catch (err) {
       console.error('Failed to regenerate power-slides entry:')
@@ -142,7 +145,8 @@ async function buildTalk (talkDir, outDir, opts) {
   const htmlPath = path.join(outDir, 'index.html')
 
   fs.writeFileSync(bundlePath, code)
-  writeHtml(htmlPath, scriptName, { title: titleFromSpec(prepared.spec) })
+  copyPeerScript(outDir)
+  writeHtml(htmlPath, scriptName, { title: titleFromSpec(prepared.spec), scripts: [peerScriptName] })
 
   return { htmlPath, bundlePath, scriptName }
 }
@@ -205,7 +209,15 @@ window.document.body.style.cssText = (talk && talk.bodyStyle) || \`
 \`
 
 if (talk && typeof talk.beforeStart === 'function') talk.beforeStart(PowerSlides, spec)
-PowerSlides.startTalk(window.document.body, spec, { talk })
+
+const remote = talk && Object.prototype.hasOwnProperty.call(talk, 'remote')
+  ? talk.remote
+  : (spec && Object.prototype.hasOwnProperty.call(spec, 'remote') ? spec.remote : true)
+const remoteOptions = remote === false
+  ? false
+  : (remote && typeof remote === 'object' ? remote : true)
+
+PowerSlides.startTalk(window.document.body, spec, { talk, remote: remoteOptions })
 `
 
   const entryPath = path.join(buildDir, 'entry.js')
@@ -248,6 +260,9 @@ function writeFileChanged (file, content) {
 function writeHtml (htmlPath, scriptName, opts) {
   opts = opts || {}
   const title = escapeHtml(opts.title || 'power-slides talk')
+  const scripts = (opts.scripts || []).concat(scriptName).map(function (name) {
+    return '  <script src="./' + escapeHtml(name) + '"></script>'
+  }).join('\n')
   fs.writeFileSync(htmlPath, `<!doctype html>
 <html>
 <head>
@@ -256,10 +271,14 @@ function writeHtml (htmlPath, scriptName, opts) {
   <title>${title}</title>
 </head>
 <body>
-  <script src="./${scriptName}"></script>
+${scripts}
 </body>
 </html>
 `)
+}
+
+function copyPeerScript (outDir) {
+  fs.copyFileSync(require.resolve('peerjs/dist/peerjs.min.js'), path.join(outDir, peerScriptName))
 }
 
 function readSlidesSpec (talkDir, explicitPath) {
@@ -413,6 +432,12 @@ The scripts call the \`powerslides\` bin alias:
   }
 }
 \`\`\`
+
+## Options and remote control
+
+The generated dev/build shell enables the power-slides Options overlay by default. Press \`o\` to reopen Options after the button fades. Click **Enable remote control** to start PeerJS, then scan the QR code or open the shown URL on your phone/controller.
+
+To disable the shell remote UI, export \`remote: false\` from \`talk.js\` or set top-level \`remote: false\` in \`slides.yaml\`/JSON. To override PeerJS/runtime options, use \`remote: { ... }\`.
 
 ## Authoring schema quick reference
 

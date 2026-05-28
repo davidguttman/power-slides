@@ -28,6 +28,7 @@ module.exports._test = {
   getPreviewSlideModel,
   getPreviewSlideNumbers,
   markPeerUnavailable,
+  normalizePeerExport,
   getOrCreateClientId,
   getPairKey,
   getQueryParamFromSearch,
@@ -203,9 +204,18 @@ function startControllerRemote (PS, state) {
 function loadPeer (opts) {
   opts = opts || {}
 
-  if (opts.Peer) return opts.Peer
-  if (typeof window !== 'undefined' && window.Peer) return window.Peer
+  if (opts.Peer) return normalizePeerExport(opts.Peer)
+  if (typeof window !== 'undefined' && window.Peer) return normalizePeerExport(window.Peer)
 
+  return null
+}
+
+function normalizePeerExport (Peer) {
+  if (!Peer) return null
+  if (typeof Peer === 'function') return Peer
+  if (typeof Peer.Peer === 'function') return Peer.Peer
+  if (typeof Peer.default === 'function') return Peer.default
+  if (Peer.default && typeof Peer.default.Peer === 'function') return Peer.default.Peer
   return null
 }
 

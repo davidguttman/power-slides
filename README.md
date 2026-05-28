@@ -50,7 +50,7 @@ The generated `package.json` is intentionally minimal and runner-friendly:
 }
 ```
 
-`powerslides dev .` uses the port from `--port <port>`, then `$PORT`, then `9966`.
+`powerslides dev .` uses the port from `--port <port>`, then `$PORT`, then `9966`. The CLI-generated dev/build shell enables the built-in Options overlay by default and loads a bundled PeerJS runtime before the deck. Press `o` to reopen Options, then click **Enable remote control** to show the QR code/URL. Set `remote: false` in `talk.js` or top-level `slides.yaml`/JSON to disable it, or set `remote: { ... }` for PeerJS/options overrides.
 
 `init` creates a talk folder by generating the local `package.json` and copying the packaged `example/` starter authoring files:
 
@@ -380,9 +380,9 @@ PS.layeredTitle(
 
 ### Built-in options + remote control
 
-`power-slides` includes the runtime pieces for an app-shell-level options overlay and PeerJS remote control. The intended reusable-talk flow is that the shared power-slides shell enables this once, so each talk stays content-only (`slides.yaml`/JSON, optional `talk.js`, and assets) instead of copying remote-control code. The shell is responsible for loading PeerJS: pass a constructor as `remote.Peer`, or expose `window.Peer` before enabling remote control. `power-slides` does not bundle PeerJS itself.
+`power-slides` includes the runtime pieces for an app-shell-level options overlay and PeerJS remote control. The intended reusable-talk flow is that the shared power-slides CLI shell enables this once, so each talk stays content-only (`slides.yaml`/JSON, optional `talk.js`, and assets) instead of copying remote-control code. CLI dev/build entries copy the PeerJS browser runtime into the output and load it before the deck automatically. Custom shells can pass a constructor as `remote.Peer`, or expose `window.Peer` before enabling remote control.
 
-For custom shells using `PS.start` directly, enable the built-in capability with `remote: true`:
+For custom shells using `PS.start` directly, enable the built-in capability with `remote: true`; pass `remote: { Peer }` when PeerJS is bundled by your app instead of exposed on `window`:
 
 ```js
 PS.start(document.body, slides, {

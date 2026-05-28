@@ -110,6 +110,16 @@ test('locked controller status survives the close event', function () {
   assert.equal(state.status, 'Deck locked to another controller')
 })
 
+test('normalizes PeerJS constructor exports from ESM and CommonJS bundles', function () {
+  function Peer () {}
+
+  assert.equal(remote.normalizePeerExport(Peer), Peer)
+  assert.equal(remote.normalizePeerExport({ Peer }), Peer)
+  assert.equal(remote.normalizePeerExport({ default: Peer }), Peer)
+  assert.equal(remote.normalizePeerExport({ default: { Peer } }), Peer)
+  assert.equal(remote.normalizePeerExport({}), null)
+})
+
 test('PeerJS unavailable resets deck remote state so the enable action is retryable', function () {
   const state = { remoteEnabled: true, status: 'Creating remote URL...' }
 

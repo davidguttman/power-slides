@@ -68,6 +68,8 @@ function check () {
   const spec = JSON.parse(fs.readFileSync(path.join(talkDir, '.power-slides', 'slides.json'), 'utf8'))
   if (spec.slides && spec.slides[0] && spec.slides[0].title === 'Watched title' && html.includes('<title>Watched title</title>')) {
     if (!entry.includes("import spec from './slides.json'")) throw new Error('entry does not import slides.json')
+    if (!entry.includes('remote: remoteOptions')) throw new Error('entry does not enable remote options')
+    if (!html.includes('<script src="./peerjs.min.js"></script>')) throw new Error('HTML does not load bundled PeerJS before the deck')
     if (entry.includes('Watched title') || entry.includes('Updated YAML')) throw new Error('entry contains baked watched slide content')
     process.exit(0)
   }
@@ -94,6 +96,7 @@ assert(packageReadme.includes('deviceWidth') && packageReadme.includes('navContr
 assert(packageReadme.includes('copyMaxWidth') && packageReadme.includes('gridTemplateColumns') && packageReadme.includes('gridTemplateRows') && packageReadme.includes('mediaStyle') && packageReadme.includes('imageStyle'), 'package README documents quote/chart layout override fields')
 assert(packageReadme.includes('slides(slides, PS)') && packageReadme.includes('renderers'), 'package README documents talk.js hooks')
 assert(packageReadme.includes('npm install') && packageReadme.includes('npm run dev') && packageReadme.includes('powerslides dev .'), 'package README documents npm install/scripts flow')
+assert(packageReadme.includes('bundled PeerJS runtime') && packageReadme.includes('remote: false') && packageReadme.includes('Enable remote control'), 'package README documents CLI remote/options defaults')
 
 runCliWithBlockedBuildDeps(['init', talk])
 
@@ -111,6 +114,7 @@ assert(initializedReadme.includes('Custom renderers in talk.js'), 'generated tal
 assert(initializedReadme.includes('deviceWidth') && initializedReadme.includes('navControlOpacity'), 'generated talk README documents iframe detail fields')
 assert(initializedReadme.includes('copyMaxWidth') && initializedReadme.includes('gridTemplateColumns') && initializedReadme.includes('gridTemplateRows') && initializedReadme.includes('mediaStyle') && initializedReadme.includes('imageStyle'), 'generated talk README documents quote/chart layout override fields')
 assert(initializedReadme.includes('npm install') && initializedReadme.includes('npm run dev') && initializedReadme.includes('powerslides dev .'), 'generated talk README documents npm scripts flow')
+assert(initializedReadme.includes('Options and remote control') && initializedReadme.includes('remote: false') && initializedReadme.includes('Enable remote control'), 'generated talk README documents remote/options controls')
 
 assert(fs.existsSync(path.join(talk, 'package.json')), 'init writes package.json')
 const initializedPackage = JSON.parse(fs.readFileSync(path.join(talk, 'package.json'), 'utf8'))
@@ -209,6 +213,9 @@ assert(html.includes('<title>Content-only talks</title>'), 'build infers HTML ti
 const generatedEntry = fs.readFileSync(path.join(talk, '.power-slides', 'entry.js'), 'utf8')
 const generatedSlides = JSON.parse(fs.readFileSync(path.join(talk, '.power-slides', 'slides.json'), 'utf8'))
 assert(generatedEntry.includes("import spec from './slides.json'"), 'generated entry imports generated slide data')
+assert(generatedEntry.includes('remoteOptions') && generatedEntry.includes('remote: remoteOptions'), 'generated entry enables remote/options shell by default')
+assert(html.includes('<script src="./peerjs.min.js"></script>') && html.indexOf('peerjs.min.js') < html.indexOf(match[0]), 'build HTML loads bundled PeerJS before the deck bundle')
+assert(fs.existsSync(path.join(publicDir, 'peerjs.min.js')), 'build copies bundled PeerJS into public output')
 assert(!generatedEntry.includes('Content-only talks'), 'generated entry does not bake slide title content')
 assert(!generatedEntry.includes('slides.yaml + optional ESM talk.js'), 'generated entry does not bake slide subtitle content')
 assert.deepStrictEqual(generatedSlides, initializedSpec, 'generated slides.json matches parsed YAML spec')
@@ -251,6 +258,7 @@ try {
   const installedMatch = installedHtml.match(/power-slides\.[a-f0-9]{10}\.js/)
   assert(installedMatch, 'installed package build writes cache-busted script URL')
   assert(fs.existsSync(path.join(installedTalk, 'public', installedMatch[0])), 'installed package build writes bundle')
+  assert(fs.existsSync(path.join(installedTalk, 'public', 'peerjs.min.js')), 'installed package build copies PeerJS runtime')
 
   const devStyleBundle = path.join(installedTalk, 'public', 'power-slides-dev-smoke.js')
   execFileSync(installedBrowserify, [
@@ -304,8 +312,20 @@ import(path.join(root, 'index.mjs')).then(async mod => {
   assert.deepStrictEqual(assets.sort(), ['/local.png', 'https://cdn.example/bg.png'].sort())
 
   const previousDocument = global.document
+  const previousWindow = global.window
   global.document = createFakeDocument()
+  global.window = createFakeWindow()
   try {
+    function Peer () {}
+    const remoteTarget = global.document.body
+    const deck = mod.startTalk(remoteTarget, ['Remote-enabled ESM deck'], { remote: { Peer, buttonHideMs: 1 } })
+    const optionsButton = findDeep(remoteTarget, child => String(child.className).includes('ps-remote-options-button'))
+    assert(deck.remoteState, 'ESM startTalk initializes remote/options state when remote is enabled')
+    assert.strictEqual(deck.opts.remote.Peer, Peer, 'ESM startTalk keeps the bundled PeerJS constructor in remote options')
+    assert(optionsButton, 'ESM startTalk renders the visible remote/options button')
+    deck.openOptions()
+    assert(findDeep(remoteTarget, child => String(child.className).includes('ps-remote-options')), 'ESM startTalk opens the remote/options overlay')
+
     const quoteTarget = new FakeElement('section')
     const quoteSlide = mod.quote({ quote: 'Tiny UI', image: '/phone.png' })
     assert(quoteSlide.assets.includes('/phone.png'), 'quote helper tracks side image asset')
@@ -522,6 +542,7 @@ import(path.join(root, 'index.mjs')).then(async mod => {
     mod.default.prevSlide = originalPrev
   } finally {
     global.document = previousDocument
+    global.window = previousWindow
   }
 
   console.log('cli smoke ok')
@@ -556,13 +577,35 @@ function containsDeep (root, target) {
 }
 
 function createFakeDocument () {
-  return {
+  const document = {
+    body: new FakeElement('body'),
     createElement (tagName) {
       return new FakeElement(tagName)
     },
     createTextNode (text) {
       return String(text)
     }
+  }
+  return document
+}
+
+function createFakeWindow () {
+  return {
+    innerWidth: 1024,
+    innerHeight: 768,
+    location: {
+      hash: '',
+      search: '',
+      href: 'https://talk.example/#/1',
+      origin: 'https://talk.example',
+      pathname: '/'
+    },
+    listeners: {},
+    addEventListener (name, fn) {
+      this.listeners[name] = this.listeners[name] || []
+      this.listeners[name].push(fn)
+    },
+    Image: function FakeImage () {}
   }
 }
 
@@ -585,7 +628,10 @@ class FakeElement {
     this.children = []
     this.attributes = {}
     this.listeners = {}
-    this.style = {}
+    this.style = createFakeStyle()
+    this.className = ''
+    this.nodeType = tagName === '#text' ? 3 : 1
+    this.nodeName = tagName === '#text' ? '#text' : String(tagName).toUpperCase()
     this.onclick = null
     this.focused = false
     if (tagName === 'iframe') this.contentWindow = createFakeContentWindow()
@@ -593,6 +639,13 @@ class FakeElement {
 
   appendChild (child) {
     this.children.push(child)
+    if (child && typeof child === 'object') child.parentNode = this
+    return child
+  }
+
+  removeChild (child) {
+    this.children = this.children.filter(item => item !== child)
+    if (child && typeof child === 'object') child.parentNode = null
     return child
   }
 
@@ -611,5 +664,13 @@ class FakeElement {
 
   focus () {
     this.focused = true
+  }
+}
+
+function createFakeStyle () {
+  return {
+    setProperty (key, value) {
+      this[key] = value
+    }
   }
 }
