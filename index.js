@@ -1,6 +1,7 @@
 const h = require('hyperscript')
 const Emitter = require('wildemitter')
 const xtend = require('xtend')
+const createRemote = require('./remote')
 
 let started
 
@@ -9,13 +10,26 @@ const PowerSlides = (module.exports = {
   image: imageSlide,
   video: videoSlide,
   layeredTitle: layeredTitleSlide,
+  remote: function (opts) {
+    if (this.remoteState) return this.remoteState
+    this.remoteState = createRemote(this, opts)
+    return this.remoteState
+  },
 
-  start: function (target, slideNotes, isPresenter) {
+  start: function (target, slideNotes, isPresenter, opts) {
     if (started) return
     started = true
 
+    if (isPresenter && typeof isPresenter === 'object') {
+      opts = isPresenter
+      isPresenter = opts.isPresenter
+    }
+
+    opts = opts || {}
+
     this.isPresenter = isPresenter
     this.target = target
+    this.opts = opts
 
     const slides = (this.slides = [])
     const notes = (this.notes = [])
@@ -40,6 +54,9 @@ const PowerSlides = (module.exports = {
     window.addEventListener('keyup', this.onKeyup.bind(this))
     window.addEventListener('resize', this.onResize.bind(this))
     window.addEventListener('touchend', this.onTouchend.bind(this))
+
+    const remoteOpts = opts.remote === true ? {} : (opts.remote || {})
+    if (opts.remote || createRemote.hasControllerUrl(remoteOpts)) this.remote(remoteOpts)
 
     if (window.location.hash === '') {
       window.location.hash = '/1'
@@ -96,6 +113,8 @@ const PowerSlides = (module.exports = {
   },
 
   onKeyup: function (evt) {
+    if (createRemote.isOptionsKey(evt)) return this.openOptions()
+
     if (evt.keyIdentifier === 'Right' || evt.key === 'ArrowRight') {
       return this.nextSlide()
     }
@@ -139,6 +158,14 @@ const PowerSlides = (module.exports = {
     if (this.isPresenter) style.height = '50%'
 
     return h('.ps-slide', { style })
+  },
+
+  openOptions: function () {
+    if (!this.remoteState && this.opts && this.opts.remote) {
+      this.remote(this.opts.remote === true ? {} : this.opts.remote)
+    }
+
+    if (this.remoteState && this.remoteState.openOptions) return this.remoteState.openOptions()
   },
 
   createNotes: function () {
