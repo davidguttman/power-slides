@@ -238,6 +238,28 @@ test('builds defensive preview models for missing and available slides', functio
   })
 })
 
+test('controller previews contain-scale a full slide stage', function () {
+  assert.equal(remote.PREVIEW_ASPECT_RATIO, '1280 / 720')
+
+  const viewportStyle = remote.getPreviewViewportStyle()
+  assert.equal(viewportStyle.width, '100%')
+  assert.equal(viewportStyle['aspect-ratio'], '1280 / 720')
+  assert.equal(viewportStyle.position, 'relative')
+  assert.equal(viewportStyle.overflow, 'hidden')
+
+  const stageStyle = remote.getPreviewStageStyle(0.5)
+  assert.equal(stageStyle.width, '1280px')
+  assert.equal(stageStyle.height, '720px')
+  assert.equal(stageStyle.transform, 'translate(-50%, -50%) scale(0.5)')
+  assert.equal(stageStyle['transform-origin'], 'center center')
+  assert.equal(stageStyle.overflow, 'visible')
+
+  assert.equal(remote.getPreviewStageScale(320, 180), 0.25)
+  assert.equal(remote.getPreviewStageScale(320, 320), 0.25)
+  assert.equal(remote.getPreviewStageScale(640, 180), 0.25)
+  assert.equal(remote.getPreviewStageScale(640, 360), 0.5)
+})
+
 test('generates an inline QR SVG for the remote URL', function () {
   const svg = remote.createQrSvg('https://talk.example/deck?ps-remote=deck-1&ps-pair=pair-1')
 

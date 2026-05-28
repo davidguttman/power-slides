@@ -6,6 +6,9 @@ const DEFAULT_PAIR_PARAM = 'ps-pair'
 const DEFAULT_BUTTON_HIDE_MS = 5000
 const CLIENT_ID_STORAGE_KEY = 'power-slides.remote.clientId'
 const CONTROLLER_STORAGE_PREFIX = 'power-slides.remote.controllerId'
+const PREVIEW_BASE_WIDTH = 1280
+const PREVIEW_BASE_HEIGHT = 720
+const PREVIEW_ASPECT_RATIO = PREVIEW_BASE_WIDTH + ' / ' + PREVIEW_BASE_HEIGHT
 
 module.exports = createRemote
 module.exports.isOptionsKey = isOptionsKey
@@ -16,6 +19,9 @@ module.exports._test = {
   DEFAULT_BUTTON_HIDE_MS,
   CLIENT_ID_STORAGE_KEY,
   CONTROLLER_STORAGE_PREFIX,
+  PREVIEW_ASPECT_RATIO,
+  PREVIEW_BASE_HEIGHT,
+  PREVIEW_BASE_WIDTH,
   acceptDeckHello,
   buildHelloMessage,
   clampSlideNumber,
@@ -24,9 +30,13 @@ module.exports._test = {
   getControllerStorageKey,
   handleControllerClose,
   handleControllerData,
+  getPreviewStageScale,
+  getPreviewStageStyle,
+  getPreviewStageTransform,
   getPreviewSlideKind,
   getPreviewSlideModel,
   getPreviewSlideNumbers,
+  getPreviewViewportStyle,
   markPeerUnavailable,
   normalizePeerExport,
   getOrCreateClientId,
@@ -479,15 +489,23 @@ function qrCodeView (url) {
 }
 
 function controllerView (PS, state) {
-  return h('div', [
-    h('h3', { style: { margin: '20px 0 8px' } }, 'Controller'),
-    h('p', 'Slide ' + state.slideNumber + ' of ' + state.slideCount),
+  return h('div.ps-controller-view', {
+    style: {
+      display: 'grid',
+      gap: '14px'
+    }
+  }, [
     controllerPreviewsView(PS, state),
-    h('div', { style: { display: 'flex', gap: '12px', 'margin-bottom': '18px' } }, [
-      h('button', { type: 'button', onclick: sendRemoteCommand(state, 'prev'), style: remoteButtonStyle() }, 'Previous'),
-      h('button', { type: 'button', onclick: sendRemoteCommand(state, 'next'), style: remoteButtonStyle() }, 'Next')
-    ]),
-    notesView(state.notes)
+    h('div.ps-controller-controls', {
+      style: {
+        display: 'grid',
+        'grid-template-columns': '1fr 1fr',
+        gap: '12px'
+      }
+    }, [
+      h('button', { type: 'button', onclick: sendRemoteCommand(state, 'prev'), style: controllerButtonStyle() }, 'Prev'),
+      h('button', { type: 'button', onclick: sendRemoteCommand(state, 'next'), style: controllerButtonStyle() }, 'Next')
+    ])
   ])
 }
 
@@ -497,8 +515,8 @@ function controllerPreviewsView (PS, state) {
   return h('div.ps-controller-previews', {
     style: {
       display: 'grid',
-      gap: '12px',
-      margin: '14px 0 18px'
+      gap: '14px',
+      margin: '0'
     }
   }, [
     slidePreviewCard(PS, numbers.current, numbers.slideCount, 'Current', 'current'),
@@ -508,41 +526,32 @@ function controllerPreviewsView (PS, state) {
 
 function slidePreviewCard (PS, slideNumber, slideCount, label, variant) {
   const isNext = variant === 'next'
-  const body = h('div.ps-controller-preview-body', {
-    style: {
-      height: isNext ? '112px' : '184px',
-      overflow: 'hidden',
-      position: 'relative',
-      background: '#050505',
-      border: '1px solid rgba(255, 255, 255, 0.14)',
-      'border-radius': '12px'
-    }
-  })
+  const body = h('div.ps-controller-preview-body', { style: getPreviewViewportStyle() })
+  const stage = h('div.ps-controller-preview-stage', { style: getPreviewStageStyle() })
+  body.appendChild(stage)
 
-  renderSlidePreview(PS && PS.slides, slideNumber, body, {
+  renderSlidePreview(PS && PS.slides, slideNumber, stage, {
     emptyText: isNext ? 'No next slide' : 'No current slide'
   })
+  fitPreviewStage(body, stage)
 
   return h('section.ps-controller-preview-card', {
+    'aria-label': label + (slideNumber ? (' slide ' + slideNumber + ' of ' + slideCount) : ''),
     style: {
-      padding: isNext ? '10px' : '12px',
-      background: 'rgba(255, 255, 255, 0.07)',
-      border: '1px solid rgba(255, 255, 255, 0.12)',
-      'border-radius': '14px'
+      display: 'grid',
+      gap: '6px',
+      width: '100%'
     }
   }, [
-    h('div', {
+    h('div.ps-controller-preview-label', {
       style: {
-        display: 'flex',
-        'align-items': 'baseline',
-        'justify-content': 'space-between',
-        gap: '8px',
-        margin: '0 0 8px'
+        color: '#bbb',
+        'font-size': '12px',
+        'font-weight': 700,
+        'letter-spacing': '0.08em',
+        'text-transform': 'uppercase'
       }
-    }, [
-      h('strong', label),
-      h('span', { style: { color: '#bbb', 'font-size': '13px' } }, slideNumber ? ('Slide ' + slideNumber + ' of ' + slideCount) : 'End')
-    ]),
+    }, label),
     body
   ])
 }
@@ -620,15 +629,69 @@ function previewPlaceholder (text) {
   }, text)
 }
 
-function notesView (notes) {
-  if (!notes || !notes.length) return h('p', { style: { color: '#bbb' } }, 'No notes for this slide.')
+function getPreviewViewportStyle () {
+  return {
+    width: '100%',
+    'aspect-ratio': PREVIEW_ASPECT_RATIO,
+    overflow: 'hidden',
+    position: 'relative',
+    background: '#050505',
+    border: '1px solid rgba(255, 255, 255, 0.14)',
+    'border-radius': '12px'
+  }
+}
 
-  return h('div', [
-    h('h4', { style: { margin: '12px 0 8px' } }, 'Notes'),
-    h('div', notes.map(function (note) {
-      return h('p', { style: { margin: '0 0 8px' } }, note)
-    }))
-  ])
+function getPreviewStageStyle (scale) {
+  return {
+    width: PREVIEW_BASE_WIDTH + 'px',
+    height: PREVIEW_BASE_HEIGHT + 'px',
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: getPreviewStageTransform(scale == null ? 0.25 : scale),
+    'transform-origin': 'center center',
+    overflow: 'visible',
+    display: 'flex',
+    'justify-content': 'center',
+    'align-items': 'center',
+    background: '#000',
+    'pointer-events': 'none'
+  }
+}
+
+function getPreviewStageTransform (scale) {
+  const parsed = parseFloat(scale)
+  const safeScale = isFinite(parsed) && parsed > 0 ? parsed : 0.25
+  return 'translate(-50%, -50%) scale(' + safeScale + ')'
+}
+
+function getPreviewStageScale (viewportWidth, viewportHeight) {
+  const width = parseFloat(viewportWidth)
+  const height = parseFloat(viewportHeight)
+
+  if (!isFinite(width) || width <= 0 || !isFinite(height) || height <= 0) return 0.25
+
+  return Math.min(width / PREVIEW_BASE_WIDTH, height / PREVIEW_BASE_HEIGHT)
+}
+
+function fitPreviewStage (viewport, stage) {
+  if (!viewport || !stage || !stage.style) return
+
+  function update () {
+    stage.style.setProperty('transform', getPreviewStageTransform(getPreviewStageScale(viewport.clientWidth, viewport.clientHeight)))
+  }
+
+  update()
+
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(update)
+
+  if (typeof ResizeObserver === 'function') {
+    const observer = new ResizeObserver(update)
+    observer.observe(viewport)
+    return
+  }
+
+  if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('resize', update)
 }
 
 function sendRemoteCommand (state, command) {
@@ -638,6 +701,14 @@ function sendRemoteCommand (state, command) {
   }
 }
 
+function controllerButtonStyle () {
+  return Object.assign({}, remoteButtonStyle(), {
+    width: '100%',
+    padding: '16px 14px',
+    'font-size': '18px',
+    'font-weight': 700
+  })
+}
 function remoteButtonStyle () {
   return {
     padding: '10px 14px',
