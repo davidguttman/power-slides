@@ -348,29 +348,34 @@ export function quote (opts) {
     if (bg) root.appendChild(backgroundLayer(bg, 0.35))
     if (bg) root.appendChild(scrim(opts.brightness))
     root.appendChild(element('div', {
+      className: 'ps-quote-layout',
       style: {
         position: 'relative',
         zIndex: 1,
+        width: '100%',
         height: '100%',
         boxSizing: 'border-box',
+        minWidth: 0,
         display: 'grid',
-        gridTemplateColumns: img ? '1fr 1fr' : '1fr',
-        gap: '4vw',
-        alignItems: 'center',
-        padding: '6vh 6vw'
+        gridTemplateColumns: opts.columns || opts.gridTemplateColumns || (img ? 'minmax(0, 0.82fr) minmax(0, 1.18fr)' : 'minmax(0, 1fr)'),
+        gap: opts.gap || (img ? 'clamp(1.5rem, 3vw, 3.25rem)' : 0),
+        alignItems: opts.alignItems || 'center',
+        justifyItems: opts.justifyItems || 'stretch',
+        padding: opts.padding || 'clamp(2rem, 5vh, 4.5rem) clamp(2rem, 5vw, 5rem)'
       }
     }, [
-      element('div', {}, [
+      element('div', { className: 'ps-quote-copy', style: quoteCopyStyle(opts, Boolean(img)) }, [
         opts.eyebrow && element('div', { style: eyebrowStyle(opts) }, opts.eyebrow),
         element('h1', { style: { fontSize: opts.size || '3.6vw', lineHeight: 1.08, margin: 0, whiteSpace: 'pre-line' } }, opts.quote || opts.text || '')
       ]),
-      img && element('div', { style: centerStyle() }, element('img', { src: img, style: imageContainStyle(opts) }))
+      img && element('div', { className: 'ps-quote-media', style: quoteMediaStyle(opts) }, element('img', { src: img, style: imageContainStyle(opts) }))
     ]))
     return root
   }, [bg, img])
 }
 
 export function chart (opts) {
+  opts = opts || {}
   return quote(Object.assign({ size: '3.2vw' }, opts, { img: opts.src || opts.img || opts.image }))
 }
 
@@ -835,18 +840,42 @@ function subtitleStyle (opts) {
   }
 }
 
-function centerStyle () {
-  return { display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }
+function quoteCopyStyle (opts, hasImage) {
+  return Object.assign({
+    boxSizing: 'border-box',
+    minWidth: 0,
+    maxWidth: opts.copyMaxWidth || (hasImage ? 'min(34rem, 100%)' : 'min(58rem, 100%)'),
+    justifySelf: opts.copyJustify || (hasImage ? 'end' : 'center'),
+    alignSelf: opts.copyAlignSelf || 'center',
+    textAlign: opts.copyAlign || opts.align || (hasImage ? 'left' : 'center')
+  }, opts.copyStyle || {})
+}
+
+function quoteMediaStyle (opts) {
+  return Object.assign({
+    boxSizing: 'border-box',
+    minWidth: 0,
+    width: '100%',
+    height: '100%',
+    display: 'flex',
+    alignItems: opts.imageAlign || 'center',
+    justifyContent: opts.imageJustify || 'center',
+    justifySelf: opts.imageJustifySelf || 'stretch',
+    alignSelf: opts.imageAlignSelf || 'center'
+  }, opts.mediaStyle || {})
 }
 
 function imageContainStyle (opts) {
-  return {
-    maxWidth: '100%',
-    maxHeight: opts.maxHeight || '86vh',
+  return Object.assign({
+    display: 'block',
+    width: 'auto',
+    height: 'auto',
+    maxWidth: opts.imageMaxWidth || opts.maxWidth || '100%',
+    maxHeight: opts.imageMaxHeight || opts.maxHeight || 'min(82vh, 100%)',
     objectFit: opts.fit || 'contain',
     borderRadius: opts.radius || '0.6vw',
     boxShadow: opts.shadow === false ? '' : '0 1vw 3vw rgba(0,0,0,0.6)'
-  }
+  }, opts.imageStyle || {})
 }
 
 function cardStyle () {

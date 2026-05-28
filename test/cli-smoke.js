@@ -91,6 +91,7 @@ for (const type of ['overlay', 'title', 'image', 'video', 'quote', 'chart', 'sum
   assert(packageReadme.includes('`' + type + '`'), 'package README documents ' + type + ' slide type')
 }
 assert(packageReadme.includes('deviceWidth') && packageReadme.includes('navControlOpacity'), 'package README documents iframe detail fields')
+assert(packageReadme.includes('copyMaxWidth') && packageReadme.includes('gridTemplateColumns') && packageReadme.includes('mediaStyle') && packageReadme.includes('imageStyle'), 'package README documents quote/chart layout override fields')
 assert(packageReadme.includes('slides(slides, PS)') && packageReadme.includes('renderers'), 'package README documents talk.js hooks')
 assert(packageReadme.includes('npm install') && packageReadme.includes('npm run dev') && packageReadme.includes('powerslides dev .'), 'package README documents npm install/scripts flow')
 
@@ -108,6 +109,7 @@ for (const type of ['overlay', 'title', 'image', 'video', 'quote', 'chart', 'sum
 }
 assert(initializedReadme.includes('Custom renderers in talk.js'), 'generated talk README documents custom renderers')
 assert(initializedReadme.includes('deviceWidth') && initializedReadme.includes('navControlOpacity'), 'generated talk README documents iframe detail fields')
+assert(initializedReadme.includes('copyMaxWidth') && initializedReadme.includes('gridTemplateColumns') && initializedReadme.includes('mediaStyle') && initializedReadme.includes('imageStyle'), 'generated talk README documents quote/chart layout override fields')
 assert(initializedReadme.includes('npm install') && initializedReadme.includes('npm run dev') && initializedReadme.includes('powerslides dev .'), 'generated talk README documents npm scripts flow')
 
 assert(fs.existsSync(path.join(talk, 'package.json')), 'init writes package.json')
@@ -302,6 +304,75 @@ import(path.join(root, 'index.mjs')).then(async mod => {
   const previousDocument = global.document
   global.document = createFakeDocument()
   try {
+    const quoteTarget = new FakeElement('section')
+    const quoteSlide = mod.quote({ quote: 'Tiny UI', image: '/phone.png' })
+    assert(quoteSlide.assets.includes('/phone.png'), 'quote helper tracks side image asset')
+    quoteSlide(quoteTarget)
+    const quoteRoot = quoteTarget.children[0]
+    const quoteLayout = findDeep(quoteRoot, child => String(child.className).includes('ps-quote-layout'))
+    const quoteCopy = findDeep(quoteRoot, child => String(child.className).includes('ps-quote-copy'))
+    const quoteMedia = findDeep(quoteRoot, child => String(child.className).includes('ps-quote-media'))
+    const quoteImage = findDeep(quoteRoot, child => child.tagName === 'img')
+    assert(quoteLayout, 'quote helper renders a named layout wrapper')
+    assert.strictEqual(quoteLayout.style.width, '100%', 'quote layout fills the slide width')
+    assert.strictEqual(quoteLayout.style.boxSizing, 'border-box', 'quote layout keeps padding inside the slide')
+    assert.strictEqual(quoteLayout.style.minWidth, 0, 'quote layout can shrink grid columns')
+    assert.strictEqual(quoteLayout.style.gridTemplateColumns, 'minmax(0, 0.82fr) minmax(0, 1.18fr)', 'quote image slides default to a wider media column')
+    assert.strictEqual(quoteLayout.style.gap, 'clamp(1.5rem, 3vw, 3.25rem)', 'quote image slides use a tighter responsive gap')
+    assert.strictEqual(quoteLayout.style.padding, 'clamp(2rem, 5vh, 4.5rem) clamp(2rem, 5vw, 5rem)', 'quote image slides use responsive bounded padding')
+    assert.strictEqual(quoteCopy.style.justifySelf, 'end', 'quote copy defaults near the media column')
+    assert.strictEqual(quoteCopy.style.textAlign, 'left', 'quote image slide copy defaults left-aligned')
+    assert.strictEqual(quoteCopy.style.maxWidth, 'min(34rem, 100%)', 'quote image slide copy has a sensible max width')
+    assert.strictEqual(quoteMedia.style.width, '100%', 'quote media wrapper fills its grid cell')
+    assert.strictEqual(quoteMedia.style.minWidth, 0, 'quote media wrapper can shrink inside the grid')
+    assert.strictEqual(quoteMedia.style.alignItems, 'center', 'quote media wrapper centers image vertically by default')
+    assert.strictEqual(quoteMedia.style.justifyContent, 'center', 'quote media wrapper centers image horizontally by default')
+    assert.strictEqual(quoteImage.attributes.src, '/phone.png', 'quote image renders the configured side image')
+    assert.strictEqual(quoteImage.style.maxHeight, 'min(82vh, 100%)', 'quote image default max height stays inside the padded slide')
+    assert.strictEqual(quoteImage.style.objectFit, 'contain', 'quote image still preserves contain fitting')
+
+    const quoteOverrideTarget = new FakeElement('section')
+    mod.quote({
+      quote: 'Override',
+      image: '/override.png',
+      columns: '1fr 2fr',
+      gap: '1rem',
+      padding: '2rem',
+      align: 'right',
+      copyJustify: 'center',
+      copyMaxWidth: '20rem',
+      copyStyle: { color: 'red' },
+      imageAlign: 'flex-start',
+      imageJustify: 'flex-end',
+      mediaStyle: { background: 'blue' },
+      imageStyle: { maxHeight: '40vh' }
+    })(quoteOverrideTarget)
+    const quoteOverrideRoot = quoteOverrideTarget.children[0]
+    const quoteOverrideLayout = findDeep(quoteOverrideRoot, child => String(child.className).includes('ps-quote-layout'))
+    const quoteOverrideCopy = findDeep(quoteOverrideRoot, child => String(child.className).includes('ps-quote-copy'))
+    const quoteOverrideMedia = findDeep(quoteOverrideRoot, child => String(child.className).includes('ps-quote-media'))
+    const quoteOverrideImage = findDeep(quoteOverrideRoot, child => child.tagName === 'img')
+    assert.strictEqual(quoteOverrideLayout.style.gridTemplateColumns, '1fr 2fr', 'quote columns override controls grid proportions')
+    assert.strictEqual(quoteOverrideLayout.style.gap, '1rem', 'quote gap override is applied')
+    assert.strictEqual(quoteOverrideLayout.style.padding, '2rem', 'quote padding override is applied')
+    assert.strictEqual(quoteOverrideCopy.style.textAlign, 'right', 'quote align controls copy text alignment')
+    assert.strictEqual(quoteOverrideCopy.style.justifySelf, 'center', 'quote copyJustify controls copy placement')
+    assert.strictEqual(quoteOverrideCopy.style.maxWidth, '20rem', 'quote copyMaxWidth controls copy measure')
+    assert.strictEqual(quoteOverrideCopy.style.color, 'red', 'quote copyStyle is merged last')
+    assert.strictEqual(quoteOverrideMedia.style.alignItems, 'flex-start', 'quote imageAlign controls media wrapper alignment')
+    assert.strictEqual(quoteOverrideMedia.style.justifyContent, 'flex-end', 'quote imageJustify controls media wrapper justification')
+    assert.strictEqual(quoteOverrideMedia.style.background, 'blue', 'quote mediaStyle is merged last')
+    assert.strictEqual(quoteOverrideImage.style.maxHeight, '40vh', 'quote imageStyle is merged last')
+
+    const chartTarget = new FakeElement('section')
+    const chartSlide = mod.chart({ quote: 'Chart', src: '/chart.png', gridTemplateColumns: '2fr 3fr' })
+    assert(chartSlide.assets.includes('/chart.png'), 'chart helper tracks image assets through quote')
+    chartSlide(chartTarget)
+    const chartLayout = findDeep(chartTarget.children[0], child => String(child.className).includes('ps-quote-layout'))
+    const chartHeading = findDeep(chartTarget.children[0], child => child.tagName === 'h1')
+    assert.strictEqual(chartLayout.style.gridTemplateColumns, '2fr 3fr', 'chart inherits quote grid override fields')
+    assert.strictEqual(chartHeading.style.fontSize, '3.2vw', 'chart still uses the smaller default quote text size')
+
     const target = new FakeElement('section')
     let nextCount = 0
     let prevCount = 0

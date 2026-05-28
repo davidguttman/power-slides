@@ -179,11 +179,13 @@ Large quote/text slide with an optional image column and optional background.
   background: /dark-bg.png
 ```
 
-Fields: `quote` (or `text`), `eyebrow`, side image `image` (or `img`/`src`), `background`, `brightness`, `font`, `color`, `size`, and image styling `fit`, `maxHeight`, `radius`, `shadow` (`false` removes shadow).
+Fields: `quote` (or `text`), `eyebrow`, side image `image` (or `img`/`src`), `background`, `brightness`, `font`, `color`, and `size`.
+
+Layout fields: `columns` (or `gridTemplateColumns`), `gap`, `padding`, `alignItems`, and `justifyItems`. Copy placement fields: `align`/`copyAlign`, `copyJustify`, `copyAlignSelf`, `copyMaxWidth`, and `copyStyle`. Image fields: `fit`, `maxHeight`/`imageMaxHeight`, `maxWidth`/`imageMaxWidth`, `radius`, `shadow` (`false` removes shadow), `imageAlign`, `imageJustify`, `imageAlignSelf`, `imageJustifySelf`, `mediaStyle`, and `imageStyle`.
 
 #### `chart`
 
-A quote-style slide tuned for chart/screenshot images. Same fields as `quote`; `src`/`img`/`image` becomes the image column and the default text size is slightly smaller.
+A quote-style slide tuned for chart/screenshot images. Same fields as `quote`; `src`/`img`/`image` becomes the image column and the default text size is slightly smaller. It inherits the quote layout defaults and override fields.
 
 ```yaml
 - type: chart
