@@ -210,6 +210,7 @@ assert(fs.existsSync(path.join(publicDir, match[0])), 'build writes bundle')
 assert(!html.includes('entry.js'), 'build HTML points at production bundle')
 
 assert(html.includes('<title>Content-only talks</title>'), 'build infers HTML title from first YAML slide')
+assert(html.includes('<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">'), 'build HTML locks mobile viewport zoom')
 const generatedEntry = fs.readFileSync(path.join(talk, '.power-slides', 'entry.js'), 'utf8')
 const generatedSlides = JSON.parse(fs.readFileSync(path.join(talk, '.power-slides', 'slides.json'), 'utf8'))
 assert(generatedEntry.includes("import spec from './slides.json'"), 'generated entry imports generated slide data')
@@ -259,6 +260,7 @@ try {
   assert(installedMatch, 'installed package build writes cache-busted script URL')
   assert(fs.existsSync(path.join(installedTalk, 'public', installedMatch[0])), 'installed package build writes bundle')
   assert(fs.existsSync(path.join(installedTalk, 'public', 'peerjs.min.js')), 'installed package build copies PeerJS runtime')
+  assert(installedHtml.includes('<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">'), 'installed package build locks mobile viewport zoom')
 
   const devStyleBundle = path.join(installedTalk, 'public', 'power-slides-dev-smoke.js')
   execFileSync(installedBrowserify, [

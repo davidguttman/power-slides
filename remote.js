@@ -380,7 +380,9 @@ function showRemoteOptions (PS, state) {
       background: 'rgba(0, 0, 0, 0.78)',
       color: 'white',
       'font-family': 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
-      'font-size': '16px'
+      'font-size': '16px',
+      'overscroll-behavior': 'none',
+      'touch-action': 'manipulation'
     }
   })
 
@@ -411,7 +413,10 @@ function remoteOptionsPanel (PS, state) {
       background: '#111',
       border: '1px solid rgba(255, 255, 255, 0.2)',
       'border-radius': '16px',
-      'box-shadow': '0 16px 60px rgba(0, 0, 0, 0.55)'
+      'box-shadow': '0 16px 60px rgba(0, 0, 0, 0.55)',
+      '-webkit-overflow-scrolling': 'touch',
+      'overscroll-behavior': 'contain',
+      'touch-action': 'pan-y'
     }
   }, [
     h('div', {
@@ -492,7 +497,8 @@ function controllerView (PS, state) {
   return h('div.ps-controller-view', {
     style: {
       display: 'grid',
-      gap: '14px'
+      gap: '14px',
+      'touch-action': 'manipulation'
     }
   }, [
     controllerPreviewsView(PS, state),
@@ -527,13 +533,13 @@ function controllerPreviewsView (PS, state) {
 function slidePreviewCard (PS, slideNumber, slideCount, label, variant) {
   const isNext = variant === 'next'
   const body = h('div.ps-controller-preview-body', { style: getPreviewViewportStyle() })
-  const stage = h('div.ps-controller-preview-stage', { style: getPreviewStageStyle() })
-  body.appendChild(stage)
+  const frame = createPreviewFrame()
+  body.appendChild(frame)
 
-  renderSlidePreview(PS && PS.slides, slideNumber, stage, {
+  renderSlidePreviewFrame(PS && PS.slides, slideNumber, frame, {
     emptyText: isNext ? 'No next slide' : 'No current slide'
   })
-  fitPreviewStage(body, stage)
+  fitPreviewStage(body, frame)
 
   return h('section.ps-controller-preview-card', {
     'aria-label': label + (slideNumber ? (' slide ' + slideNumber + ' of ' + slideCount) : ''),
@@ -556,6 +562,47 @@ function slidePreviewCard (PS, slideNumber, slideCount, label, variant) {
   ])
 }
 
+function createPreviewFrame () {
+  const frame = h('iframe.ps-controller-preview-frame', {
+    title: 'Slide preview',
+    tabindex: '-1',
+    sandbox: 'allow-same-origin',
+    srcdoc: '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"></head><body></body></html>',
+    style: getPreviewStageStyle()
+  })
+
+  frame.setAttribute('aria-hidden', 'true')
+  return frame
+}
+
+function renderSlidePreviewFrame (slides, slideNumber, frame, opts) {
+  opts = opts || {}
+
+  function render () {
+    const doc = frame.contentDocument || (frame.contentWindow && frame.contentWindow.document)
+    if (!doc || !doc.body) return renderSlidePreview(slides, slideNumber, frameFallbackTarget(frame), opts)
+
+    doc.documentElement.style.cssText = 'width:100%;height:100%;margin:0;overflow:hidden;background:#000;'
+    doc.body.style.cssText = 'width:100%;height:100%;margin:0;overflow:hidden;background:#000;'
+    renderSlidePreview(slides, slideNumber, doc.body, opts)
+  }
+
+  if (frame.contentDocument && frame.contentDocument.body) render()
+  frame.onload = render
+}
+
+function frameFallbackTarget (frame) {
+  if (!frame._psFallbackTarget) {
+    frame._psFallbackTarget = h('div', {
+      style: {
+        width: '100%',
+        height: '100%',
+        background: '#000'
+      }
+    })
+  }
+  return frame._psFallbackTarget
+}
 function renderSlidePreview (slides, slideNumber, target, opts) {
   opts = opts || {}
   if (!target) return
@@ -637,7 +684,10 @@ function getPreviewViewportStyle () {
     position: 'relative',
     background: '#050505',
     border: '1px solid rgba(255, 255, 255, 0.14)',
-    'border-radius': '12px'
+    'border-radius': '12px',
+    'touch-action': 'none',
+    '-webkit-user-select': 'none',
+    'user-select': 'none'
   }
 }
 
@@ -655,7 +705,9 @@ function getPreviewStageStyle (scale) {
     'justify-content': 'center',
     'align-items': 'center',
     background: '#000',
-    'pointer-events': 'none'
+    border: 0,
+    'pointer-events': 'none',
+    'touch-action': 'none'
   }
 }
 
@@ -716,7 +768,10 @@ function remoteButtonStyle () {
     'border-radius': '10px',
     background: 'rgba(255, 255, 255, 0.12)',
     color: 'white',
-    cursor: 'pointer'
+    cursor: 'pointer',
+    'touch-action': 'manipulation',
+    '-webkit-user-select': 'none',
+    'user-select': 'none'
   }
 }
 

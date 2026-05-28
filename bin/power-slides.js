@@ -12,6 +12,7 @@ const packageVersion = packageInfo.version || '0.0.0'
 const esmifyRoot = resolveEsmifyRoot(packageRoot)
 const defaultSlideSpecNames = ['slides.yaml', 'slides.yml', 'slides.json']
 const peerScriptName = 'peerjs.min.js'
+const viewportMetaContent = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover'
 
 main().catch(function (err) {
   console.error(err.stack || err.message || err)
@@ -267,7 +268,7 @@ function writeHtml (htmlPath, scriptName, opts) {
 <html>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="${escapeHtml(viewportMetaContent)}">
   <title>${title}</title>
 </head>
 <body>

@@ -238,7 +238,7 @@ test('builds defensive preview models for missing and available slides', functio
   })
 })
 
-test('controller previews contain-scale a full slide stage', function () {
+test('controller previews contain-scale a full 16:9 iframe viewport', function () {
   assert.equal(remote.PREVIEW_ASPECT_RATIO, '1280 / 720')
 
   const viewportStyle = remote.getPreviewViewportStyle()
@@ -246,6 +246,8 @@ test('controller previews contain-scale a full slide stage', function () {
   assert.equal(viewportStyle['aspect-ratio'], '1280 / 720')
   assert.equal(viewportStyle.position, 'relative')
   assert.equal(viewportStyle.overflow, 'hidden')
+  assert.equal(viewportStyle['touch-action'], 'none')
+  assert.equal(viewportStyle['user-select'], 'none')
 
   const stageStyle = remote.getPreviewStageStyle(0.5)
   assert.equal(stageStyle.width, '1280px')
@@ -253,6 +255,8 @@ test('controller previews contain-scale a full slide stage', function () {
   assert.equal(stageStyle.transform, 'translate(-50%, -50%) scale(0.5)')
   assert.equal(stageStyle['transform-origin'], 'center center')
   assert.equal(stageStyle.overflow, 'visible')
+  assert.equal(stageStyle.border, 0)
+  assert.equal(stageStyle['touch-action'], 'none')
 
   assert.equal(remote.getPreviewStageScale(320, 180), 0.25)
   assert.equal(remote.getPreviewStageScale(320, 320), 0.25)
