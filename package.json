@@ -1,6 +1,6 @@
 {
   "name": "power-slides",
-  "version": "2.1.3",
+  "version": "2.1.4",
   "description": "ESM-first reusable talk kit and tiny slideshow runtime for content-only browser talks.",
   "main": "index.js",
   "scripts": {
