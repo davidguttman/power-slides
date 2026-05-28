@@ -116,8 +116,8 @@ async function dev (argv) {
     }
   })
 
-  const budoBin = path.join(packageRoot, 'node_modules', '.bin', process.platform === 'win32' ? 'budo.cmd' : 'budo')
-  const args = [prepared.entryPath, '--dir', outDir, '--serve', serve, '--live', '--port', String(opts.port || process.env.PORT || 9966)]
+  const budoScript = require.resolve('budo/bin/cmd.js')
+  const args = [budoScript, prepared.entryPath, '--dir', outDir, '--serve', serve, '--live', '--port', String(opts.port || process.env.PORT || 9966)]
   if (opts.open) args.push('--open')
   args.push('--', '-p', '[', require.resolve('esmify'), '--basedir', esmifyRoot, ']', '-r', path.join(packageRoot, 'index.mjs') + ':power-slides')
 
@@ -125,7 +125,7 @@ async function dev (argv) {
   console.log('Starting budo for ' + talkDir)
   console.log('Serving ' + outDir)
   console.log('Watching ' + path.relative(talkDir, prepared.slidesPath))
-  const child = spawn(budoBin, args, { stdio: 'inherit' })
+  const child = spawn(process.execPath, args, { stdio: 'inherit' })
   child.on('exit', code => {
     watcher.close()
     process.exit(code || 0)
@@ -362,6 +362,7 @@ function shouldSkipExampleStarterPath (relative, stat) {
     if (/^(package(?:-lock)?|npm-shrinkwrap)\.json$/.test(basename)) return true
     if (/^(yarn|pnpm)-lock\.yaml$/.test(basename)) return true
     if (normalized === 'public/index.html') return true
+    if (normalized === 'public/peerjs.min.js') return true
     if (/^public\/power-slides\.[a-f0-9]+\.js$/.test(normalized)) return true
   }
 
@@ -404,14 +405,14 @@ function escapeHtml (value) {
 function sampleReadme () {
   return `# Talk
 
-This is a power-slides talk based on the packaged example starter. The content stays in \`slides.yaml\`, optional custom behavior stays in \`talk.js\`, and the local \`package.json\` lets npm-compatible runners install and run the talk.
+This is a minimal power-slides talk starter. The content stays in \`slides.yaml\`, optional custom behavior stays in the commented \`talk.js\` stub, and the local \`package.json\` lets npm-compatible runners install and run the talk.
 
 ## Files
 
 - \`package.json\` installs the published \`power-slides\` package as a dev dependency and exposes runner-friendly npm scripts.
-- \`slides.yaml\` contains slide content and presenter notes.
-- \`talk.js\` is optional ESM for theming, custom renderers, and escape hatches.
-- \`public/\` is served at the web root for example media, generated images, video, fonts, etc.
+- \`slides.yaml\` contains the five-slide starter: title, reusable app shell, media image, iPhone iframe, and closing summary.
+- \`talk.js\` is a commented optional ESM stub for theming, custom renderers, and escape hatches.
+- \`public/\` is served at the web root for media such as the bundled \`sample.svg\` image.
 - \`assets/\` is for source assets you do not serve directly.
 
 Install once, then run with npm scripts:
@@ -475,6 +476,6 @@ export default {
 }
 \`\`\`
 
-See the package README for the longer reference and more examples.
+See the package README for the longer reference. For custom renderers and animated slides, look at \`examples/showcase/\` in the power-slides package.
 `
 }

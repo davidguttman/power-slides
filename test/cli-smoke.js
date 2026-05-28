@@ -9,6 +9,14 @@ const root = path.resolve(__dirname, '..')
 const cli = path.join(root, 'bin', 'power-slides.js')
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'power-slides-'))
 const talk = path.join(tmp, 'talk')
+const generatedExamplePeerScript = path.join(root, 'example', 'public', 'peerjs.min.js')
+
+function cleanupGeneratedExampleArtifacts () {
+  fs.rmSync(generatedExamplePeerScript, { force: true })
+}
+
+cleanupGeneratedExampleArtifacts()
+process.on('exit', cleanupGeneratedExampleArtifacts)
 
 function runCliWithBlockedBuildDeps (args) {
   const script = `
@@ -40,12 +48,14 @@ const Module = require('module')
 const path = require('path')
 const cli = ${JSON.stringify(cli)}
 const talkDir = ${JSON.stringify(talkDir)}
+let spawnBin = null
 let spawnArgs = null
 const originalLoad = Module._load
 Module._load = function (request, parent, isMain) {
   if (request === 'child_process') {
     return {
       spawn (bin, args) {
+        spawnBin = bin
         spawnArgs = args
         return new EventEmitter()
       }
@@ -56,8 +66,11 @@ Module._load = function (request, parent, isMain) {
 process.argv = [process.execPath, cli, 'dev', talkDir, '--port', '9876']
 require(cli)
 if (!spawnArgs) throw new Error('dev did not spawn budo')
-if (path.basename(spawnArgs[0]) !== 'entry.js') throw new Error('dev entry arg is not generated entry.js: ' + spawnArgs[0])
-if (path.basename(path.dirname(spawnArgs[0])) !== '.power-slides') throw new Error('dev entry is not in .power-slides: ' + spawnArgs[0])
+if (spawnBin !== process.execPath) throw new Error('dev should spawn budo with the current Node executable: ' + spawnBin)
+if (!/budo[\\/]bin[\\/]cmd[.]js$/.test(spawnArgs[0])) throw new Error('dev first arg is not the resolved budo JS entry: ' + spawnArgs[0])
+if (!fs.existsSync(spawnArgs[0])) throw new Error('dev resolved budo JS entry does not exist: ' + spawnArgs[0])
+if (path.basename(spawnArgs[1]) !== 'entry.js') throw new Error('dev entry arg is not generated entry.js: ' + spawnArgs[1])
+if (path.basename(path.dirname(spawnArgs[1])) !== '.power-slides') throw new Error('dev entry is not in .power-slides: ' + spawnArgs[1])
 setTimeout(function () {
   fs.writeFileSync(path.join(talkDir, 'slides.yaml'), ${JSON.stringify(updatedSlides)})
 }, 100)
@@ -98,7 +111,9 @@ assert(packageReadme.includes('slides(slides, PS)') && packageReadme.includes('r
 assert(packageReadme.includes('npm install') && packageReadme.includes('npm run dev') && packageReadme.includes('powerslides dev .'), 'package README documents npm install/scripts flow')
 assert(packageReadme.includes('bundled PeerJS runtime') && packageReadme.includes('remote: false') && packageReadme.includes('Enable remote control'), 'package README documents CLI remote/options defaults')
 
+fs.writeFileSync(generatedExamplePeerScript, 'generated PeerJS runtime artifact\n')
 runCliWithBlockedBuildDeps(['init', talk])
+cleanupGeneratedExampleArtifacts()
 
 assert(fs.existsSync(path.join(talk, 'slides.yaml')), 'init writes slides.yaml')
 assert(!fs.existsSync(path.join(talk, 'slides.yml')), 'init does not write slides.yml by default')
@@ -133,26 +148,33 @@ assert(!fs.existsSync(path.join(talk, 'package-lock.json')), 'init does not copy
 assert(!fs.existsSync(path.join(talk, 'node_modules')), 'init does not copy node_modules')
 assert(!fs.existsSync(path.join(talk, '.power-slides')), 'init does not copy generated entry directory')
 assert(!fs.existsSync(path.join(talk, 'public', 'index.html')), 'init does not copy generated public index')
+assert(!fs.existsSync(path.join(talk, 'public', 'peerjs.min.js')), 'init does not copy generated PeerJS runtime')
 assert(!fs.readdirSync(path.join(talk, 'public')).some(name => /^power-slides\.[a-f0-9]+\.js$/.test(name)), 'init does not copy generated public bundle')
 
 const exampleSlidesSource = fs.readFileSync(path.join(root, 'example', 'slides.yaml'), 'utf8')
 const exampleTalkSource = fs.readFileSync(path.join(root, 'example', 'talk.js'), 'utf8')
 assert.strictEqual(fs.readFileSync(path.join(talk, 'slides.yaml'), 'utf8'), exampleSlidesSource, 'init copies packaged example slides.yaml')
 assert.strictEqual(fs.readFileSync(path.join(talk, 'talk.js'), 'utf8'), exampleTalkSource, 'init copies packaged example talk.js')
-for (const media of ['fist-bump.gif', 'multipass.gif', 'spin.mp4']) {
+for (const media of ['sample.svg']) {
   assert.deepStrictEqual(
     fs.readFileSync(path.join(talk, 'public', media)),
     fs.readFileSync(path.join(root, 'example', 'public', media)),
-    'init copies example public media ' + media
+    'init copies starter public media ' + media
   )
 }
+assert(!fs.existsSync(path.join(talk, 'public', 'spin.mp4')), 'init starter does not copy showcase video media')
 
 const initializedSpec = yaml.load(fs.readFileSync(path.join(talk, 'slides.yaml'), 'utf8'))
 const exampleSpec = yaml.load(exampleSlidesSource)
 assert.deepStrictEqual(initializedSpec, exampleSpec, 'init slides parse identically to packaged example')
 assert(!Object.prototype.hasOwnProperty.call(initializedSpec, 'title'), 'init example has no top-level title metadata')
-assert.strictEqual(initializedSpec.slides[0].title, 'Content-only talks', 'init example uses first slide as title slide')
-assert.strictEqual(initializedSpec.slides[0].subtitle, 'slides.yaml + optional ESM talk.js', 'init example advertises YAML by default')
+assert.strictEqual(initializedSpec.slides.length, 5, 'init starter has the requested five-slide minimal set')
+assert.strictEqual(initializedSpec.slides[0].title, 'power-slides starter', 'init starter opens with the requested title')
+assert.strictEqual(initializedSpec.slides[0].subtitle, 'slides.yaml + optional talk.js', 'init starter shows slides.yaml plus optional talk.js')
+assert.strictEqual(initializedSpec.slides[1].title, 'CLI owns the shell', 'init starter explains the reusable app shell')
+assert(/dev\/build/.test(initializedSpec.slides[1].subtitle), 'init starter mentions dev/build shell ownership')
+assert.strictEqual(initializedSpec.slides[2].type, 'image', 'init starter includes a simple built-in media slide')
+assert.strictEqual(initializedSpec.slides[2].src, '/sample.svg', 'init starter media slide uses the tiny bundled SVG')
 const initializedIframe = initializedSpec.slides.find(slide => slide.type === 'iframe')
 assert(initializedIframe, 'init example includes an iframe slide')
 assert.strictEqual(initializedIframe.src, 'https://david.app/', 'init example iframe embeds david.app as an external URL')
@@ -161,6 +183,9 @@ assert.strictEqual(initializedIframe.layout, 'phone-right', 'init example demons
 assert(initializedIframe.side && initializedIframe.side.title && initializedIframe.side.bullets.length, 'init example includes reusable side copy')
 assert(!initializedIframe.srcdoc, 'init example iframe is a real external iframe, not srcdoc')
 assert(!initializedIframe.hint, 'init example does not render distracting text hint copy')
+assert.strictEqual(initializedSpec.slides[4].type, 'summary', 'init starter closes with summary/next steps')
+assert(initializedSpec.slides[4].card.bullets.some(item => /talk\.js stub/.test(item)), 'init starter points to the commented talk.js stub')
+assert(initializedSpec.slides[4].card.bullets.some(item => /examples\/showcase/.test(item)), 'init starter points to the showcase example for custom renderers')
 
 const nonEmpty = path.join(tmp, 'non-empty')
 fs.mkdirSync(nonEmpty)
@@ -176,7 +201,7 @@ assert.strictEqual(fs.readFileSync(path.join(nonEmpty, 'keep.txt'), 'utf8'), 'ke
 assert(fs.existsSync(path.join(nonEmpty, 'talk.js')), 'init --force fills missing example files')
 
 assert(!Object.prototype.hasOwnProperty.call(exampleSpec, 'title'), 'example has no top-level title metadata')
-assert.strictEqual(exampleSpec.slides[0].title, 'Content-only talks', 'example uses first slide as title slide')
+assert.strictEqual(exampleSpec.slides[0].title, 'power-slides starter', 'example uses first slide as title slide')
 const exampleIframe = exampleSpec.slides.find(slide => slide.type === 'iframe')
 assert(exampleIframe, 'example includes an iframe slide')
 assert.strictEqual(exampleIframe.src, 'https://david.app/', 'example iframe embeds david.app as an external URL')
@@ -209,7 +234,7 @@ assert(match, 'build writes cache-busted script URL')
 assert(fs.existsSync(path.join(publicDir, match[0])), 'build writes bundle')
 assert(!html.includes('entry.js'), 'build HTML points at production bundle')
 
-assert(html.includes('<title>Content-only talks</title>'), 'build infers HTML title from first YAML slide')
+assert(html.includes('<title>power-slides starter</title>'), 'build infers HTML title from first YAML slide')
 assert(html.includes('<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">'), 'build HTML locks mobile viewport zoom')
 const generatedEntry = fs.readFileSync(path.join(talk, '.power-slides', 'entry.js'), 'utf8')
 const generatedSlides = JSON.parse(fs.readFileSync(path.join(talk, '.power-slides', 'slides.json'), 'utf8'))
@@ -217,8 +242,8 @@ assert(generatedEntry.includes("import spec from './slides.json'"), 'generated e
 assert(generatedEntry.includes('remoteOptions') && generatedEntry.includes('remote: remoteOptions'), 'generated entry enables remote/options shell by default')
 assert(html.includes('<script src="./peerjs.min.js"></script>') && html.indexOf('peerjs.min.js') < html.indexOf(match[0]), 'build HTML loads bundled PeerJS before the deck bundle')
 assert(fs.existsSync(path.join(publicDir, 'peerjs.min.js')), 'build copies bundled PeerJS into public output')
-assert(!generatedEntry.includes('Content-only talks'), 'generated entry does not bake slide title content')
-assert(!generatedEntry.includes('slides.yaml + optional ESM talk.js'), 'generated entry does not bake slide subtitle content')
+assert(!generatedEntry.includes('power-slides starter'), 'generated entry does not bake slide title content')
+assert(!generatedEntry.includes('slides.yaml + optional talk.js'), 'generated entry does not bake slide subtitle content')
 assert.deepStrictEqual(generatedSlides, initializedSpec, 'generated slides.json matches parsed YAML spec')
 
 const devWatchTalk = path.join(tmp, 'dev-watch-talk')
@@ -248,7 +273,8 @@ try {
   assert.strictEqual(installedTalkPackage.devDependencies['power-slides'], '^' + rootPackage.version, 'installed power-slides init uses current package version in generated devDependency')
   assert.strictEqual(installedTalkPackage.scripts.dev, 'powerslides dev .', 'installed power-slides init writes powerslides dev script')
   assert.strictEqual(installedTalkPackage.scripts.build, 'powerslides build .', 'installed power-slides init writes powerslides build script')
-  assert(fs.existsSync(path.join(installedTalk, 'public', 'spin.mp4')), 'installed power-slides init copies example media')
+  assert(fs.existsSync(path.join(installedTalk, 'public', 'sample.svg')), 'installed power-slides init copies starter media')
+  assert(!fs.existsSync(path.join(installedTalk, 'public', 'spin.mp4')), 'installed power-slides init does not copy showcase video media')
   assert(!fs.existsSync(path.join(installedTalk, 'public', 'index.html')), 'installed power-slides init excludes generated public index')
   const installedAliasTalk = path.join(tmp, 'installed-alias-talk')
   const installedAliasCli = path.join(binDir, process.platform === 'win32' ? 'powerslides.cmd' : 'powerslides')
@@ -261,6 +287,49 @@ try {
   assert(fs.existsSync(path.join(installedTalk, 'public', installedMatch[0])), 'installed package build writes bundle')
   assert(fs.existsSync(path.join(installedTalk, 'public', 'peerjs.min.js')), 'installed package build copies PeerJS runtime')
   assert(installedHtml.includes('<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">'), 'installed package build locks mobile viewport zoom')
+
+  const installedNestedBudoBin = path.join(installedPackageRoot, 'node_modules', '.bin', process.platform === 'win32' ? 'budo.cmd' : 'budo')
+  assert(!fs.existsSync(installedNestedBudoBin), 'installed smoke uses flattened dependencies, not a nested power-slides budo bin')
+  const installedBudoScript = execFileSync(process.execPath, ['-e', 'console.log(require.resolve(\'budo/bin/cmd.js\'))'], { cwd: installedPackageRoot, encoding: 'utf8' }).trim()
+  assert(fs.existsSync(installedBudoScript), 'installed package can resolve budo/bin/cmd.js from flattened dependency tree')
+  assert(!installedBudoScript.startsWith(path.join(installedPackageRoot, 'node_modules')), 'installed package budo resolution does not require nested dependencies')
+
+  const installedDevSmoke = `
+const EventEmitter = require('events')
+const fs = require('fs')
+const Module = require('module')
+const path = require('path')
+const cli = ${JSON.stringify(installedCli)}
+const talkDir = ${JSON.stringify(installedTalk)}
+let spawnBin = null
+let spawnArgs = null
+const originalLoad = Module._load
+Module._load = function (request, parent, isMain) {
+  if (request === 'child_process') {
+    return {
+      spawn (bin, args) {
+        spawnBin = bin
+        spawnArgs = args
+        const child = new EventEmitter()
+        process.nextTick(function () { child.emit('exit', 0) })
+        return child
+      }
+    }
+  }
+  return originalLoad.apply(this, arguments)
+}
+process.on('exit', function () {
+  if (spawnBin !== process.execPath) throw new Error('installed dev should spawn with Node executable: ' + spawnBin)
+  if (!spawnArgs) throw new Error('installed dev did not spawn budo')
+  if (!/budo[\\/]bin[\\/]cmd[.]js$/.test(spawnArgs[0])) throw new Error('installed dev first arg is not budo JS entry: ' + spawnArgs[0])
+  if (!fs.existsSync(spawnArgs[0])) throw new Error('installed dev resolved missing budo JS entry: ' + spawnArgs[0])
+  if (spawnArgs[0].startsWith(path.join(${JSON.stringify(installedPackageRoot)}, 'node_modules'))) throw new Error('installed dev tried to use nested power-slides node_modules for budo: ' + spawnArgs[0])
+  if (path.basename(spawnArgs[1]) !== 'entry.js') throw new Error('installed dev second arg is not generated entry.js: ' + spawnArgs[1])
+})
+process.argv = [process.execPath, cli, 'dev', talkDir, '--port', '9877']
+require(cli)
+`
+  execFileSync(process.execPath, ['-e', installedDevSmoke], { cwd: installedPackageRoot, stdio: 'pipe' })
 
   const devStyleBundle = path.join(installedTalk, 'public', 'power-slides-dev-smoke.js')
   execFileSync(installedBrowserify, [
@@ -282,7 +351,7 @@ fs.writeFileSync(path.join(priority, 'slides.yml'), yaml.dump({ slides: [{ type:
 fs.writeFileSync(path.join(priority, 'slides.json'), JSON.stringify({ slides: [{ type: 'overlay', title: 'JSON title' }] }, null, 2))
 execFileSync(process.execPath, [cli, 'build', priority], { stdio: 'pipe' })
 const priorityHtml = fs.readFileSync(path.join(priority, 'public', 'index.html'), 'utf8')
-assert(priorityHtml.includes('<title>Content-only talks</title>'), 'default build prefers slides.yaml over slides.yml and slides.json')
+assert(priorityHtml.includes('<title>power-slides starter</title>'), 'default build prefers slides.yaml over slides.yml and slides.json')
 execFileSync(process.execPath, [cli, 'build', priority, '--slides', 'slides.json'], { stdio: 'pipe' })
 const explicitHtml = fs.readFileSync(path.join(priority, 'public', 'index.html'), 'utf8')
 assert(explicitHtml.includes('<title>JSON title</title>'), 'explicit --slides can select JSON spec')
@@ -480,22 +549,22 @@ import(path.join(root, 'index.mjs')).then(async mod => {
     assert.strictEqual(phoneLeftLayout.children[0], phoneLeftDevice, 'phone-left layout puts the phone first')
     assert.strictEqual(phoneLeftLayout.children[1], phoneLeftSideCopy, 'phone-left layout puts side copy after the phone')
 
-    const talkSource = fs.readFileSync(path.join(root, 'example', 'talk.js'), 'utf8')
+    const talkSource = fs.readFileSync(path.join(root, 'examples', 'showcase', 'talk.js'), 'utf8')
     const talkConfig = (await import('data:text/javascript;base64,' + Buffer.from(talkSource).toString('base64'))).default
     const talkSlides = talkConfig.slides([
       { type: 'iframe', src: 'https://david.app/', device: 'iphone', layout: 'phone-right', side: { title: 'Columns' } },
       { type: 'custom', name: 'end', title: 'Summary columns' }
     ])
     const talkIframe = talkSlides[0]
-    assert.strictEqual(talkIframe.stagePadding, 'clamp(2.2rem, 5vh, 4.2rem) clamp(3.5rem, 7vw, 7rem)', 'example iframe puts stage padding on the outer slide')
-    assert.strictEqual(talkIframe.layoutWidth, 'min(1180px, 92vw)', 'example iframe uses the shared column container width')
-    assert.strictEqual(talkIframe.layoutPadding, '0', 'example iframe leaves the inner grid unpadded')
-    assert.strictEqual(talkIframe.layoutGap, 'clamp(2.4rem, 4.8vw, 5rem)', 'example iframe uses the shared column gap')
-    assert.strictEqual(talkIframe.layoutStyle.gridTemplateColumns, 'minmax(0, 0.92fr) minmax(20rem, 0.78fr)', 'example iframe uses shared two-column proportions')
-    assert.strictEqual(talkIframe.deviceWidth, 'min(54vh, 30vw, 430px)', 'example iframe makes the phone frame larger than the previous narrow default')
-    assert.strictEqual(talkIframe.side.maxWidth, '35rem', 'example iframe side copy is capped to the shared copy rail')
-    assert.strictEqual(talkIframe.side.style.borderTop, undefined, 'example iframe side copy has no horizontal top border')
-    assert.strictEqual(talkIframe.side.style.borderBottom, undefined, 'example iframe side copy has no horizontal bottom border')
+    assert.strictEqual(talkIframe.stagePadding, 'clamp(2.2rem, 5vh, 4.2rem) clamp(3.5rem, 7vw, 7rem)', 'showcase iframe puts stage padding on the outer slide')
+    assert.strictEqual(talkIframe.layoutWidth, 'min(1180px, 92vw)', 'showcase iframe uses the shared column container width')
+    assert.strictEqual(talkIframe.layoutPadding, '0', 'showcase iframe leaves the inner grid unpadded')
+    assert.strictEqual(talkIframe.layoutGap, 'clamp(2.4rem, 4.8vw, 5rem)', 'showcase iframe uses the shared column gap')
+    assert.strictEqual(talkIframe.layoutStyle.gridTemplateColumns, 'minmax(0, 0.92fr) minmax(20rem, 0.78fr)', 'showcase iframe uses shared two-column proportions')
+    assert.strictEqual(talkIframe.deviceWidth, 'min(54vh, 30vw, 430px)', 'showcase iframe makes the phone frame larger than the previous narrow default')
+    assert.strictEqual(talkIframe.side.maxWidth, '35rem', 'showcase iframe side copy is capped to the shared copy rail')
+    assert.strictEqual(talkIframe.side.style.borderTop, undefined, 'showcase iframe side copy has no horizontal top border')
+    assert.strictEqual(talkIframe.side.style.borderBottom, undefined, 'showcase iframe side copy has no horizontal bottom border')
 
     const themedPhoneTarget = new FakeElement('section')
     mod.iframe(talkIframe.src, talkIframe)(themedPhoneTarget)

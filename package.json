@@ -6,7 +6,9 @@
   "scripts": {
     "example": "node bin/power-slides.js dev example",
     "build": "node bin/power-slides.js build example",
-    "test": "standard && node --test && node test/cli-smoke.js"
+    "test": "standard && node --test && node test/cli-smoke.js",
+    "showcase": "node bin/power-slides.js dev examples/showcase",
+    "build:showcase": "node bin/power-slides.js build examples/showcase"
   },
   "keywords": [
     "slides",
@@ -50,7 +52,8 @@
       "es2021"
     ],
     "ignore": [
-      "example/public/power-slides.*.js"
+      "example/public/power-slides.*.js",
+      "examples/**/public/power-slides.*.js"
     ]
   },
   "module": "index.mjs",
@@ -73,9 +76,13 @@
     "example/slides.yaml",
     "example/talk.js",
     "example/assets",
-    "example/public/fist-bump.gif",
-    "example/public/multipass.gif",
-    "example/public/spin.mp4",
+    "example/public/sample.svg",
+    "examples/showcase/slides.yaml",
+    "examples/showcase/talk.js",
+    "examples/showcase/assets",
+    "examples/showcase/public/fist-bump.gif",
+    "examples/showcase/public/multipass.gif",
+    "examples/showcase/public/spin.mp4",
     "README.md"
   ]
 }

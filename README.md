@@ -59,23 +59,23 @@ The generated `package.json` is intentionally minimal and runner-friendly:
     "start": "npm run dev"
   },
   "devDependencies": {
-    "power-slides": "^2.0.4"
+    "power-slides": "^2.1.3"
   }
 }
 ```
 
 `power-slides dev .` picks its port from `--port <port>`, then `$PORT`, then `9966`. The CLI dev/build shell turns on the built-in Options overlay and loads a bundled PeerJS runtime before the deck. Press `o` to reopen Options, then click **Enable remote control** to show the QR code / URL. Set `remote: false` (top-level in `talk.js` or `slides.yaml`/JSON) to disable it, or `remote: { ... }` for PeerJS/options overrides.
 
-`init` scaffolds a content-only folder by generating the local `package.json` and copying the packaged `example/` starter files:
+`init` creates a talk folder by generating the local `package.json` and copying the packaged minimal `example/` starter authoring files:
 
-- `package.json` — local npm scripts plus a dev dependency on the published package
-- `slides.yaml` — content and notes
-- `talk.js` — optional ESM custom renderers / escape hatch
-- `public/` — example media and files served at `/` (videos, generated images, fonts)
+- `package.json` — local npm scripts plus a dev dependency on the published `power-slides` package
+- `slides.yaml` — five starter slides: title/overlay, reusable app-shell overlay, simple media image, iPhone iframe with side copy, and summary/next steps
+- `talk.js` — commented optional ESM hooks; no custom animated slides in the starter
+- `public/` — files served at `/`, including the tiny starter `sample.svg` media asset
 - `assets/` — source assets not served directly
 - `README.md` — talk-local authoring notes
 
-It refuses to run in a non-empty directory unless you pass `--force` and never overwrites existing files. It copies the example media the starter needs, but does **not** copy a lockfile, `node_modules`, generated bundles, or `public/index.html`.
+It refuses to run in a non-empty directory unless you pass `--force`, and it does not overwrite existing files. It copies only the minimal starter media, not the richer animated showcase. See `examples/showcase/` for custom renderers and animated slides. It does **not** copy a lockfile, `node_modules`, generated bundles, or `public/index.html` into the talk.
 
 ## Quickstart — ESM
 
@@ -99,11 +99,9 @@ A talk is an object with a `slides` array. The title slide is just the first sli
 ```yaml
 slides:
   - type: overlay
-    eyebrow: David Guttman
-    title: My Talk
-    subtitle: Optional subtitle
-    background: /generated/title.png
-    brightness: 0.5
+    eyebrow: Start here
+    title: power-slides starter
+    subtitle: slides.yaml + optional talk.js
     notes:
       - Presenter note.
   - type: iframe
@@ -115,8 +113,15 @@ slides:
       bullets:
         - Live site
         - Parent slide copy
-  - type: custom
-    name: demo
+  - type: image
+    src: /sample.svg
+    fit: contain
+  - type: summary
+    title: Customize only when needed
+    card:
+      bullets:
+        - Use the commented talk.js stub.
+        - See examples/showcase for custom renderers.
 ```
 
 ### Common slide fields
@@ -426,8 +431,9 @@ The display stays authoritative. Remote messages are navigation intents only (`p
 ```bash
 npm install
 npm test          # standard linting, node remote tests, and CLI smoke tests
-npm run build     # builds the bundled example; no long-lived server
-npm run example   # live-reloading example deck; starts budo
+npm run build    # builds the minimal init starter; no long-lived server
+npm run example  # live-reloading minimal starter; starts budo
+npm run build:showcase # builds examples/showcase custom-renderer deck
 ```
 
 PRs welcome. The core runtime stays small while the reusable talk shell keeps talks content-only; remote/options behavior is isolated in `remote.js` so it can move into a future app shell or ESM export cleanly.
