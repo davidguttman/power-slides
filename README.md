@@ -181,7 +181,7 @@ Large quote/text slide with an optional image column and optional background.
 
 Fields: `quote` (or `text`), `eyebrow`, side image `image` (or `img`/`src`), `background`, `brightness`, `font`, `color`, and `size`.
 
-Layout fields: `columns` (or `gridTemplateColumns`), `gap`, `padding`, `alignItems`, and `justifyItems`. Copy placement fields: `align`/`copyAlign`, `copyJustify`, `copyAlignSelf`, `copyMaxWidth`, and `copyStyle`. Image fields: `fit`, `maxHeight`/`imageMaxHeight`, `maxWidth`/`imageMaxWidth`, `radius`, `shadow` (`false` removes shadow), `imageAlign`, `imageJustify`, `imageAlignSelf`, `imageJustifySelf`, `mediaStyle`, and `imageStyle`.
+Layout fields: `columns` (or `gridTemplateColumns`), `rows` (or `gridTemplateRows`), `gap`, `padding`, `alignItems`, and `justifyItems`. Copy placement fields: `align`/`copyAlign`, `copyJustify`, `copyAlignSelf`, `copyMaxWidth`, and `copyStyle`. Image fields: `fit`, `maxHeight`/`imageMaxHeight`, `maxWidth`/`imageMaxWidth`, `radius`, `shadow` (`false` removes shadow), `imageAlign`, `imageJustify`, `imageAlignSelf`, `imageJustifySelf`, `mediaStyle`, and `imageStyle`.
 
 #### `chart`
 

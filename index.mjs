@@ -358,6 +358,7 @@ export function quote (opts) {
         minWidth: 0,
         display: 'grid',
         gridTemplateColumns: opts.columns || opts.gridTemplateColumns || (img ? 'minmax(0, 0.82fr) minmax(0, 1.18fr)' : 'minmax(0, 1fr)'),
+        gridTemplateRows: opts.rows || opts.gridTemplateRows || 'minmax(0, 1fr)',
         gap: opts.gap || (img ? 'clamp(1.5rem, 3vw, 3.25rem)' : 0),
         alignItems: opts.alignItems || 'center',
         justifyItems: opts.justifyItems || 'stretch',
@@ -844,6 +845,7 @@ function quoteCopyStyle (opts, hasImage) {
   return Object.assign({
     boxSizing: 'border-box',
     minWidth: 0,
+    minHeight: 0,
     maxWidth: opts.copyMaxWidth || (hasImage ? 'min(34rem, 100%)' : 'min(58rem, 100%)'),
     justifySelf: opts.copyJustify || (hasImage ? 'end' : 'center'),
     alignSelf: opts.copyAlignSelf || 'center',
@@ -855,6 +857,7 @@ function quoteMediaStyle (opts) {
   return Object.assign({
     boxSizing: 'border-box',
     minWidth: 0,
+    minHeight: 0,
     width: '100%',
     height: '100%',
     display: 'flex',
