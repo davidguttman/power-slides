@@ -59,7 +59,7 @@ The generated `package.json` is intentionally minimal and runner-friendly:
     "start": "npm run dev"
   },
   "devDependencies": {
-    "power-slides": "^2.1.4"
+    "power-slides": "^2.1.5"
   }
 }
 ```
