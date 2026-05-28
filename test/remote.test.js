@@ -1,6 +1,7 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const remote = require('../remote')._test
+const packageJson = require('../package.json')
 
 test('builds a remote URL with peer id and pair key query params', function () {
   assert.equal(
@@ -47,6 +48,63 @@ test('first controller hello stores the winning controller id', function () {
   assert.deepEqual(conn.sent, [])
 })
 
+test('accepted controller hello closes open deck options', function () {
+  const storage = memoryStorage()
+  const state = deckState(storage)
+  const conn = fakeConnection()
+  const overlay = { name: 'options' }
+  let closeCount = 0
+
+  state.overlay = overlay
+  state.closeOptions = function () {
+    closeCount += 1
+    state.overlay = null
+  }
+
+  assert.equal(remote.acceptDeckHello(state, conn, remote.buildHelloMessage('pair-1', 'client-a')), true)
+  assert.equal(closeCount, 1)
+  assert.equal(state.overlay, null)
+})
+
+test('rejected controller hello leaves open deck options visible', function () {
+  const storage = memoryStorage()
+  const state = deckState(storage)
+  const conn = fakeConnection()
+  const overlay = { name: 'options' }
+  let closeCount = 0
+
+  state.overlay = overlay
+  state.closeOptions = function () {
+    closeCount += 1
+    state.overlay = null
+  }
+
+  assert.equal(remote.acceptDeckHello(state, conn, remote.buildHelloMessage('wrong-pair', 'client-a')), false)
+  assert.equal(closeCount, 0)
+  assert.equal(state.overlay, overlay)
+})
+
+test('locked controller hello leaves open deck options visible', function () {
+  const storage = memoryStorage()
+  const state = deckState(storage)
+  const first = fakeConnection()
+  const intruder = fakeConnection()
+  const overlay = { name: 'options' }
+  let closeCount = 0
+
+  assert.equal(remote.acceptDeckHello(state, first, remote.buildHelloMessage('pair-1', 'client-a')), true)
+
+  state.overlay = overlay
+  state.closeOptions = function () {
+    closeCount += 1
+    state.overlay = null
+  }
+
+  assert.equal(remote.acceptDeckHello(state, intruder, remote.buildHelloMessage('pair-1', 'client-b')), false)
+  assert.equal(closeCount, 0)
+  assert.equal(state.overlay, overlay)
+})
+
 test('controller lock key is stable for the same deck URL across random peer IDs', function () {
   const opts = { location: 'https://talk.example/deck?foo=1#/3' }
   const reloadedOpts = { location: 'https://talk.example/deck?bar=2#/9' }
@@ -63,6 +121,18 @@ test('controller lock key can be overridden by the app shell', function () {
     remote.getControllerStorageKey({ controllerStorageKey: 'talk:custom-lock' }, 'random-peer-a'),
     'talk:custom-lock'
   )
+})
+
+test('deck peer id persists across host reloads for the same deck URL', function () {
+  const storage = memoryStorage()
+  const first = { opts: { sessionStorage: storage, location: 'https://talk.example/deck?foo=1#/3' } }
+  const reloaded = { opts: { sessionStorage: storage, location: 'https://talk.example/deck?bar=2#/9' } }
+
+  const peerId = remote.getDeckPeerId(first)
+
+  assert.match(peerId, /^deck-/)
+  assert.equal(remote.getDeckPeerId(reloaded), peerId)
+  assert.equal(storage.getItem(remote.getDeckPeerIdStorageKey(first.opts)), peerId)
 })
 
 test('locked deck ignores pair key and only accepts the stored client id', function () {
@@ -83,6 +153,31 @@ test('locked deck ignores pair key and only accepts the stored client id', funct
   assert.deepEqual(intruder.sent, [{ type: 'locked' }])
   assert.equal(intruder.closed, true)
   assert.equal(state.activeConnection, sameClient)
+})
+
+test('reloaded deck keeps peer id and accepts stored controller despite changed pair key', function () {
+  const storage = memoryStorage()
+  const firstState = deckState(storage)
+  const first = fakeConnection()
+
+  firstState.opts.location = 'https://talk.example/deck?foo=1#/3'
+  const peerId = remote.getDeckPeerId(firstState)
+
+  assert.equal(remote.acceptDeckHello(firstState, first, remote.buildHelloMessage('pair-1', 'client-a')), true)
+
+  const reloadedState = deckState(storage)
+  const sameClient = fakeConnection()
+  const intruder = fakeConnection()
+
+  reloadedState.opts.location = 'https://talk.example/deck?bar=2#/9'
+  reloadedState.pairKey = 'pair-2'
+
+  assert.equal(remote.getDeckPeerId(reloadedState), peerId)
+  assert.equal(remote.acceptDeckHello(reloadedState, sameClient, remote.buildHelloMessage('old-pair', 'client-a')), true)
+  assert.equal(reloadedState.activeConnection, sameClient)
+
+  assert.equal(remote.acceptDeckHello(reloadedState, intruder, remote.buildHelloMessage('pair-2', 'client-b')), false)
+  assert.deepEqual(intruder.sent, [{ type: 'locked' }])
 })
 
 test('same client reconnect replaces the previous active connection', function () {
@@ -108,6 +203,178 @@ test('locked controller status survives the close event', function () {
 
   remote.handleControllerClose(state)
   assert.equal(state.status, 'Deck locked to another controller')
+})
+
+test('controller schedules reconnect after deck connection closes', function () {
+  let scheduled = null
+  const connections = []
+  const state = {
+    opts: {
+      reconnectMs: 5,
+      setTimeout: function (callback, delay) {
+        scheduled = { callback, delay }
+        return 'timer-1'
+      },
+      clearTimeout: function () {}
+    },
+    peer: {
+      connect: function (id, opts) {
+        const conn = fakeEventConnection(id, opts)
+        connections.push(conn)
+        return conn
+      }
+    },
+    deckId: 'deck-1',
+    clientId: 'client-a',
+    pairKey: 'pair-1',
+    status: '',
+    deckLocked: false,
+    reconnectTimer: null,
+    reconnectAttempts: 0
+  }
+
+  const first = remote.connectControllerDeck(null, state)
+  first.emit('open')
+
+  assert.deepEqual(first.sent, [remote.buildHelloMessage('pair-1', 'client-a')])
+
+  first.emit('close')
+
+  assert.equal(state.status, 'Reconnecting to deck...')
+  assert.equal(state.reconnectAttempts, 1)
+  assert.equal(scheduled.delay, 5)
+
+  scheduled.callback()
+
+  assert.equal(connections.length, 2)
+  assert.equal(state.deckConnection, connections[1])
+
+  connections[1].emit('open')
+
+  assert.equal(state.status, 'Connected to deck')
+  assert.equal(state.reconnectAttempts, 0)
+  assert.deepEqual(connections[1].sent, [remote.buildHelloMessage('pair-1', 'client-a')])
+})
+
+test('controller clears pending reconnect when current connection opens', function () {
+  const timers = []
+  const connections = []
+  const state = controllerReconnectState({
+    opts: {
+      reconnectMs: 5,
+      setTimeout: function (callback, delay) {
+        const timer = { callback, delay, active: true }
+        timers.push(timer)
+        return timer
+      },
+      clearTimeout: function (timer) {
+        timer.active = false
+      }
+    },
+    connections
+  })
+
+  const first = remote.connectControllerDeck(null, state)
+
+  assert.equal(remote.scheduleControllerReconnect(null, state), true)
+  assert.equal(timers.length, 1)
+  assert.equal(timers[0].active, true)
+  assert.equal(state.reconnectTimer, timers[0])
+
+  first.emit('open')
+
+  assert.equal(timers[0].active, false)
+  assert.equal(state.reconnectTimer, null)
+  assert.equal(connections.length, 1)
+
+  if (timers[0].active) timers[0].callback()
+
+  assert.equal(connections.length, 1)
+})
+
+test('stale controller connection data cannot mutate current state', function () {
+  const connections = []
+  const state = controllerReconnectState({ connections })
+
+  const stale = remote.connectControllerDeck(null, state)
+  const current = remote.connectControllerDeck(null, state)
+
+  assert.equal(state.deckConnection, current)
+
+  stale.emit('data', { type: 'locked' })
+  stale.emit('data', { type: 'state', slideNumber: 9, slideCount: 10, notes: ['stale'] })
+
+  assert.equal(state.deckLocked, false)
+  assert.equal(state.slideNumber, 1)
+  assert.equal(state.slideCount, 3)
+  assert.deepEqual(state.notes, [])
+
+  current.emit('data', { type: 'state', slideNumber: 2, slideCount: 3, notes: ['current'] })
+
+  assert.equal(state.slideNumber, 2)
+  assert.equal(state.slideCount, 3)
+  assert.deepEqual(state.notes, ['current'])
+})
+
+test('deck peer id collision clears stored generated id and retries', function () {
+  const storage = memoryStorage()
+  const state = {
+    opts: { sessionStorage: storage, location: 'https://talk.example/deck' },
+    status: 'Starting remote...'
+  }
+  const key = remote.getDeckPeerIdStorageKey(state.opts)
+  storage.setItem(key, 'deck-stale')
+
+  const peers = []
+  function Peer (id) {
+    this.id = id
+    this.destroyed = false
+    this.handlers = {}
+    this.on = function (event, handler) {
+      this.handlers[event] = handler
+    }
+    this.destroy = function () {
+      this.destroyed = true
+    }
+    peers.push(this)
+  }
+
+  state.peer = new Peer('deck-stale')
+
+  assert.equal(remote.recoverDeckPeerId(null, state, { type: 'unavailable-id', message: 'ID is taken' }, Peer), true)
+  assert.equal(peers[0].destroyed, true)
+  assert.equal(peers.length, 2)
+  assert.notEqual(peers[1].id, 'deck-stale')
+  assert.equal(storage.getItem(key), peers[1].id)
+})
+
+test('explicit deck peer id collision reports error without regenerating id', function () {
+  const storage = memoryStorage()
+  const state = {
+    opts: { peerId: 'deck-explicit', sessionStorage: storage, location: 'https://talk.example/deck' },
+    peer: { destroy: function () { throw new Error('should not destroy') } }
+  }
+
+  assert.equal(remote.recoverDeckPeerId(null, state, { type: 'unavailable-id', message: 'ID is taken' }, function Peer () {}), false)
+  assert.equal(remote.getDeckPeerId(state), 'deck-explicit')
+})
+
+test('locked controller does not schedule reconnect', function () {
+  let scheduled = false
+  const state = {
+    opts: {
+      setTimeout: function () {
+        scheduled = true
+      }
+    },
+    peer: {},
+    deckId: 'deck-1',
+    deckLocked: true,
+    reconnectTimer: null
+  }
+
+  assert.equal(remote.scheduleControllerReconnect(null, state), false)
+  assert.equal(scheduled, false)
 })
 
 test('normalizes PeerJS constructor exports from ESM and CommonJS bundles', function () {
@@ -295,6 +562,10 @@ test('o opens options unless the user is typing or using a modifier chord', func
   assert.equal(remote.isOptionsKey({ key: 'o', target: { isContentEditable: true } }), false)
 })
 
+test('options panel version follows package.json', function () {
+  assert.equal(remote.PACKAGE_VERSION, packageJson.version)
+})
+
 test('documents the visible options button hide delay', function () {
   assert.equal(remote.DEFAULT_BUTTON_HIDE_MS, 5000)
 })
@@ -324,6 +595,57 @@ function fakeConnection () {
   }
 }
 
+function controllerReconnectState (opts) {
+  opts = opts || {}
+  const connections = opts.connections || []
+
+  return {
+    opts: opts.opts || {},
+    peer: {
+      connect: function (id, connectOpts) {
+        const conn = fakeEventConnection(id, connectOpts)
+        connections.push(conn)
+        return conn
+      }
+    },
+    deckId: 'deck-1',
+    clientId: 'client-a',
+    pairKey: 'pair-1',
+    status: '',
+    deckLocked: false,
+    deckConnection: null,
+    reconnectTimer: null,
+    reconnectAttempts: 0,
+    slideNumber: 1,
+    slideCount: 3,
+    notes: []
+  }
+}
+
+function fakeEventConnection (id, opts) {
+  const handlers = {}
+
+  return {
+    id,
+    opts,
+    open: true,
+    sent: [],
+    on: function (event, handler) {
+      handlers[event] = handler
+    },
+    emit: function (event, message) {
+      if (handlers[event]) handlers[event](message)
+    },
+    send: function (message) {
+      this.sent.push(message)
+    },
+    close: function () {
+      this.open = false
+      this.emit('close')
+    }
+  }
+}
+
 function memoryStorage () {
   const values = {}
 
@@ -333,6 +655,9 @@ function memoryStorage () {
     },
     setItem: function (key, value) {
       values[key] = String(value)
+    },
+    removeItem: function (key) {
+      delete values[key]
     }
   }
 }

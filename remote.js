@@ -1,11 +1,14 @@
 const h = require('hyperscript')
 const QRCode = require('qrcode-generator')
+const PACKAGE_VERSION = require('./package.json').version
 
 const DEFAULT_QUERY_PARAM = 'ps-remote'
 const DEFAULT_PAIR_PARAM = 'ps-pair'
 const DEFAULT_BUTTON_HIDE_MS = 5000
+const DEFAULT_RECONNECT_MS = 1000
 const CLIENT_ID_STORAGE_KEY = 'power-slides.remote.clientId'
 const CONTROLLER_STORAGE_PREFIX = 'power-slides.remote.controllerId'
+const DECK_PEER_ID_STORAGE_PREFIX = 'power-slides.remote.deckPeerId'
 const PREVIEW_BASE_WIDTH = 1280
 const PREVIEW_BASE_HEIGHT = 720
 const PREVIEW_ASPECT_RATIO = PREVIEW_BASE_WIDTH + ' / ' + PREVIEW_BASE_HEIGHT
@@ -17,18 +20,27 @@ module.exports._test = {
   DEFAULT_QUERY_PARAM,
   DEFAULT_PAIR_PARAM,
   DEFAULT_BUTTON_HIDE_MS,
+  DEFAULT_RECONNECT_MS,
   CLIENT_ID_STORAGE_KEY,
   CONTROLLER_STORAGE_PREFIX,
+  DECK_PEER_ID_STORAGE_PREFIX,
   PREVIEW_ASPECT_RATIO,
   PREVIEW_BASE_HEIGHT,
   PREVIEW_BASE_WIDTH,
+  PACKAGE_VERSION,
   acceptDeckHello,
   buildHelloMessage,
   clampSlideNumber,
   createQrSvg,
   generateId,
+  connectControllerDeck,
   getControllerStorageKey,
   getControllerTimerSeconds,
+  getDeckPeerId,
+  getDeckPeerIdStorageKey,
+  clearStoredDeckPeerId,
+  recoverDeckPeerId,
+  isDeckPeerIdCollisionError,
   handleControllerClose,
   handleControllerData,
   formatControllerTimer,
@@ -47,6 +59,7 @@ module.exports._test = {
   getRemoteId,
   getRemoteUrl,
   getGotoHash,
+  scheduleControllerReconnect,
   isEditableTarget,
   isOptionsKey
 }
@@ -63,11 +76,15 @@ function createRemote (PS, opts) {
     activeConnection: null,
     controllerId: null,
     clientId: null,
+    deckId: null,
     peerId: null,
     pairKey: null,
     remoteUrl: null,
     remoteEnabled: false,
     status: 'Remote control disabled',
+    deckLocked: false,
+    reconnectTimer: null,
+    reconnectAttempts: 0,
     timerStartedAt: null,
     timerNow: null,
     timerInterval: null,
@@ -114,10 +131,19 @@ function startDeckRemote (PS, state) {
     return
   }
 
-  state.peer = new Peer(state.opts.peerId, state.opts.peerOptions)
+  openDeckPeer(PS, state, Peer)
+
+  PS.on('changeSlide', function () {
+    broadcastDeckState(PS, state)
+  })
+}
+
+function openDeckPeer (PS, state, Peer) {
+  state.peer = new Peer(getDeckPeerId(state), state.opts.peerOptions)
 
   state.peer.on('open', function (id) {
     state.peerId = id
+    storeDeckPeerId(state, id)
     state.controllerId = getStoredControllerId(state)
     state.remoteUrl = getRemoteUrl(id, state.opts, window.location.href, window.location.hash, state.pairKey)
     state.status = 'Remote ready'
@@ -163,18 +189,15 @@ function startDeckRemote (PS, state) {
   })
 
   state.peer.on('error', function (err) {
+    if (recoverDeckPeerId(PS, state, err, Peer)) return
+
     state.status = err && err.message ? err.message : 'Remote error'
     updateRemoteOptions(PS, state)
-  })
-
-  PS.on('changeSlide', function () {
-    broadcastDeckState(PS, state)
   })
 }
 
 function startControllerRemote (PS, state) {
-  const deckId = getRemoteId(state.opts)
-
+  state.deckId = getRemoteId(state.opts)
   state.clientId = getOrCreateClientId(getBrowserStorage('localStorage'), CLIENT_ID_STORAGE_KEY)
   state.pairKey = getPairKey(state.opts)
   state.status = 'Connecting to deck...'
@@ -190,30 +213,102 @@ function startControllerRemote (PS, state) {
   state.peer = new Peer(state.opts.peerId, state.opts.peerOptions)
 
   state.peer.on('open', function () {
-    state.deckConnection = state.peer.connect(deckId, { reliable: true })
-
-    state.deckConnection.on('open', function () {
-      state.status = 'Connected to deck'
-      state.deckConnection.send(buildHelloMessage(state.pairKey, state.clientId))
-      updateRemoteOptions(PS, state)
-    })
-
-    state.deckConnection.on('data', function (message) {
-      if (!message) return
-
-      if (handleControllerData(state, message)) updateRemoteOptions(PS, state)
-    })
-
-    state.deckConnection.on('close', function () {
-      handleControllerClose(state)
-      updateRemoteOptions(PS, state)
-    })
+    connectControllerDeck(PS, state)
   })
 
   state.peer.on('error', function (err) {
     state.status = err && err.message ? err.message : 'Remote error'
+    if (state.role === 'controller') scheduleControllerReconnect(PS, state)
     updateRemoteOptions(PS, state)
   })
+}
+
+function connectControllerDeck (PS, state) {
+  if (!state || !state.peer || state.deckLocked) return null
+
+  clearControllerReconnect(state)
+  state.status = state.reconnectAttempts ? 'Reconnecting to deck...' : 'Connecting to deck...'
+
+  const conn = state.peer.connect(state.deckId, { reliable: true })
+  state.deckConnection = conn
+
+  conn.on('open', function () {
+    if (state.deckConnection !== conn) return
+
+    clearControllerReconnect(state)
+    state.reconnectAttempts = 0
+    state.status = 'Connected to deck'
+    conn.send(buildHelloMessage(state.pairKey, state.clientId))
+    updateRemoteOptions(PS, state)
+  })
+
+  conn.on('data', function (message) {
+    if (state.deckConnection !== conn) return
+    if (!message) return
+
+    if (handleControllerData(state, message)) updateRemoteOptions(PS, state)
+  })
+
+  conn.on('close', function () {
+    if (state.deckConnection !== conn) return
+
+    state.deckConnection = null
+    handleControllerClose(state)
+    scheduleControllerReconnect(PS, state)
+    updateRemoteOptions(PS, state)
+  })
+
+  if (typeof conn.on === 'function') {
+    conn.on('error', function (err) {
+      if (state.deckConnection !== conn) return
+
+      state.status = err && err.message ? err.message : 'Remote connection error'
+      state.deckConnection = null
+      closeConnection(conn)
+      scheduleControllerReconnect(PS, state)
+      updateRemoteOptions(PS, state)
+    })
+  }
+
+  updateRemoteOptions(PS, state)
+  return conn
+}
+
+function scheduleControllerReconnect (PS, state) {
+  if (!state || state.deckLocked || state.reconnectTimer) return false
+  if (!state.peer || !state.deckId) return false
+
+  state.reconnectAttempts = (state.reconnectAttempts || 0) + 1
+  state.status = 'Reconnecting to deck...'
+  state.reconnectTimer = setControllerTimer(state, function () {
+    state.reconnectTimer = null
+    connectControllerDeck(PS, state)
+  }, getControllerReconnectMs(state.opts))
+
+  return true
+}
+
+function clearControllerReconnect (state) {
+  if (!state || !state.reconnectTimer) return
+
+  clearControllerTimer(state, state.reconnectTimer)
+  state.reconnectTimer = null
+}
+
+function getControllerReconnectMs (opts) {
+  opts = opts || {}
+  const parsed = parseInt(opts.reconnectMs, 10)
+  return isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_RECONNECT_MS
+}
+
+function setControllerTimer (state, callback, delay) {
+  const setTimer = state.opts && state.opts.setTimeout ? state.opts.setTimeout : setTimeout
+  return setTimer(callback, delay)
+}
+
+function clearControllerTimer (state, timer) {
+  const clearTimer = state.opts && state.opts.clearTimeout ? state.opts.clearTimeout : clearTimeout
+  clearTimer(timer)
 }
 
 function loadPeer (opts) {
@@ -286,6 +381,7 @@ function acceptDeckHello (state, conn, message) {
 
   state.activeConnection = conn
   if (state.connections.indexOf(conn) === -1) state.connections.push(conn)
+  if (typeof state.closeOptions === 'function') state.closeOptions()
   return true
 }
 
@@ -426,7 +522,22 @@ function remoteOptionsPanel (PS, state) {
           gap: '16px'
         }
       }, [
-        h('h2', { style: { margin: 0 } }, 'power-slides options'),
+        h('div', {
+          style: {
+            display: 'flex',
+            'align-items': 'baseline',
+            gap: '10px',
+            'flex-wrap': 'wrap'
+          }
+        }, [
+          h('h2', { style: { margin: 0 } }, 'power-slides options'),
+          h('span', {
+            style: {
+              color: '#aaa',
+              'font-size': '0.9em'
+            }
+          }, 'v' + PACKAGE_VERSION)
+        ]),
         close
       ]),
       h('p', { style: { color: '#bbb' } }, 'Press “o” any time to reopen this overlay.'),
@@ -1000,6 +1111,87 @@ function getControllerStorageKey (opts) {
   ].join(':')
 }
 
+function getDeckPeerIdStorageKey (opts) {
+  opts = opts || {}
+  if (opts.deckPeerIdStorageKey) return opts.deckPeerIdStorageKey
+
+  return [
+    DECK_PEER_ID_STORAGE_PREFIX,
+    stableDeckIdentity(opts)
+  ].join(':')
+}
+
+function getDeckPeerId (state) {
+  state = state || {}
+  const opts = state.opts || {}
+  if (opts.peerId) return opts.peerId
+
+  const storage = opts.sessionStorage || getBrowserStorage('sessionStorage')
+  const key = getDeckPeerIdStorageKey(opts)
+  const existing = storageGet(storage, key)
+  if (existing) return existing
+
+  const peerId = generateId('deck')
+  storageSet(storage, key, peerId)
+  return peerId
+}
+
+function storeDeckPeerId (state, peerId) {
+  if (!peerId) return
+
+  state = state || {}
+  const opts = state.opts || {}
+  if (opts.peerId) return
+
+  const storage = opts.sessionStorage || getBrowserStorage('sessionStorage')
+  storageSet(storage, getDeckPeerIdStorageKey(opts), peerId)
+}
+
+function clearStoredDeckPeerId (state) {
+  state = state || {}
+  const opts = state.opts || {}
+  if (opts.peerId) return false
+
+  const storage = opts.sessionStorage || getBrowserStorage('sessionStorage')
+  storageRemove(storage, getDeckPeerIdStorageKey(opts))
+  return true
+}
+
+function recoverDeckPeerId (PS, state, err, Peer) {
+  state = state || {}
+  const opts = state.opts || {}
+  if (opts.peerId || !isDeckPeerIdCollisionError(err)) return false
+
+  Peer = Peer || loadPeer(opts)
+  if (!Peer) return false
+
+  const oldPeer = state.peer
+  clearStoredDeckPeerId(state)
+  state.peerId = null
+  state.remoteUrl = null
+  state.status = 'Remote peer ID busy. Retrying...'
+
+  if (oldPeer && typeof oldPeer.destroy === 'function') {
+    try { oldPeer.destroy() } catch (err) {}
+  } else if (oldPeer && typeof oldPeer.disconnect === 'function') {
+    try { oldPeer.disconnect() } catch (err) {}
+  }
+
+  openDeckPeer(PS, state, Peer)
+  updateRemoteOptions(PS, state)
+  return true
+}
+
+function isDeckPeerIdCollisionError (err) {
+  const type = String((err && err.type) || (err && err.name) || '').toLowerCase()
+  const message = String((err && err.message) || err || '').toLowerCase()
+
+  if (type === 'unavailable-id' || type === 'id-taken' || type === 'id-unavailable') return true
+  if (/\bid\b.*\b(taken|unavailable|in use|already exists)\b/.test(message)) return true
+  if (/\b(taken|unavailable|in use)\b.*\bid\b/.test(message)) return true
+  return false
+}
+
 function stableDeckIdentity (opts) {
   const loc = opts.location || (typeof window !== 'undefined' && window.location)
   if (!loc) return 'deck'
@@ -1037,6 +1229,17 @@ function storageSet (storage, key, value) {
   try {
     if (!storage || !storage.setItem) return
     storage.setItem(key, value)
+  } catch (err) {}
+}
+
+function storageRemove (storage, key) {
+  try {
+    if (!storage) return
+    if (typeof storage.removeItem === 'function') {
+      storage.removeItem(key)
+      return
+    }
+    if (typeof storage.setItem === 'function') storage.setItem(key, '')
   } catch (err) {}
 }
 
