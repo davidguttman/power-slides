@@ -410,10 +410,12 @@ This is a minimal power-slides talk starter. The content stays in \`slides.yaml\
 ## Files
 
 - \`package.json\` installs the published \`power-slides\` package as a dev dependency and exposes runner-friendly npm scripts.
-- \`slides.yaml\` contains the five-slide starter: title, reusable app shell, media image, iPhone iframe, and closing summary.
+- \`slides.yaml\` contains the five-slide starter: dimmed background title, quote plus image over the same background, media image, iPhone iframe, and closing summary.
 - \`talk.js\` is a commented optional ESM stub for theming, custom renderers, and escape hatches.
 - \`public/\` is served at the web root for media such as the bundled \`sample.svg\` image.
 - \`assets/\` is for source assets you do not serve directly.
+
+The starter is intentionally YAML-only. It demonstrates the reusable content primitives used by real talks: \`background\` plus \`brightness\` for readable overlay/summary slides, \`quote\` with both \`image\` and \`background\`, a full media image, and a phone-framed iframe with side copy.
 
 Install once, then run with npm scripts:
 

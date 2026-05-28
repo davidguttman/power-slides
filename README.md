@@ -59,7 +59,7 @@ The generated `package.json` is intentionally minimal and runner-friendly:
     "start": "npm run dev"
   },
   "devDependencies": {
-    "power-slides": "^2.1.3"
+    "power-slides": "^2.1.4"
   }
 }
 ```
@@ -69,7 +69,7 @@ The generated `package.json` is intentionally minimal and runner-friendly:
 `init` creates a talk folder by generating the local `package.json` and copying the packaged minimal `example/` starter authoring files:
 
 - `package.json` — local npm scripts plus a dev dependency on the published `power-slides` package
-- `slides.yaml` — five starter slides: title/overlay, reusable app-shell overlay, simple media image, iPhone iframe with side copy, and summary/next steps
+- `slides.yaml` — five starter slides: dimmed background title/overlay, quote plus image over the same background, simple media image, iPhone iframe with side copy, and summary/next steps
 - `talk.js` — commented optional ESM hooks; no custom animated slides in the starter
 - `public/` — files served at `/`, including the tiny starter `sample.svg` media asset
 - `assets/` — source assets not served directly
@@ -101,27 +101,37 @@ slides:
   - type: overlay
     eyebrow: Start here
     title: power-slides starter
-    subtitle: slides.yaml + optional talk.js
-    notes:
-      - Presenter note.
+    subtitle: Backgrounds, brightness, and content-first YAML
+    background: /sample.svg
+    brightness: 0.48
+    align: center
+  - type: quote
+    eyebrow: Reusable pattern
+    quote: Pair copy with supporting media over a dimmed background.
+    image: /sample.svg
+    background: /sample.svg
+    brightness: 0.62
+  - type: image
+    src: /sample.svg
+    fit: contain
   - type: iframe
     src: https://example.com/demo
     device: iphone
     layout: phone-right
+    background: '#061018'
     side:
       title: Demo in context
       bullets:
         - Live site
         - Parent slide copy
-  - type: image
-    src: /sample.svg
-    fit: contain
   - type: summary
     title: Customize only when needed
+    background: /sample.svg
+    brightness: 0.68
     card:
       bullets:
         - Use the commented talk.js stub.
-        - See examples/showcase for custom renderers.
+        - See examples/showcase/ for custom renderers.
 ```
 
 ### Common slide fields

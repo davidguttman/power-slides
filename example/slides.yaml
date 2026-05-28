@@ -2,16 +2,21 @@ slides:
   - type: overlay
     eyebrow: Start here
     title: power-slides starter
-    subtitle: slides.yaml + optional talk.js
+    subtitle: Backgrounds, brightness, and content-first YAML
+    background: /sample.svg
+    brightness: 0.48
+    align: center
     notes:
-      - The starter is intentionally plain. It should show the authoring contract, not a finished custom talk.
+      - The starter stays YAML-only while showing the reusable background overlay pattern used by real talks.
 
-  - type: overlay
-    eyebrow: Reusable app shell
-    title: CLI owns the shell
-    subtitle: dev/build, generated HTML, Options, and remote control are shared framework behavior.
+  - type: quote
+    eyebrow: Reusable pattern
+    quote: Pair a strong line with supporting media while the same background keeps the slide cohesive.
+    image: /sample.svg
+    background: /sample.svg
+    brightness: 0.62
     notes:
-      - New talks should not copy app-shell code. The CLI wires the runtime, PeerJS, options overlay, and build output.
+      - Quote slides can combine copy, an image or QR-style asset, and a dimmed background without custom JavaScript.
 
   - type: image
     src: /sample.svg
@@ -24,10 +29,11 @@ slides:
     title: david.app external iframe
     device: iphone
     layout: phone-right
+    background: '#061018'
     side:
       eyebrow: Framework primitive
       title: Phone-framed iframe
-      subtitle: YAML controls the reusable device frame and side-copy layout.
+      subtitle: YAML controls the reusable device frame, slide background, and side-copy layout.
       bullets:
         - Cross-origin page stays untouched
         - Parent arrows remain available
@@ -38,11 +44,13 @@ slides:
   - type: summary
     eyebrow: Next steps
     title: Customize only when needed
+    background: /sample.svg
+    brightness: 0.68
     card:
       title: Where to look
       bullets:
         - Use the commented talk.js stub for optional hooks.
-        - See examples/showcase for custom renderers and animated slides.
-        - Keep normal talks content-first in slides.yaml.
+        - See examples/showcase/ for custom renderers and animated slides.
+        - Keep normal talks content-first in slides.yaml with background and brightness fields.
     notes:
       - Point users to the stub for extension points and to the showcase for richer examples.
