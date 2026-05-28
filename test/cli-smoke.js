@@ -25,6 +25,62 @@ require(${JSON.stringify(cli)})
   return execFileSync(process.execPath, ['-e', script], { encoding: 'utf8' })
 }
 
+function runDevWatchSmoke (talkDir) {
+  const updatedSlides = [
+    'slides:',
+    '  - type: overlay',
+    '    title: Watched title',
+    '    subtitle: Updated YAML',
+    ''
+  ].join('\n')
+  const script = `
+const EventEmitter = require('events')
+const fs = require('fs')
+const Module = require('module')
+const path = require('path')
+const cli = ${JSON.stringify(cli)}
+const talkDir = ${JSON.stringify(talkDir)}
+let spawnArgs = null
+const originalLoad = Module._load
+Module._load = function (request, parent, isMain) {
+  if (request === 'child_process') {
+    return {
+      spawn (bin, args) {
+        spawnArgs = args
+        return new EventEmitter()
+      }
+    }
+  }
+  return originalLoad.apply(this, arguments)
+}
+process.argv = [process.execPath, cli, 'dev', talkDir, '--port', '9876']
+require(cli)
+if (!spawnArgs) throw new Error('dev did not spawn budo')
+if (path.basename(spawnArgs[0]) !== 'entry.js') throw new Error('dev entry arg is not generated entry.js: ' + spawnArgs[0])
+if (path.basename(path.dirname(spawnArgs[0])) !== '.power-slides') throw new Error('dev entry is not in .power-slides: ' + spawnArgs[0])
+setTimeout(function () {
+  fs.writeFileSync(path.join(talkDir, 'slides.yaml'), ${JSON.stringify(updatedSlides)})
+}, 100)
+const deadline = Date.now() + 3000
+function check () {
+  const entry = fs.readFileSync(path.join(talkDir, '.power-slides', 'entry.js'), 'utf8')
+  const html = fs.readFileSync(path.join(talkDir, 'public', 'index.html'), 'utf8')
+  const spec = JSON.parse(fs.readFileSync(path.join(talkDir, '.power-slides', 'slides.json'), 'utf8'))
+  if (spec.slides && spec.slides[0] && spec.slides[0].title === 'Watched title' && html.includes('<title>Watched title</title>')) {
+    if (!entry.includes("import spec from './slides.json'")) throw new Error('entry does not import slides.json')
+    if (entry.includes('Watched title') || entry.includes('Updated YAML')) throw new Error('entry contains baked watched slide content')
+    process.exit(0)
+  }
+  if (Date.now() > deadline) {
+    throw new Error('dev watcher did not regenerate slides.json and HTML title in time')
+  }
+  setTimeout(check, 50)
+}
+check()
+`
+  execFileSync(process.execPath, ['-e', script], { stdio: 'pipe' })
+}
+
 const help = runCliWithBlockedBuildDeps(['--help'])
 assert(help.includes('Dev server port (default: $PORT, then 9966)'), 'help documents $PORT dev port fallback')
 assert(help.includes('default: slides.yaml, slides.yml, or slides.json'), 'help documents YAML default lookup order')
@@ -147,6 +203,16 @@ assert(fs.existsSync(path.join(publicDir, match[0])), 'build writes bundle')
 assert(!html.includes('entry.js'), 'build HTML points at production bundle')
 
 assert(html.includes('<title>Content-only talks</title>'), 'build infers HTML title from first YAML slide')
+const generatedEntry = fs.readFileSync(path.join(talk, '.power-slides', 'entry.js'), 'utf8')
+const generatedSlides = JSON.parse(fs.readFileSync(path.join(talk, '.power-slides', 'slides.json'), 'utf8'))
+assert(generatedEntry.includes("import spec from './slides.json'"), 'generated entry imports generated slide data')
+assert(!generatedEntry.includes('Content-only talks'), 'generated entry does not bake slide title content')
+assert(!generatedEntry.includes('slides.yaml + optional ESM talk.js'), 'generated entry does not bake slide subtitle content')
+assert.deepStrictEqual(generatedSlides, initializedSpec, 'generated slides.json matches parsed YAML spec')
+
+const devWatchTalk = path.join(tmp, 'dev-watch-talk')
+runCliWithBlockedBuildDeps(['init', devWatchTalk])
+runDevWatchSmoke(devWatchTalk)
 
 const installedPrefix = path.join(tmp, 'installed-prefix')
 const installedTalk = path.join(tmp, 'installed-talk')

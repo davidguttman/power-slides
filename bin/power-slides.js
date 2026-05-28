@@ -91,28 +91,44 @@ async function dev (argv) {
   const opts = parseOptions(argv)
   const talkDir = path.resolve(opts._[0] || '.')
   const outDir = path.resolve(opts.out || path.join(talkDir, 'public'))
-  const entryPath = prepareEntry(talkDir, { slides: opts.slides })
+  const prepared = prepareEntry(talkDir, { slides: opts.slides })
   const serve = 'power-slides-dev.js'
+  const htmlPath = path.join(outDir, 'index.html')
 
   mkdirp(outDir)
-  writeHtml(path.join(outDir, 'index.html'), serve, { title: readTalkTitle(talkDir, opts.slides) })
+  writeHtml(htmlPath, serve, { title: titleFromSpec(prepared.spec) })
+
+  const watcher = watchSlideSpec(prepared.slidesPath, function () {
+    try {
+      const next = prepareEntry(talkDir, { slides: opts.slides })
+      writeHtml(htmlPath, serve, { title: titleFromSpec(next.spec) })
+      console.log('Regenerated power-slides entry from ' + path.relative(talkDir, next.slidesPath))
+    } catch (err) {
+      console.error('Failed to regenerate power-slides entry:')
+      console.error(err.stack || err.message || err)
+    }
+  })
 
   const budoBin = path.join(packageRoot, 'node_modules', '.bin', process.platform === 'win32' ? 'budo.cmd' : 'budo')
-  const args = [entryPath, '--dir', outDir, '--serve', serve, '--live', '--port', String(opts.port || process.env.PORT || 9966)]
+  const args = [prepared.entryPath, '--dir', outDir, '--serve', serve, '--live', '--port', String(opts.port || process.env.PORT || 9966)]
   if (opts.open) args.push('--open')
   args.push('--', '-p', '[', require.resolve('esmify'), '--basedir', esmifyRoot, ']', '-r', path.join(packageRoot, 'index.mjs') + ':power-slides')
 
   console.log('Starting budo for ' + talkDir)
   console.log('Serving ' + outDir)
+  console.log('Watching ' + path.relative(talkDir, prepared.slidesPath))
   const child = spawn(budoBin, args, { stdio: 'inherit' })
-  child.on('exit', code => process.exit(code || 0))
+  child.on('exit', code => {
+    watcher.close()
+    process.exit(code || 0)
+  })
 }
 
 async function buildTalk (talkDir, outDir, opts) {
   opts = opts || {}
   mkdirp(outDir)
-  const entryPath = prepareEntry(talkDir, { slides: opts.slides })
-  const bundled = await bundle(entryPath)
+  const prepared = prepareEntry(talkDir, { slides: opts.slides })
+  const bundled = await bundle(prepared.entryPath)
   const code = opts.minify ? (await require('terser').minify(String(bundled))).code : String(bundled)
   if (!code) throw new Error('Terser produced an empty bundle')
 
@@ -122,7 +138,7 @@ async function buildTalk (talkDir, outDir, opts) {
   const htmlPath = path.join(outDir, 'index.html')
 
   fs.writeFileSync(bundlePath, code)
-  writeHtml(htmlPath, scriptName, { title: readTalkTitle(talkDir, opts.slides) })
+  writeHtml(htmlPath, scriptName, { title: titleFromSpec(prepared.spec) })
 
   return { htmlPath, bundlePath, scriptName }
 }
@@ -164,13 +180,18 @@ function prepareEntry (talkDir, opts) {
 
   const result = readSlidesSpec(talkDir, opts.slides)
   const spec = result.spec
-  const imports = ["import PowerSlides from 'power-slides'"]
+  const slidesDataPath = path.join(buildDir, 'slides.json')
+  writeFileChanged(slidesDataPath, serializeSpec(spec))
+
+  const imports = [
+    "import PowerSlides from 'power-slides'",
+    "import spec from './slides.json'"
+  ]
   const talkImport = fs.existsSync(talkPath)
   if (talkImport) imports.push("import talkModule from '../talk.js'")
 
   const entry = `${imports.join('\n')}
 
-const spec = ${JSON.stringify(spec, null, 2)}
 const talk = ${talkImport ? 'talkModule' : '{}'}
 
 window.document.body.style.cssText = (talk && talk.bodyStyle) || \`
@@ -184,8 +205,40 @@ PowerSlides.startTalk(window.document.body, spec, { talk })
 `
 
   const entryPath = path.join(buildDir, 'entry.js')
-  fs.writeFileSync(entryPath, entry)
-  return entryPath
+  writeFileChanged(entryPath, entry)
+  return { entryPath, slidesDataPath, slidesPath: result.path, spec }
+}
+
+function watchSlideSpec (slidesPath, onChange) {
+  const dir = path.dirname(slidesPath)
+  const basename = path.basename(slidesPath)
+  let timer = null
+
+  const watcher = fs.watch(dir, function (event, filename) {
+    if (filename && String(filename) !== basename) return
+    if (timer) clearTimeout(timer)
+    timer = setTimeout(function () {
+      timer = null
+      onChange()
+    }, 75)
+  })
+
+  return {
+    close () {
+      if (timer) clearTimeout(timer)
+      watcher.close()
+    }
+  }
+}
+
+function serializeSpec (spec) {
+  const json = JSON.stringify(spec, null, 2)
+  return (json === undefined ? 'null' : json) + '\n'
+}
+
+function writeFileChanged (file, content) {
+  if (fs.existsSync(file) && fs.readFileSync(file, 'utf8') === content) return
+  fs.writeFileSync(file, content)
 }
 
 function writeHtml (htmlPath, scriptName, opts) {
@@ -232,14 +285,11 @@ function resolveSlidesPath (talkDir, explicitPath) {
   throw new Error('Missing slide spec in ' + talkDir + ' (expected slides.yaml, slides.yml, or slides.json)')
 }
 
-function readTalkTitle (talkDir, slidesPath) {
-  try {
-    const spec = readSlidesSpec(talkDir, slidesPath).spec
-    const slides = Array.isArray(spec) ? spec : spec.slides || []
-    const first = slides[0]
-    if (first && typeof first === 'object') return first.title || first.text || first.quote || 'power-slides talk'
-    if (typeof first === 'string') return first
-  } catch (err) {}
+function titleFromSpec (spec) {
+  const slides = Array.isArray(spec) ? spec : (spec && spec.slides) || []
+  const first = slides[0]
+  if (first && typeof first === 'object') return first.title || first.text || first.quote || 'power-slides talk'
+  if (typeof first === 'string') return first
   return 'power-slides talk'
 }
 
