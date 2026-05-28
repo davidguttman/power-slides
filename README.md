@@ -1,33 +1,47 @@
 # power-slides
 
-ESM-first reusable talk kit for browser slide decks, with the original tiny JavaScript slideshow runtime still available for custom decks.
+Write slideshows in YAML or JavaScript instead of fighting a WYSIWYG.
 
-`power-slides` lets new talks stay content-only: `slides.yaml` (or JSON), optional `talk.js`, and assets. The package owns the shared HTML shell, Browserify + Terser build, budo dev wiring, slide helpers, asset loading, and app-shell behavior like options/remote control. If you want to author directly in JS, a slide can still be a function that does *anything* the browser can do.
+```yaml
+slides:
+  - type: overlay
+    title: Hello, world
+    subtitle: A talk that's just a file
+  - type: image
+    src: /diagram.png
+  - type: quote
+    quote: A slide can still be anything the browser can render.
+```
+
+```bash
+power-slides dev .
+```
+
+That's a talk. Arrow keys to navigate, deep links per slide, presenter notes on your phone, optional remote control. When YAML stops being enough — typewriter effect, live D3 chart, WebGL toy, fetch from your own API — a slide is just a JS function that owns its DOM. Do whatever the browser can do.
 
 ## Why power-slides?
 
-- **Content-first talks.** Start with `slides.yaml` (or JSON); add `talk.js` only when JavaScript earns its keep.
-- **A slide can still be a function.** Want a typewriter effect, a live D3 chart, a WebGL toy, a fetch from your own API? Just write it.
-- **Tiny slide-authoring surface area.** Keep normal slides as data; use `talk.js` only for custom effects. Shell behavior like options and remote control stays in the runtime.
-- **Keyboard + touch nav out of the box.** Left/right arrows, tap the edges on mobile.
+- **Content-first.** A talk is `slides.yaml` (or JSON) plus assets. Add `talk.js` only when JS earns its keep.
+- **A slide can still be a function.** Full power of the browser, per slide.
+- **Keyboard + touch nav out of the box.** Arrows, tap-edges on mobile.
 - **Deep links.** Every slide has a URL hash (`#/7`). Reload, share, jump.
-- **Presenter mode.** Split view with your speaker notes underneath the slide.
-
----
+- **Presenter mode.** Split view with speaker notes underneath.
+- **Remote control.** Drive the deck from your phone over PeerJS — built into the shell, no per-talk wiring.
+- **Background preloading.** First slide renders immediately; later images/videos load while you talk.
 
 ## Install
 
-Install globally or run with your package manager's executor to create a talk:
-
 ```bash
 npm install -g power-slides
-powerslides init my-talk
+power-slides init my-talk
 ```
 
-## Create a talk
+The package ships a CLI (`power-slides`), an ESM runtime, and a CommonJS runtime for older decks.
+
+## Quickstart — YAML + CLI
 
 ```bash
-powerslides init my-talk
+power-slides init my-talk
 cd my-talk
 npm install
 npm run dev      # starts budo; runners such as jump.sh can use npm start
@@ -40,8 +54,8 @@ The generated `package.json` is intentionally minimal and runner-friendly:
 {
   "private": true,
   "scripts": {
-    "dev": "powerslides dev .",
-    "build": "powerslides build .",
+    "dev": "power-slides dev .",
+    "build": "power-slides build .",
     "start": "npm run dev"
   },
   "devDependencies": {
@@ -50,20 +64,20 @@ The generated `package.json` is intentionally minimal and runner-friendly:
 }
 ```
 
-`powerslides dev .` uses the port from `--port <port>`, then `$PORT`, then `9966`. The CLI-generated dev/build shell enables the built-in Options overlay by default and loads a bundled PeerJS runtime before the deck. Press `o` to reopen Options, then click **Enable remote control** to show the QR code/URL. Set `remote: false` in `talk.js` or top-level `slides.yaml`/JSON to disable it, or set `remote: { ... }` for PeerJS/options overrides.
+`power-slides dev .` picks its port from `--port <port>`, then `$PORT`, then `9966`. The CLI dev/build shell turns on the built-in Options overlay and loads a bundled PeerJS runtime before the deck. Press `o` to reopen Options, then click **Enable remote control** to show the QR code / URL. Set `remote: false` (top-level in `talk.js` or `slides.yaml`/JSON) to disable it, or `remote: { ... }` for PeerJS/options overrides.
 
-`init` creates a talk folder by generating the local `package.json` and copying the packaged `example/` starter authoring files:
+`init` scaffolds a content-only folder by generating the local `package.json` and copying the packaged `example/` starter files:
 
-- `package.json` — local npm scripts plus a dev dependency on the published `power-slides` package
+- `package.json` — local npm scripts plus a dev dependency on the published package
 - `slides.yaml` — content and notes
 - `talk.js` — optional ESM custom renderers / escape hatch
 - `public/` — example media and files served at `/` (videos, generated images, fonts)
 - `assets/` — source assets not served directly
 - `README.md` — talk-local authoring notes
 
-It refuses to run in a non-empty directory unless you pass `--force`, and it does not overwrite existing files. It copies the packaged example media needed by the starter, but does **not** copy a lockfile, `node_modules`, generated bundles, or `public/index.html` into the talk.
+It refuses to run in a non-empty directory unless you pass `--force` and never overwrites existing files. It copies the example media the starter needs, but does **not** copy a lockfile, `node_modules`, generated bundles, or `public/index.html`.
 
-## ESM runtime
+## Quickstart — ESM
 
 ```js
 import PowerSlides, { overlay, image, startTalk } from 'power-slides'
@@ -76,11 +90,11 @@ startTalk(document.body, {
 })
 ```
 
-CommonJS `require('power-slides')` remains available for older decks, but new talks should use ESM and/or the CLI-generated entry.
+CommonJS `require('power-slides')` still works for older decks, but new talks should use ESM and/or the CLI-generated entry.
 
 ## slides.yaml
 
-A talk is an object with a `slides` array. The title slide is just the first slide. YAML and JSON use the same schema; without `--slides`, the CLI picks `slides.yaml`, then `slides.yml`, then `slides.json`.
+A talk is an object with a `slides` array. The title slide is just the first slide. YAML and JSON share one schema; without `--slides`, the CLI picks `slides.yaml`, then `slides.yml`, then `slides.json`.
 
 ```yaml
 slides:
@@ -296,11 +310,30 @@ Renderer return values can be slide functions, DOM nodes, or strings. The build 
 
 ## Asset loading
 
-The first slide renders immediately. After that, power-slides starts loading image/video assets referenced by later slides so the deck feels smoother without blocking the first paint.
+The first slide renders immediately. After that, power-slides starts loading image/video assets referenced by later slides — including remote URLs — so the deck feels smoother without blocking the first paint. Helpers attach `slide.assets` automatically; custom renderers can do the same:
 
-## Legacy CommonJS API
+```js
+const slide = (el) => { /* render */ }
+slide.assets = ['https://cdn.example.com/background.png']
+export default { renderers: { custom: () => slide } }
+```
 
-Older decks can still use the original CommonJS shape:
+## API
+
+### `startTalk(el, { slides })`
+
+ESM entry point. Renders the YAML/JSON `slides` array into `el`. The default export is the same `PowerSlides` object exposed for CommonJS, with all helpers (`overlay`, `image`, `video`, `quote`, `iframe`, `layeredTitle`, `title`, …) attached.
+
+### `PS.start(el, slides, [isPresenter], [options])`
+
+Original hand-rolled API. Each entry in `slides` is one of:
+
+- a **string** → big title slide
+- a **DOM element** → appended into the slide container
+- a **function** `(slideContainer) => void` → called every time you nav to the slide; you own the DOM
+- an **array** `[slide, ...notes]` → first item is any of the above; rest are presenter notes (strings)
+
+`isPresenter` (optional) splits the view so the slide takes the top half and notes appear underneath — sniff the UA (`/iPhone|Android/`) to flip it on for the phone. You can also pass an options object here; `options.isPresenter` is used. `options.remote` enables the built-in options + PeerJS remote-control UI: `true` for defaults, or an object with `Peer`, `peerOptions`, `peerId`, `param`, `pairParam`, `controllerStorageKey`, or `buttonHideMs`.
 
 ```js
 const PS = require('power-slides')
@@ -315,24 +348,7 @@ PS.start(document.body, [
 ])
 ```
 
-Bundle it and open it in a browser. Use the arrow keys to navigate.
-
-## API
-
-### `PS.start(el, slides, [isPresenter], [options])`
-
-Mounts the slideshow into `el` (usually `document.body`).
-
-- `el` — DOM element to render into.
-- `slides` — array. Each entry is one of:
-  - a **string** → rendered as a big title slide
-  - a **DOM element** → appended into the slide container
-  - a **function** `(slideContainer) => void` → called every time you navigate to the slide; you own the DOM
-  - an **array** `[slide, ...notes]` → first item is any of the above; remaining items are presenter notes (strings)
-- `isPresenter` — optional boolean. When truthy, splits the view so the slide takes the top half and notes appear underneath. A common pattern is to flip it on based on user agent (`/iPhone|Android/`) so your phone becomes the notes screen. You can also pass an options object here; `options.isPresenter` will be used.
-- `options.remote` — optional boolean/object for shells that want to enable the built-in options + PeerJS remote-control UI. Pass `true` for defaults or an object with `Peer`, `peerOptions`, `peerId`, `param`, `pairParam`, `controllerStorageKey`, or `buttonHideMs`.
-
-The returned `PowerSlides` object is also an event emitter:
+`PowerSlides` is an event emitter:
 
 ```js
 PS.on('changeSlide', n => console.log('now on slide', n))
@@ -340,15 +356,15 @@ PS.on('changeSlide', n => console.log('now on slide', n))
 
 ### `PS.image(url, [backgroundSize])`
 
-Full-bleed image slide. `backgroundSize` defaults to `"cover"`. Use `"contain"` if you want the whole image visible without cropping. See [`background-size` on MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/background-size).
+Full-bleed image slide. `backgroundSize` defaults to `"cover"`; pass `"contain"` to fit the whole image without cropping. See [`background-size` on MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/background-size).
 
 ### `PS.video(url, [options])`
 
-Full-bleed video slide. Default options: `{ loop: false, muted: false, controls: false, size: 'contain' }`. `size` can be `'contain'` or `'cover'`. The video resets and plays each time you navigate to the slide.
+Full-bleed video slide. Defaults: `{ loop: false, muted: false, controls: false, size: 'contain' }`. `size` is `'contain'` or `'cover'`. The video resets and plays every time you navigate to the slide.
 
 ### `PS.title(text, [style])`
 
-A plain centered title slide. Useful as the foreground of `layeredTitle` when you want custom styling:
+A plain centered title slide. Useful as the foreground of `layeredTitle`:
 
 ```js
 PS.title('Hello', { color: 'white', fontSize: '5vw' })
@@ -358,9 +374,9 @@ PS.title('Hello', { color: 'white', fontSize: '5vw' })
 
 Stacks a title on top of another slide (typically an image or video).
 
-- `foreground` — a string, a DOM element, or a slide function (e.g. `PS.title(...)`).
-- `background` — any slide function, but usually `PS.image(...)` or `PS.video(...)`.
-- `options.brightness` — multiplies the background brightness (default `0.6`). Lower = darker = title more readable.
+- `foreground` — string, DOM element, or slide function (e.g. `PS.title(...)`)
+- `background` — any slide function, usually `PS.image(...)` or `PS.video(...)`
+- `options.brightness` — multiplies background brightness (default `0.6`). Lower = darker = title more readable.
 
 ```js
 PS.layeredTitle(
@@ -372,17 +388,17 @@ PS.layeredTitle(
 
 ### Navigation
 
-- `PS.nextSlide()` / `PS.prevSlide()` — programmatic nav.
+- `PS.nextSlide()` / `PS.prevSlide()` — programmatic.
 - Arrow keys — left/right.
 - Touch — tap the left 20% / right 20% of the screen.
 - URL hash — `#/3` jumps to slide 3, and the hash updates as you navigate.
-- Options — when the built-in options UI is enabled, the visible Options button hides after about 5 seconds; press `o` at any time to reopen it.
+- Options — when the built-in options UI is enabled, the visible Options button hides after about 5 seconds; press `o` to reopen it.
 
-### Built-in options + remote control
+## Remote control
 
-`power-slides` includes the runtime pieces for an app-shell-level options overlay and PeerJS remote control. The intended reusable-talk flow is that the shared power-slides CLI shell enables this once, so each talk stays content-only (`slides.yaml`/JSON, optional `talk.js`, and assets) instead of copying remote-control code. CLI dev/build entries copy the PeerJS browser runtime into the output and load it before the deck automatically. Custom shells can pass a constructor as `remote.Peer`, or expose `window.Peer` before enabling remote control.
+`power-slides` bundles an app-shell-level options overlay and PeerJS remote control, so the shared CLI shell enables it once and each talk stays content-only. CLI dev/build entries copy the PeerJS browser runtime into the output and load it before the deck. Custom shells can pass a constructor as `remote.Peer`, or expose `window.Peer` before enabling remote control.
 
-For custom shells using `PS.start` directly, enable the built-in capability with `remote: true`; pass `remote: { Peer }` when PeerJS is bundled by your app instead of exposed on `window`:
+For custom shells using `PS.start` directly, enable it with `remote: true`; pass `remote: { Peer }` when your app bundles PeerJS itself:
 
 ```js
 PS.start(document.body, slides, {
@@ -391,32 +407,27 @@ PS.start(document.body, slides, {
 })
 ```
 
-On the deck, the Options button appears at boot and fades after about 5 seconds; press `o` to reopen Options any time. Remote hosting does not start immediately. Click **Enable remote control** in Options for that browser session, then the deck creates a PeerJS host, generates a one-time `pairKey`, and shows both a QR code and URL. If PeerJS is not available, the UI reports that and leaves the enable action retryable after the shell loads PeerJS. The URL uses query parameters (`ps-remote=<peer id>&ps-pair=<pairKey>` by default), leaving the hash for normal slide deep links.
+The Options button appears at boot and fades after about 5 seconds; press `o` to reopen it. Remote hosting does not start until you click **Enable remote control** in Options for that browser session. The deck then creates a PeerJS host, generates a one-time `pairKey`, and shows a QR code and URL. The URL uses query parameters (`ps-remote=<peer id>&ps-pair=<pairKey>` by default), leaving the hash for normal slide deep links.
 
-The first controller opened from that URL stores a generated `clientId` in its `localStorage` and sends `{ type: 'hello', pairKey, clientId }`. If the pair key matches and the deck is not already locked, the deck stores that `clientId` in `sessionStorage` as the winning controller. The default lock key is based on the stable deck URL (`origin + pathname`, with query/hash stripped), so it survives display reloads even when PeerJS assigns a new random peer id; shells can override it with `remote.controllerStorageKey`. After that, the deck ignores pair keys and accepts only the same `clientId`; other controllers receive `{ type: 'locked' }` and are closed. If the same controller reconnects, it replaces the old active connection.
+The first controller opened from that URL stores a generated `clientId` in its `localStorage` and sends `{ type: 'hello', pairKey, clientId }`. If the pair key matches and the deck is not already locked, the deck stores that `clientId` in `sessionStorage` as the winning controller. The default lock key is based on the stable deck URL (`origin + pathname`, query/hash stripped), so it survives display reloads even when PeerJS assigns a new peer id; override it with `remote.controllerStorageKey`. After that, the deck accepts only the same `clientId`; other controllers receive `{ type: 'locked' }` and are closed. A reconnecting controller replaces its old connection.
 
-The display remains authoritative. Remote messages are navigation intents only (`prev`, `next`, `goto`); the deck clamps and validates slide numbers, changes its own state, and sends state back to the controller. The phone/controller view is intentionally minimal: full-width current slide preview, full-width next slide preview, then Prev/Next buttons. Each preview renders in its own 16:9 viewport and scales the full slide frame down to fit instead of cropping. The remote operates on `PowerSlides` state and navigation (`nextSlide`, `prevSlide`, hash changes), not on how the slide definitions were authored, so it fits both data-driven `slides.yaml`/JSON decks and custom `talk.js` slides. Remote commands do not wait on per-slide loading or preloading; they use the same fast navigation path as keyboard/touch input.
-
-
----
+The display stays authoritative. Remote messages are navigation intents only (`prev`, `next`, `goto`); the deck clamps and validates slide numbers, changes its own state, and sends state back. The controller view is minimal: full-width current-slide preview, full-width next-slide preview, then Prev/Next buttons, each preview scaled to fit a 16:9 viewport rather than cropped. Because it operates on `PowerSlides` navigation state, it works for both data-driven decks and custom `talk.js` slides, and remote commands use the same fast nav path as keyboard/touch — no waiting on per-slide preloading.
 
 ## Patterns
 
 **Live demos.** A slide is a function, so plug in anything: a sandboxed iframe, a CodeMirror editor, a WebSocket-driven dashboard. Whatever runs in a browser tab runs on a slide.
 
-**Reactive slides.** Subscribe to `changeSlide` to pause videos, stop timers, or trigger analytics when the audience moves on.
+**Reactive slides.** Subscribe to `changeSlide` to pause videos, stop timers, or fire analytics when the audience moves on.
 
-**Presenter mode on your phone.** Open the deck on your laptop normally, and again on your phone (sniff the UA, like the example does, to flip on `isPresenter`). Use the phone as your notes screen.
-
----
+**Presenter mode on your phone.** Open the deck on your laptop normally, and again on your phone with `isPresenter` flipped on (UA sniff works fine). The phone becomes your notes screen.
 
 ## Development
 
 ```bash
 npm install
 npm test          # standard linting, node remote tests, and CLI smoke tests
-npm run build    # builds the bundled example; no long-lived server
-npm run example  # live-reloading example deck; starts budo
+npm run build     # builds the bundled example; no long-lived server
+npm run example   # live-reloading example deck; starts budo
 ```
 
 PRs welcome. The core runtime stays small while the reusable talk shell keeps talks content-only; remote/options behavior is isolated in `remote.js` so it can move into a future app shell or ESM export cleanly.
