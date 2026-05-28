@@ -28,8 +28,10 @@ module.exports._test = {
   createQrSvg,
   generateId,
   getControllerStorageKey,
+  getControllerTimerSeconds,
   handleControllerClose,
   handleControllerData,
+  formatControllerTimer,
   getPreviewStageScale,
   getPreviewStageStyle,
   getPreviewStageTransform,
@@ -66,6 +68,9 @@ function createRemote (PS, opts) {
     remoteUrl: null,
     remoteEnabled: false,
     status: 'Remote control disabled',
+    timerStartedAt: null,
+    timerNow: null,
+    timerInterval: null,
     overlay: null,
     button: null,
     slideNumber: PS.getCurrentSlideNumber(),
@@ -334,6 +339,8 @@ function sendDeckState (PS, conn) {
 }
 
 function createRemoteButton (state) {
+  if (state.role === 'controller') return
+
   state.button = h('button.ps-remote-options-button', {
     type: 'button',
     onclick: state.openOptions,
@@ -398,13 +405,37 @@ function updateRemoteOptions (PS, state) {
 }
 
 function remoteOptionsPanel (PS, state) {
-  const close = h('button', {
-    type: 'button',
-    onclick: state.closeOptions,
-    style: remoteButtonStyle()
-  }, 'Close')
+  const isController = state.role === 'controller'
+  const children = []
 
-  const panel = h('div', {
+  if (isController) {
+    children.push(controllerView(PS, state))
+  } else {
+    const close = h('button', {
+      type: 'button',
+      onclick: state.closeOptions,
+      style: remoteButtonStyle()
+    }, 'Close')
+
+    children.push(
+      h('div', {
+        style: {
+          display: 'flex',
+          'align-items': 'center',
+          'justify-content': 'space-between',
+          gap: '16px'
+        }
+      }, [
+        h('h2', { style: { margin: 0 } }, 'power-slides options'),
+        close
+      ]),
+      h('p', { style: { color: '#bbb' } }, 'Press “o” any time to reopen this overlay.'),
+      remoteStatusView(state),
+      deckView(state)
+    )
+  }
+
+  return h('div', {
     style: {
       width: 'min(620px, calc(100vw - 32px))',
       'max-height': 'calc(100vh - 32px)',
@@ -418,26 +449,7 @@ function remoteOptionsPanel (PS, state) {
       'overscroll-behavior': 'contain',
       'touch-action': 'pan-y'
     }
-  }, [
-    h('div', {
-      style: {
-        display: 'flex',
-        'align-items': 'center',
-        'justify-content': 'space-between',
-        gap: '16px'
-      }
-    }, [
-      h('h2', { style: { margin: 0 } }, 'power-slides options'),
-      close
-    ]),
-    h('p', { style: { color: '#bbb' } }, 'Press “o” any time to reopen this overlay.'),
-    remoteStatusView(state)
-  ])
-
-  if (state.role === 'controller') panel.appendChild(controllerView(PS, state))
-  if (state.role !== 'controller') panel.appendChild(deckView(state))
-
-  return panel
+  }, children)
 }
 
 function remoteStatusView (state) {
@@ -501,6 +513,8 @@ function controllerView (PS, state) {
       'touch-action': 'manipulation'
     }
   }, [
+    controllerTimerView(PS, state),
+    remoteStatusView(state),
     controllerPreviewsView(PS, state),
     h('div.ps-controller-controls', {
       style: {
@@ -513,6 +527,53 @@ function controllerView (PS, state) {
       h('button', { type: 'button', onclick: sendRemoteCommand(state, 'next'), style: controllerButtonStyle() }, 'Next')
     ])
   ])
+}
+
+function controllerTimerView (PS, state) {
+  const running = Boolean(state.timerStartedAt)
+
+  return h('div.ps-controller-timer', {
+    style: {
+      display: 'flex',
+      'align-items': 'center',
+      'justify-content': 'space-between',
+      gap: '12px',
+      padding: '12px 14px',
+      background: 'rgba(255, 255, 255, 0.08)',
+      border: '1px solid rgba(255, 255, 255, 0.14)',
+      'border-radius': '12px'
+    }
+  }, running
+    ? [
+        h('span', {
+          style: {
+            color: '#bbb',
+            'font-size': '12px',
+            'font-weight': 700,
+            'letter-spacing': '0.08em',
+            'text-transform': 'uppercase'
+          }
+        }, 'Timer'),
+        h('strong.ps-controller-timer-display', {
+          style: {
+            'font-variant-numeric': 'tabular-nums',
+            'font-size': '24px'
+          }
+        }, formatControllerTimer(getControllerTimerSeconds(state)))
+      ]
+    : [
+        h('span', {
+          style: {
+            color: '#bbb',
+            'font-size': '14px'
+          }
+        }, 'Presentation timer'),
+        h('button', {
+          type: 'button',
+          onclick: startControllerTimer(PS, state),
+          style: remoteButtonStyle()
+        }, 'Start timer')
+      ])
 }
 
 function controllerPreviewsView (PS, state) {
@@ -744,6 +805,44 @@ function fitPreviewStage (viewport, stage) {
   }
 
   if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('resize', update)
+}
+
+function startControllerTimer (PS, state) {
+  return function () {
+    if (state.timerStartedAt) return
+
+    state.timerStartedAt = Date.now()
+    state.timerNow = state.timerStartedAt
+
+    if (!state.timerInterval) {
+      state.timerInterval = setInterval(function () {
+        state.timerNow = Date.now()
+        updateRemoteOptions(PS, state)
+      }, 1000)
+    }
+
+    updateRemoteOptions(PS, state)
+  }
+}
+
+function getControllerTimerSeconds (state, now) {
+  if (!state || !state.timerStartedAt) return 0
+
+  const current = now == null ? (state.timerNow || Date.now()) : now
+  const elapsed = Math.floor((current - state.timerStartedAt) / 1000)
+  return elapsed > 0 ? elapsed : 0
+}
+
+function formatControllerTimer (seconds) {
+  const safeSeconds = Math.max(0, parseInt(seconds, 10) || 0)
+  const minutes = Math.floor(safeSeconds / 60)
+  const remainder = safeSeconds % 60
+
+  return padTimerPart(minutes) + ':' + padTimerPart(remainder)
+}
+
+function padTimerPart (value) {
+  return value < 10 ? '0' + value : String(value)
 }
 
 function sendRemoteCommand (state, command) {

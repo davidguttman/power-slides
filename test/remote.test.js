@@ -238,6 +238,22 @@ test('builds defensive preview models for missing and available slides', functio
   })
 })
 
+test('controller timer formats elapsed seconds as MM:SS', function () {
+  assert.equal(remote.formatControllerTimer(0), '00:00')
+  assert.equal(remote.formatControllerTimer(9), '00:09')
+  assert.equal(remote.formatControllerTimer(65), '01:05')
+  assert.equal(remote.formatControllerTimer(3601), '60:01')
+  assert.equal(remote.formatControllerTimer(-10), '00:00')
+})
+
+test('controller timer elapsed seconds clamp before start and before first full second', function () {
+  assert.equal(remote.getControllerTimerSeconds({}, 12000), 0)
+  assert.equal(remote.getControllerTimerSeconds({ timerStartedAt: 10000, timerNow: 10500 }), 0)
+  assert.equal(remote.getControllerTimerSeconds({ timerStartedAt: 10000, timerNow: 12999 }), 2)
+  assert.equal(remote.getControllerTimerSeconds({ timerStartedAt: 10000 }, 71000), 61)
+  assert.equal(remote.getControllerTimerSeconds({ timerStartedAt: 10000 }, 9000), 0)
+})
+
 test('controller previews contain-scale a full 16:9 iframe viewport', function () {
   assert.equal(remote.PREVIEW_ASPECT_RATIO, '1280 / 720')
 
