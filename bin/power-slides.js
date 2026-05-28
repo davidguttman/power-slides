@@ -7,6 +7,8 @@ const { spawn } = require('child_process')
 const yaml = require('js-yaml')
 
 const packageRoot = path.resolve(__dirname, '..')
+const packageInfo = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8'))
+const packageVersion = packageInfo.version || '0.0.0'
 const esmifyRoot = resolveEsmifyRoot(packageRoot)
 const defaultSlideSpecNames = ['slides.yaml', 'slides.yml', 'slides.json']
 
@@ -81,6 +83,7 @@ async function build (argv) {
   const opts = parseOptions(argv)
   const talkDir = path.resolve(opts._[0] || '.')
   const outDir = path.resolve(opts.out || path.join(talkDir, 'public'))
+  console.log('power-slides v' + packageVersion + ' building ' + talkDir)
   const result = await buildTalk(talkDir, outDir, { minify: true, slides: opts.slides })
   console.log('Built ' + path.relative(process.cwd(), result.htmlPath))
   console.log('Bundled ' + path.relative(process.cwd(), result.bundlePath))
@@ -114,6 +117,7 @@ async function dev (argv) {
   if (opts.open) args.push('--open')
   args.push('--', '-p', '[', require.resolve('esmify'), '--basedir', esmifyRoot, ']', '-r', path.join(packageRoot, 'index.mjs') + ':power-slides')
 
+  console.log('power-slides v' + packageVersion + ' dev serving ' + talkDir)
   console.log('Starting budo for ' + talkDir)
   console.log('Serving ' + outDir)
   console.log('Watching ' + path.relative(talkDir, prepared.slidesPath))
@@ -345,8 +349,6 @@ function shouldSkipExampleStarterPath (relative, stat) {
 }
 
 function samplePackageJson (target) {
-  const packageInfo = JSON.parse(fs.readFileSync(path.join(packageRoot, 'package.json'), 'utf8'))
-  const version = packageInfo.version || '0.0.0'
   return JSON.stringify({
     name: safePackageName(path.basename(target) || 'power-slides-talk'),
     private: true,
@@ -356,7 +358,7 @@ function samplePackageJson (target) {
       start: 'npm run dev'
     },
     devDependencies: {
-      'power-slides': '^' + version
+      'power-slides': '^' + packageVersion
     }
   }, null, 2) + '\n'
 }

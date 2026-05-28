@@ -78,7 +78,7 @@ function check () {
 }
 check()
 `
-  execFileSync(process.execPath, ['-e', script], { stdio: 'pipe' })
+  return execFileSync(process.execPath, ['-e', script], { encoding: 'utf8', stdio: 'pipe' })
 }
 
 const help = runCliWithBlockedBuildDeps(['--help'])
@@ -195,7 +195,8 @@ fs.writeFileSync(path.join(talk, 'talk.js'), [
   ''
 ].join('\n'))
 
-execFileSync(process.execPath, [cli, 'build', talk], { stdio: 'pipe' })
+const buildOutput = execFileSync(process.execPath, [cli, 'build', talk], { encoding: 'utf8', stdio: 'pipe' })
+assert(buildOutput.includes('power-slides v' + rootPackage.version + ' building ' + talk), 'build output includes current package version')
 
 const publicDir = path.join(talk, 'public')
 const html = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8')
@@ -214,7 +215,8 @@ assert.deepStrictEqual(generatedSlides, initializedSpec, 'generated slides.json 
 
 const devWatchTalk = path.join(tmp, 'dev-watch-talk')
 runCliWithBlockedBuildDeps(['init', devWatchTalk])
-runDevWatchSmoke(devWatchTalk)
+const devWatchOutput = runDevWatchSmoke(devWatchTalk)
+assert(devWatchOutput.includes('power-slides v' + rootPackage.version + ' dev serving ' + devWatchTalk), 'dev output includes current package version')
 
 const installedPrefix = path.join(tmp, 'installed-prefix')
 const installedTalk = path.join(tmp, 'installed-talk')
