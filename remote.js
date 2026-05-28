@@ -9,6 +9,7 @@ const DEFAULT_RECONNECT_MS = 1000
 const CLIENT_ID_STORAGE_KEY = 'power-slides.remote.clientId'
 const CONTROLLER_STORAGE_PREFIX = 'power-slides.remote.controllerId'
 const DECK_PEER_ID_STORAGE_PREFIX = 'power-slides.remote.deckPeerId'
+const DECK_REMOTE_ENABLED_STORAGE_PREFIX = 'power-slides.remote.enabled'
 const PREVIEW_BASE_WIDTH = 1280
 const PREVIEW_BASE_HEIGHT = 720
 const PREVIEW_ASPECT_RATIO = PREVIEW_BASE_WIDTH + ' / ' + PREVIEW_BASE_HEIGHT
@@ -24,6 +25,7 @@ module.exports._test = {
   CLIENT_ID_STORAGE_KEY,
   CONTROLLER_STORAGE_PREFIX,
   DECK_PEER_ID_STORAGE_PREFIX,
+  DECK_REMOTE_ENABLED_STORAGE_PREFIX,
   PREVIEW_ASPECT_RATIO,
   PREVIEW_BASE_HEIGHT,
   PREVIEW_BASE_WIDTH,
@@ -38,10 +40,12 @@ module.exports._test = {
   getControllerTimerSeconds,
   getDeckPeerId,
   getDeckPeerIdStorageKey,
+  getDeckRemoteEnabledStorageKey,
   clearStoredDeckPeerId,
   recoverDeckPeerId,
   isDeckPeerIdCollisionError,
   handleControllerClose,
+  isDeckRemoteEnabled,
   handleControllerData,
   formatControllerTimer,
   getPreviewStageScale,
@@ -60,6 +64,7 @@ module.exports._test = {
   getRemoteUrl,
   getGotoHash,
   scheduleControllerReconnect,
+  storeDeckRemoteEnabled,
   isEditableTarget,
   isOptionsKey
 }
@@ -108,6 +113,7 @@ function createRemote (PS, opts) {
   state.enableRemote = function () {
     if (state.role === 'controller' || state.remoteEnabled) return
     state.remoteEnabled = true
+    storeDeckRemoteEnabled(state)
     state.pairKey = state.opts.pairKey || generateId('pair')
     state.status = 'Starting remote...'
     startDeckRemote(PS, state)
@@ -118,6 +124,8 @@ function createRemote (PS, opts) {
 
   if (state.role === 'controller') {
     startControllerRemote(PS, state)
+  } else if (state.role === 'deck' && isDeckRemoteEnabled(state.opts)) {
+    state.enableRemote()
   }
 
   return state
@@ -1119,6 +1127,29 @@ function getDeckPeerIdStorageKey (opts) {
     DECK_PEER_ID_STORAGE_PREFIX,
     stableDeckIdentity(opts)
   ].join(':')
+}
+
+function getDeckRemoteEnabledStorageKey (opts) {
+  opts = opts || {}
+  if (opts.deckRemoteEnabledStorageKey) return opts.deckRemoteEnabledStorageKey
+
+  return [
+    DECK_REMOTE_ENABLED_STORAGE_PREFIX,
+    stableDeckIdentity(opts)
+  ].join(':')
+}
+
+function isDeckRemoteEnabled (opts) {
+  opts = opts || {}
+  const storage = opts.sessionStorage || getBrowserStorage('sessionStorage')
+  return storageGet(storage, getDeckRemoteEnabledStorageKey(opts)) === '1'
+}
+
+function storeDeckRemoteEnabled (state) {
+  state = state || {}
+  const opts = state.opts || {}
+  const storage = opts.sessionStorage || getBrowserStorage('sessionStorage')
+  storageSet(storage, getDeckRemoteEnabledStorageKey(opts), '1')
 }
 
 function getDeckPeerId (state) {

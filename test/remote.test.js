@@ -1,6 +1,7 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const remote = require('../remote')._test
+const createRemote = require('../remote')
+const remote = createRemote._test
 const packageJson = require('../package.json')
 
 test('builds a remote URL with peer id and pair key query params', function () {
@@ -133,6 +134,75 @@ test('deck peer id persists across host reloads for the same deck URL', function
   assert.match(peerId, /^deck-/)
   assert.equal(remote.getDeckPeerId(reloaded), peerId)
   assert.equal(storage.getItem(remote.getDeckPeerIdStorageKey(first.opts)), peerId)
+})
+
+test('enableRemote stores deck remote enabled state for the stable deck URL', function () {
+  const storage = memoryStorage()
+  const peers = []
+  const opts = {
+    sessionStorage: storage,
+    location: 'https://talk.example/deck?foo=1#/3',
+    Peer: fakePeerClass(peers)
+  }
+
+  withFakeBrowser('https://talk.example/deck?foo=1#/3', function () {
+    const state = createRemote(fakePS(), opts)
+
+    assert.equal(remote.isDeckRemoteEnabled(opts), false)
+    state.enableRemote()
+
+    assert.equal(remote.isDeckRemoteEnabled(opts), true)
+    assert.equal(storage.getItem(remote.getDeckRemoteEnabledStorageKey(opts)), '1')
+    assert.equal(remote.isDeckRemoteEnabled({
+      sessionStorage: storage,
+      location: 'https://talk.example/deck?bar=2#/9'
+    }), true)
+    assert.equal(peers.length, 1)
+  })
+})
+
+test('reloaded deck with stored enabled flag automatically restarts remote hosting', function () {
+  const storage = memoryStorage()
+  const first = { opts: { sessionStorage: storage, location: 'https://talk.example/deck?foo=1#/3' } }
+  const reloadedOpts = { sessionStorage: storage, location: 'https://talk.example/deck?bar=2#/9' }
+  const peerId = remote.getDeckPeerId(first)
+  const peers = []
+
+  remote.storeDeckRemoteEnabled(first)
+  storage.setItem(remote.getControllerStorageKey(first.opts), 'client-a')
+
+  withFakeBrowser('https://talk.example/deck?bar=2#/9', function () {
+    const state = createRemote(fakePS(), Object.assign({}, reloadedOpts, { Peer: fakePeerClass(peers) }))
+
+    assert.equal(state.role, 'deck')
+    assert.equal(state.remoteEnabled, true)
+    assert.equal(peers.length, 1)
+    assert.equal(peers[0].id, peerId)
+
+    peers[0].emit('open', peerId)
+
+    assert.equal(state.peerId, peerId)
+    assert.equal(state.controllerId, 'client-a')
+    assert.match(state.remoteUrl, /[?&]ps-remote=/)
+    assert.match(state.remoteUrl, /[?&]ps-pair=/)
+  })
+})
+
+test('deck without stored enabled flag does not auto-start remote hosting', function () {
+  const storage = memoryStorage()
+  const peers = []
+
+  withFakeBrowser('https://talk.example/deck', function () {
+    const state = createRemote(fakePS(), {
+      sessionStorage: storage,
+      location: 'https://talk.example/deck',
+      Peer: fakePeerClass(peers)
+    })
+
+    assert.equal(state.role, 'deck')
+    assert.equal(state.remoteEnabled, false)
+    assert.equal(peers.length, 0)
+  })
 })
 
 test('locked deck ignores pair key and only accepts the stored client id', function () {
@@ -644,6 +714,131 @@ function fakeEventConnection (id, opts) {
       this.emit('close')
     }
   }
+}
+
+function fakePS () {
+  return {
+    slides: ['Intro'],
+    notes: [[]],
+    getCurrentSlideNumber: function () { return 1 },
+    on: function () {}
+  }
+}
+
+function fakePeerClass (peers) {
+  return function Peer (id, opts) {
+    this.id = id
+    this.opts = opts
+    this.handlers = {}
+    this.on = function (event, handler) {
+      this.handlers[event] = handler
+    }
+    this.emit = function (event, value) {
+      if (this.handlers[event]) this.handlers[event](value)
+    }
+    peers.push(this)
+  }
+}
+
+function withFakeBrowser (href, callback) {
+  const previousWindow = global.window
+  const previousDocument = global.document
+  const previousText = global.Text
+  const previousSetTimeout = global.setTimeout
+  const previousRequestAnimationFrame = global.requestAnimationFrame
+
+  const url = new URL(href)
+
+  global.Text = FakeText
+  global.document = fakeDocument()
+  global.window = {
+    location: {
+      href,
+      hash: url.hash,
+      search: url.search,
+      origin: url.origin,
+      pathname: url.pathname
+    },
+    addEventListener: function () {}
+  }
+  global.setTimeout = function () { return 1 }
+  global.requestAnimationFrame = function (fn) {
+    fn()
+    return 1
+  }
+
+  try {
+    callback()
+  } finally {
+    restoreGlobal('window', previousWindow)
+    restoreGlobal('document', previousDocument)
+    restoreGlobal('Text', previousText)
+    restoreGlobal('setTimeout', previousSetTimeout)
+    restoreGlobal('requestAnimationFrame', previousRequestAnimationFrame)
+  }
+}
+
+function restoreGlobal (name, value) {
+  if (typeof value === 'undefined') {
+    delete global[name]
+    return
+  }
+
+  global[name] = value
+}
+
+function fakeDocument () {
+  return {
+    body: fakeElement('body'),
+    documentElement: fakeElement('html'),
+    createElement: function (tag) { return fakeElement(tag) },
+    createTextNode: function (text) { return new FakeText(text) }
+  }
+}
+
+function fakeElement (tag) {
+  return {
+    nodeName: String(tag || 'div').toUpperCase(),
+    nodeType: 1,
+    className: '',
+    childNodes: [],
+    style: fakeStyle(),
+    appendChild: function (child) {
+      child.parentNode = this
+      this.childNodes.push(child)
+      return child
+    },
+    removeChild: function (child) {
+      this.childNodes = this.childNodes.filter(function (item) {
+        return item !== child
+      })
+      child.parentNode = null
+      return child
+    },
+    setAttribute: function (name, value) {
+      this[name] = String(value)
+    },
+    addEventListener: function (event, handler) {
+      this['on' + event] = handler
+    },
+    removeEventListener: function () {},
+    cloneNode: function () { return fakeElement(tag) }
+  }
+}
+
+function fakeStyle () {
+  return {
+    cssText: '',
+    setProperty: function (name, value) {
+      this[name] = String(value)
+    }
+  }
+}
+
+function FakeText (text) {
+  this.nodeName = '#text'
+  this.nodeType = 3
+  this.textContent = String(text)
 }
 
 function memoryStorage () {
