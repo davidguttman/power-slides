@@ -54,8 +54,8 @@ The generated `package.json` is intentionally minimal and runner-friendly:
 {
   "private": true,
   "scripts": {
-    "dev": "power-slides dev .",
-    "build": "power-slides build .",
+    "dev": "powerslides dev .",
+    "build": "powerslides build .",
     "start": "npm run dev"
   },
   "devDependencies": {
@@ -64,7 +64,7 @@ The generated `package.json` is intentionally minimal and runner-friendly:
 }
 ```
 
-`power-slides dev .` picks its port from `--port <port>`, then `$PORT`, then `9966`. The CLI dev/build shell turns on the built-in Options overlay and loads a bundled PeerJS runtime before the deck. Press `o` to reopen Options, then click **Enable remote control** to show the QR code / URL. Set `remote: false` (top-level in `talk.js` or `slides.yaml`/JSON) to disable it, or `remote: { ... }` for PeerJS/options overrides.
+`power-slides dev .` / `powerslides dev .` picks its port from `--port <port>`, then `$PORT`, then `9966`. The CLI dev/build shell turns on the built-in Options overlay and loads a bundled PeerJS runtime before the deck. Press `o` to reopen Options, then click **Enable remote control** to show the QR code / URL. Set `remote: false` (top-level in `talk.js` or `slides.yaml`/JSON) to disable it, or `remote: { ... }` for PeerJS/options overrides.
 
 `init` creates a talk folder by generating the local `package.json` and copying the packaged minimal `example/` starter authoring files:
 
