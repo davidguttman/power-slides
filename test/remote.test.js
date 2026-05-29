@@ -665,6 +665,199 @@ test('controller status tone maps common connection states', function () {
   assert.equal(remote.getControllerStatusTone('Remote error'), 'red')
 })
 
+test('controller notes normalize only real note lines', function () {
+  assert.deepEqual(remote.getControllerNotesLines([]), [])
+  assert.deepEqual(remote.getControllerNotesLines(null), [])
+  assert.deepEqual(remote.getControllerNotesLines(['First note', '', '  ', 'Second note']), ['First note', 'Second note'])
+  assert.deepEqual(remote.getControllerNotesLines('Single note'), ['Single note'])
+
+  assert.equal(remote.hasControllerNotes([]), false)
+  assert.equal(remote.hasControllerNotes(['   ']), false)
+  assert.equal(remote.hasControllerNotes(['Remember the demo']), true)
+})
+
+test('controller notes card floats over the middle with an internal scroll area', function () {
+  const cardStyle = remote.getControllerNotesCardStyle()
+  const bodyStyle = remote.getControllerNotesBodyStyle()
+
+  assert.equal(remote.CONTROLLER_NOTES_MAX_HEIGHT, 'min(22vh, 180px)')
+  assert.equal(cardStyle.position, 'absolute')
+  assert.equal(cardStyle.top, '50%')
+  assert.equal(cardStyle.transform, 'translateY(-50%)')
+  assert.equal(cardStyle['z-index'], 3)
+  assert.equal(cardStyle.display, 'grid')
+  assert.equal(cardStyle['max-height'], remote.CONTROLLER_NOTES_MAX_HEIGHT)
+  assert.equal(cardStyle.overflow, 'hidden')
+  assert.equal(cardStyle.background, '#050505')
+  assert.doesNotMatch(cardStyle.background, /rgba\(/)
+  assert.equal(cardStyle['box-sizing'], 'border-box')
+  assert.equal(bodyStyle['max-height'], remote.CONTROLLER_NOTES_MAX_HEIGHT)
+  assert.equal(bodyStyle.overflow, 'auto')
+  assert.equal(bodyStyle['-webkit-overflow-scrolling'], 'touch')
+  assert.equal(bodyStyle['font-size'], '15px')
+  assert.equal(bodyStyle['white-space'], 'pre-wrap')
+})
+
+test('controller renders current notes only when present', function () {
+  withFakeBrowser('https://talk.example/deck?ps-remote=deck-1&ps-pair=pair-1', function () {
+    const state = controllerReconnectState({
+      opts: { now: function () { return 0 } }
+    })
+    state.role = 'controller'
+    state.overlay = fakeElement('div')
+
+    const conn = remote.connectControllerDeck(fakePS(), state)
+    conn.emit('open')
+    conn.emit('data', { type: 'state', slideNumber: 1, slideCount: 2, notes: ['First note', ' ', 'Second note'] })
+
+    const card = state.overlay.querySelector('.ps-controller-notes-card')
+    assert.ok(card)
+    assert.equal(card['aria-label'], 'Current slide notes')
+    assert.equal(card.parentNode.className, 'ps-controller-view')
+    assert.equal(card.parentNode.childNodes[0].className, 'ps-controller-top-bar')
+    assert.equal(card.parentNode.childNodes[1].className, 'ps-controller-previews')
+    assert.equal(card.parentNode.childNodes[2].className, 'ps-controller-controls')
+    assert.equal(card.parentNode.childNodes[3], card)
+    assert.equal(card.style.position, 'absolute')
+    assert.equal(card.style.top, '50%')
+
+    const body = card.querySelector('.ps-controller-notes-body')
+    const paragraphs = body.querySelectorAll('p')
+    assert.equal(card.querySelector('.ps-controller-notes-label'), null)
+    assert.equal(card.style['max-height'], remote.CONTROLLER_NOTES_MAX_HEIGHT)
+    assert.equal(body.style['max-height'], remote.CONTROLLER_NOTES_MAX_HEIGHT)
+    assert.equal(body.style.overflow, 'auto')
+    assert.equal(paragraphs.length, 2)
+    assert.equal(paragraphs[0].textContent, 'First note')
+    assert.equal(paragraphs[1].textContent, 'Second note')
+  })
+
+  withFakeBrowser('https://talk.example/deck?ps-remote=deck-1&ps-pair=pair-1', function () {
+    const state = controllerReconnectState({
+      opts: { now: function () { return 0 } }
+    })
+    state.role = 'controller'
+    state.overlay = fakeElement('div')
+
+    const conn = remote.connectControllerDeck(fakePS(), state)
+    conn.emit('open')
+    conn.emit('data', { type: 'state', slideNumber: 1, slideCount: 2, notes: ['   '] })
+
+    assert.equal(state.overlay.querySelector('.ps-controller-notes-card'), null)
+  })
+})
+
+test('controller viewport anchors bars, controls, previews, and layered notes', function () {
+  const rootStyle = remote.getControllerViewStyle()
+  const previewsStyle = remote.getControllerPreviewsStyle()
+  const controlsStyle = remote.getControllerControlsStyle()
+  const currentCardStyle = remote.getControllerPreviewCardStyle('current')
+  const nextCardStyle = remote.getControllerPreviewCardStyle('next')
+  const controllerOverlayStyle = remote.getRemoteOverlayStyle(true)
+  const deckOverlayStyle = remote.getRemoteOverlayStyle(false)
+  const controllerPanelStyle = remote.getRemoteOptionsPanelStyle(true)
+  const deckPanelStyle = remote.getRemoteOptionsPanelStyle(false)
+  const notesCardStyle = remote.getControllerNotesCardStyle()
+  const previewViewportStyle = remote.getPreviewViewportStyle()
+
+  assert.equal(controllerOverlayStyle.background, '#000')
+  assert.doesNotMatch(controllerOverlayStyle.background, /rgba\(/)
+  assert.equal(deckOverlayStyle.background, 'rgba(0, 0, 0, 0.78)')
+
+  assert.equal(controllerPanelStyle.width, '100vw')
+  assert.equal(controllerPanelStyle.height, '100dvh')
+  assert.equal(controllerPanelStyle['max-height'], '100vh')
+  assert.equal(controllerPanelStyle.padding, '0')
+  assert.equal(controllerPanelStyle.background, '#000')
+  assert.doesNotMatch(controllerPanelStyle.background, /rgba\(/)
+  assert.equal(controllerPanelStyle.border, '0')
+  assert.equal(controllerPanelStyle['border-radius'], '0')
+  assert.equal(controllerPanelStyle['box-shadow'], 'none')
+  assert.equal(controllerPanelStyle.overflow, 'hidden')
+  assert.equal(controllerPanelStyle['touch-action'], 'manipulation')
+  assert.equal(deckPanelStyle.width, 'min(620px, calc(100vw - 32px))')
+  assert.equal(deckPanelStyle['max-height'], 'calc(100vh - 32px)')
+  assert.equal(deckPanelStyle.padding, '24px')
+  assert.equal(deckPanelStyle['border-radius'], '16px')
+  assert.equal(deckPanelStyle['box-shadow'], '0 16px 60px rgba(0, 0, 0, 0.55)')
+
+  assert.equal(rootStyle.display, 'grid')
+  assert.equal(rootStyle['grid-template-rows'], 'auto minmax(0, 1fr) minmax(0, 1fr) auto')
+  assert.equal(rootStyle.height, '100%')
+  assert.equal(rootStyle.overflow, 'hidden')
+  assert.equal(rootStyle.position, 'relative')
+  assert.equal(rootStyle.background, '#000')
+  assert.doesNotMatch(rootStyle.background, /rgba\(/)
+  assert.equal(previewsStyle['grid-row'], '2 / 4')
+  assert.equal(previewsStyle['grid-template-rows'], 'minmax(0, 1fr) minmax(0, 1fr)')
+  assert.equal(previewsStyle.overflow, 'hidden')
+  assert.equal(controlsStyle['grid-row'], '4')
+  assert.equal(currentCardStyle['grid-row'], '1')
+  assert.equal(currentCardStyle['align-self'], 'start')
+  assert.equal(nextCardStyle['grid-row'], '2')
+  assert.equal(nextCardStyle['align-self'], 'end')
+  assert.equal(notesCardStyle.background, '#050505')
+  assert.doesNotMatch(notesCardStyle.background, /rgba\(/)
+  assert.equal(previewViewportStyle.background, '#000')
+
+  withFakeBrowser('https://talk.example/deck?ps-remote=deck-1&ps-pair=pair-1', function () {
+    const state = controllerReconnectState({
+      opts: { now: function () { return 0 } }
+    })
+    state.role = 'controller'
+    state.overlay = fakeElement('div')
+
+    const conn = remote.connectControllerDeck(fakePS(), state)
+    conn.emit('open')
+    conn.emit('data', {
+      type: 'state',
+      slideNumber: 1,
+      slideCount: 3,
+      notes: [Array(30).fill('Long presenter note').join('\n')]
+    })
+
+    const panel = state.overlay.childNodes[0]
+    const root = state.overlay.querySelector('.ps-controller-view')
+    const topBar = state.overlay.querySelector('.ps-controller-top-bar')
+    const previews = state.overlay.querySelector('.ps-controller-previews')
+    const currentCard = state.overlay.querySelector('.ps-controller-preview-card-current')
+    const nextCard = state.overlay.querySelector('.ps-controller-preview-card-next')
+    const controls = state.overlay.querySelector('.ps-controller-controls')
+    const notes = state.overlay.querySelector('.ps-controller-notes-card')
+
+    assert.equal(panel.style.width, '100vw')
+    assert.equal(panel.style.height, '100dvh')
+    assert.equal(panel.style['max-height'], '100vh')
+    assert.equal(panel.style.padding, '0')
+    assert.equal(panel.style.background, '#000')
+    assert.equal(panel.style.border, '0')
+    assert.equal(panel.style['border-radius'], '0')
+    assert.equal(panel.style['box-shadow'], 'none')
+    assert.equal(panel.style.overflow, 'hidden')
+    assert.equal(root.style.overflow, 'hidden')
+    assert.equal(root.style.background, '#000')
+    assert.equal(root.childNodes[0], topBar)
+    assert.equal(root.childNodes[1], previews)
+    assert.equal(root.childNodes[2], controls)
+    assert.equal(root.childNodes[3], notes)
+    assert.equal(topBar.style['grid-row'], '1')
+    assert.equal(previews.style['grid-row'], '2 / 4')
+    assert.equal(currentCard.style['grid-row'], '1')
+    assert.equal(nextCard.style['grid-row'], '2')
+    assert.equal(controls.style['grid-row'], '4')
+    const notesBody = notes.querySelector('.ps-controller-notes-body')
+
+    assert.equal(notes.style.position, 'absolute')
+    assert.equal(notes.style['z-index'], '3')
+    assert.equal(notes.style.background, '#050505')
+    assert.doesNotMatch(notes.style.background, /rgba\(/)
+    assert.equal(notes.style['max-height'], remote.CONTROLLER_NOTES_MAX_HEIGHT)
+    assert.equal(notesBody.style['max-height'], remote.CONTROLLER_NOTES_MAX_HEIGHT)
+    assert.equal(notesBody.style.overflow, 'auto')
+    assert.equal(notes.querySelector('.ps-controller-notes-label'), null)
+  })
+})
+
 test('controller slide timer starts and resets only when the deck slide changes', function () {
   let now = 0
   const state = {
@@ -808,7 +1001,8 @@ test('controller timer ticks update display text without rebuilding preview fram
 
     assert.equal(topBar.style.display, 'grid')
     assert.equal(topBar.style['grid-template-columns'], '1fr auto 1fr')
-    assert.equal(topBar.style.padding, '0')
+    assert.equal(topBar.style.padding, '0 10px')
+    assert.match(topBar.style.padding, /^0(?:px)? 1[02]?px$/)
     assert.equal(topBar.style.border, '0')
     assert.equal(topBar.style.background, 'transparent')
     assert.equal(currentSlideTimer.parentNode, topLeft)
@@ -913,7 +1107,7 @@ test('controller timer ticks update display text without rebuilding preview fram
   })
 })
 
-test('controller previews contain-scale a full 16:9 iframe viewport', function () {
+test('controller previews cover-scale to fill their anchored viewport', function () {
   assert.equal(remote.PREVIEW_ASPECT_RATIO, '1280 / 720')
 
   const viewportStyle = remote.getPreviewViewportStyle()
@@ -921,6 +1115,7 @@ test('controller previews contain-scale a full 16:9 iframe viewport', function (
   assert.equal(viewportStyle['aspect-ratio'], '1280 / 720')
   assert.equal(viewportStyle.position, 'relative')
   assert.equal(viewportStyle.overflow, 'hidden')
+  assert.equal(viewportStyle.background, '#000')
   assert.equal(viewportStyle['touch-action'], 'none')
   assert.equal(viewportStyle['user-select'], 'none')
 
@@ -934,9 +1129,11 @@ test('controller previews contain-scale a full 16:9 iframe viewport', function (
   assert.equal(stageStyle['touch-action'], 'none')
 
   assert.equal(remote.getPreviewStageScale(320, 180), 0.25)
-  assert.equal(remote.getPreviewStageScale(320, 320), 0.25)
-  assert.equal(remote.getPreviewStageScale(640, 180), 0.25)
+  assert.equal(remote.getPreviewStageScale(320, 320), 320 / 720)
+  assert.equal(remote.getPreviewStageScale(640, 180), 0.5)
   assert.equal(remote.getPreviewStageScale(640, 360), 0.5)
+  assert.equal(remote.getPreviewStageScale(640, 720), 1)
+  assert.equal(remote.getPreviewStageScale(0, 720), 0.25)
 })
 
 test('generates an inline QR SVG for the remote URL', function () {

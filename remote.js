@@ -13,6 +13,7 @@ const DECK_REMOTE_ENABLED_STORAGE_PREFIX = 'power-slides.remote.enabled'
 const PREVIEW_BASE_WIDTH = 1280
 const PREVIEW_BASE_HEIGHT = 720
 const PREVIEW_ASPECT_RATIO = PREVIEW_BASE_WIDTH + ' / ' + PREVIEW_BASE_HEIGHT
+const CONTROLLER_NOTES_MAX_HEIGHT = 'min(22vh, 180px)'
 const DEFAULT_CONTROLLER_SLIDE_DURATION_SECONDS = 75
 
 module.exports = createRemote
@@ -30,6 +31,7 @@ module.exports._test = {
   PREVIEW_ASPECT_RATIO,
   PREVIEW_BASE_HEIGHT,
   PREVIEW_BASE_WIDTH,
+  CONTROLLER_NOTES_MAX_HEIGHT,
   DEFAULT_CONTROLLER_SLIDE_DURATION_SECONDS,
   PACKAGE_VERSION,
   acceptDeckHello,
@@ -38,7 +40,15 @@ module.exports._test = {
   createQrSvg,
   generateId,
   connectControllerDeck,
+  getRemoteOverlayStyle,
+  getRemoteOptionsPanelStyle,
   getControllerStorageKey,
+  getControllerControlsStyle,
+  getControllerNotesBodyStyle,
+  getControllerNotesCardStyle,
+  getControllerNotesLines,
+  getControllerPreviewsStyle,
+  getControllerPreviewCardStyle,
   getControllerTimerSeconds,
   getControllerSlideTimerSeconds,
   getEstimatedControllerTalkDurationSeconds,
@@ -46,6 +56,8 @@ module.exports._test = {
   getControllerSlidePositionText,
   getControllerStatusColor,
   getControllerStatusTone,
+  getControllerViewStyle,
+  updateControllerNotesLayer,
   updateControllerTimerDisplays,
   getDeckPeerId,
   getDeckPeerIdStorageKey,
@@ -54,6 +66,7 @@ module.exports._test = {
   recoverDeckPeerId,
   isDeckPeerIdCollisionError,
   handleControllerClose,
+  hasControllerNotes,
   isDeckRemoteEnabled,
   handleControllerData,
   formatControllerTimer,
@@ -275,6 +288,7 @@ function connectControllerDeck (PS, state) {
       ensureControllerTimerInterval(PS, state)
       if (state.controllerPreviewDirty === false) {
         updateControllerTimerDisplays(state)
+        updateControllerNotesLayer(state)
       } else {
         updateRemoteOptions(PS, state)
       }
@@ -543,23 +557,7 @@ function showRemoteOptions (PS, state) {
   if (state.overlay) return updateRemoteOptions(PS, state)
 
   state.overlay = h('.ps-remote-options', {
-    style: {
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      'z-index': 2147483647,
-      display: 'flex',
-      'align-items': 'center',
-      'justify-content': 'center',
-      background: 'rgba(0, 0, 0, 0.78)',
-      color: 'white',
-      'font-family': 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
-      'font-size': '16px',
-      'overscroll-behavior': 'none',
-      'touch-action': 'manipulation'
-    }
+    style: getRemoteOverlayStyle(state.role === 'controller')
   })
 
   document.body.appendChild(state.overlay)
@@ -571,6 +569,26 @@ function updateRemoteOptions (PS, state) {
 
   state.overlay.innerHTML = ''
   state.overlay.appendChild(remoteOptionsPanel(PS, state))
+}
+
+function getRemoteOverlayStyle (isController) {
+  return {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    'z-index': 2147483647,
+    display: 'flex',
+    'align-items': 'center',
+    'justify-content': 'center',
+    background: isController ? '#000' : 'rgba(0, 0, 0, 0.78)',
+    color: 'white',
+    'font-family': 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
+    'font-size': '16px',
+    'overscroll-behavior': 'none',
+    'touch-action': 'manipulation'
+  }
 }
 
 function remoteOptionsPanel (PS, state) {
@@ -620,20 +638,45 @@ function remoteOptionsPanel (PS, state) {
   }
 
   return h('div', {
-    style: {
-      width: 'min(620px, calc(100vw - 32px))',
-      'max-height': 'calc(100vh - 32px)',
-      overflow: 'auto',
-      padding: isController ? '10px' : '24px',
-      background: '#111',
-      border: '1px solid rgba(255, 255, 255, 0.2)',
-      'border-radius': '16px',
-      'box-shadow': '0 16px 60px rgba(0, 0, 0, 0.55)',
+    style: getRemoteOptionsPanelStyle(isController)
+  }, children)
+}
+
+function getRemoteOptionsPanelStyle (isController) {
+  if (isController) {
+    return {
+      width: '100vw',
+      height: '100dvh',
+      'max-height': '100vh',
+      overflow: 'hidden',
+      padding: '0',
+      background: '#000',
+      border: '0',
+      'border-radius': '0',
+      'box-shadow': 'none',
+      'box-sizing': 'border-box',
       '-webkit-overflow-scrolling': 'touch',
       'overscroll-behavior': 'contain',
-      'touch-action': 'pan-y'
+      'touch-action': 'manipulation'
     }
-  }, children)
+  }
+
+  const style = {
+    width: 'min(620px, calc(100vw - 32px))',
+    'max-height': 'calc(100vh - 32px)',
+    overflow: 'auto',
+    padding: '24px',
+    background: '#111',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    'border-radius': '16px',
+    'box-shadow': '0 16px 60px rgba(0, 0, 0, 0.55)',
+    'box-sizing': 'border-box',
+    '-webkit-overflow-scrolling': 'touch',
+    'overscroll-behavior': 'contain',
+    'touch-action': 'pan-y'
+  }
+
+  return style
 }
 
 function remoteStatusView (state) {
@@ -690,26 +733,114 @@ function qrCodeView (url) {
 }
 
 function controllerView (PS, state) {
-  return h('div.ps-controller-view', {
-    style: {
-      display: 'grid',
-      gap: '10px',
-      'touch-action': 'manipulation'
-    }
-  }, [
+  const children = [
     controllerTopBarView(PS, state),
     controllerPreviewsView(PS, state),
     h('div.ps-controller-controls', {
-      style: {
-        display: 'grid',
-        'grid-template-columns': '1fr 1fr',
-        gap: '12px'
-      }
+      style: getControllerControlsStyle()
     }, [
       h('button', { type: 'button', onclick: sendRemoteCommand(state, 'prev'), style: controllerButtonStyle() }, 'Prev'),
       h('button', { type: 'button', onclick: sendRemoteCommand(state, 'next'), style: controllerButtonStyle() }, 'Next')
     ])
+  ]
+  const notes = controllerNotesView(state)
+  if (notes) children.push(notes)
+
+  return h('div.ps-controller-view', {
+    style: getControllerViewStyle()
+  }, children)
+}
+
+function getControllerViewStyle () {
+  return {
+    display: 'grid',
+    'grid-template-rows': 'auto minmax(0, 1fr) minmax(0, 1fr) auto',
+    gap: '10px',
+    height: '100%',
+    'min-height': 0,
+    overflow: 'hidden',
+    position: 'relative',
+    background: '#000',
+    'touch-action': 'manipulation'
+  }
+}
+
+function getControllerControlsStyle () {
+  return {
+    display: 'grid',
+    'grid-template-columns': '1fr 1fr',
+    gap: '12px',
+    'grid-row': '4',
+    'z-index': 2
+  }
+}
+
+function controllerNotesView (state) {
+  const lines = getControllerNotesLines(state && state.notes)
+  if (!lines.length) return null
+
+  return h('section.ps-controller-notes-card', {
+    'aria-label': 'Current slide notes',
+    style: getControllerNotesCardStyle()
+  }, [
+    h('div.ps-controller-notes-body', {
+      style: getControllerNotesBodyStyle()
+    }, lines.map(function (line, index) {
+      return h('p', {
+        style: {
+          margin: index === lines.length - 1 ? 0 : '0 0 0.55em'
+        }
+      }, line)
+    }))
   ])
+}
+
+function getControllerNotesLines (notes) {
+  const list = Array.isArray(notes) ? notes : (notes == null ? [] : [notes])
+
+  return list.map(function (note) {
+    return note == null ? '' : String(note)
+  }).filter(function (note) {
+    return note.trim().length > 0
+  })
+}
+
+function hasControllerNotes (notes) {
+  return getControllerNotesLines(notes).length > 0
+}
+
+function getControllerNotesCardStyle () {
+  return {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: '50%',
+    transform: 'translateY(-50%)',
+    'z-index': 3,
+    display: 'grid',
+    gap: '8px',
+    'max-height': CONTROLLER_NOTES_MAX_HEIGHT,
+    overflow: 'hidden',
+    padding: '10px 12px',
+    background: '#050505',
+    border: '1px solid rgba(139, 211, 255, 0.28)',
+    'border-radius': '12px',
+    'box-sizing': 'border-box',
+    'box-shadow': '0 10px 28px rgba(0, 0, 0, 0.34)'
+  }
+}
+
+function getControllerNotesBodyStyle () {
+  return {
+    'max-height': CONTROLLER_NOTES_MAX_HEIGHT,
+    overflow: 'auto',
+    '-webkit-overflow-scrolling': 'touch',
+    'overscroll-behavior': 'contain',
+    'font-size': '15px',
+    'line-height': 1.4,
+    color: '#f4f8fb',
+    'white-space': 'pre-wrap'
+  }
 }
 
 function controllerTopBarView (PS, state) {
@@ -719,12 +850,14 @@ function controllerTopBarView (PS, state) {
       'grid-template-columns': '1fr auto 1fr',
       'align-items': 'center',
       gap: '6px',
-      padding: '0',
+      padding: '0 10px',
       background: 'transparent',
       border: '0',
       'border-radius': '0',
       'font-size': '12px',
-      'line-height': 1.2
+      'line-height': 1.2,
+      'grid-row': '1',
+      'z-index': 2
     }
   }, [
     h('div.ps-controller-top-left', {
@@ -892,15 +1025,23 @@ function controllerPreviewsView (PS, state) {
   const numbers = getPreviewSlideNumbers(state.slideNumber, state.slideCount)
 
   return h('div.ps-controller-previews', {
-    style: {
-      display: 'grid',
-      gap: '14px',
-      margin: '0'
-    }
+    style: getControllerPreviewsStyle()
   }, [
     slidePreviewCard(PS, numbers.current, numbers.slideCount, 'current'),
     slidePreviewCard(PS, numbers.next, numbers.slideCount, 'next')
   ])
+}
+
+function getControllerPreviewsStyle () {
+  return {
+    display: 'grid',
+    'grid-template-rows': 'minmax(0, 1fr) minmax(0, 1fr)',
+    gap: '10px',
+    'grid-row': '2 / 4',
+    'min-height': 0,
+    overflow: 'hidden',
+    margin: '0'
+  }
 }
 
 function slidePreviewCard (PS, slideNumber, slideCount, variant) {
@@ -916,14 +1057,23 @@ function slidePreviewCard (PS, slideNumber, slideCount, variant) {
   })
   fitPreviewStage(body, frame)
 
-  return h('section.ps-controller-preview-card', {
+  return h('section.ps-controller-preview-card.ps-controller-preview-card-' + label, {
     'aria-label': label + (slideNumber ? (' slide ' + slideNumber + ' of ' + slideCount) : ''),
-    style: {
-      display: 'grid',
-      gap: '6px',
-      width: '100%'
-    }
+    style: getControllerPreviewCardStyle(variant)
   }, body)
+}
+
+function getControllerPreviewCardStyle (variant) {
+  return {
+    display: 'grid',
+    gap: '6px',
+    width: '100%',
+    height: '100%',
+    'min-height': 0,
+    overflow: 'hidden',
+    'align-self': variant === 'next' ? 'end' : 'start',
+    'grid-row': variant === 'next' ? '2' : '1'
+  }
 }
 
 function controllerNextPreviewBadge () {
@@ -1064,12 +1214,15 @@ function previewPlaceholder (text) {
 function getPreviewViewportStyle () {
   return {
     width: '100%',
+    height: '100%',
+    'min-height': 0,
     'aspect-ratio': PREVIEW_ASPECT_RATIO,
     overflow: 'hidden',
     position: 'relative',
-    background: '#050505',
+    background: '#000',
     border: '1px solid rgba(255, 255, 255, 0.14)',
     'border-radius': '12px',
+    'box-sizing': 'border-box',
     'touch-action': 'none',
     '-webkit-user-select': 'none',
     'user-select': 'none'
@@ -1108,7 +1261,7 @@ function getPreviewStageScale (viewportWidth, viewportHeight) {
 
   if (!isFinite(width) || width <= 0 || !isFinite(height) || height <= 0) return 0.25
 
-  return Math.min(width / PREVIEW_BASE_WIDTH, height / PREVIEW_BASE_HEIGHT)
+  return Math.max(width / PREVIEW_BASE_WIDTH, height / PREVIEW_BASE_HEIGHT)
 }
 
 function fitPreviewStage (viewport, stage) {
@@ -1161,6 +1314,21 @@ function ensureControllerTimerInterval (PS, state) {
   }, 1000)
 
   if (state.timerInterval && typeof state.timerInterval.unref === 'function') state.timerInterval.unref()
+}
+
+function updateControllerNotesLayer (state) {
+  if (!state || !state.overlay || typeof state.overlay.querySelector !== 'function') return false
+
+  const root = state.overlay.querySelector('.ps-controller-view')
+  if (!root) return false
+
+  const existing = root.querySelector('.ps-controller-notes-card')
+  const next = controllerNotesView(state)
+
+  if (existing && typeof root.removeChild === 'function') root.removeChild(existing)
+  if (next && typeof root.appendChild === 'function') root.appendChild(next)
+
+  return true
 }
 
 function updateControllerTimerDisplays (state) {
