@@ -383,6 +383,7 @@ export function columns (opts) {
     const root = element('div', { style: rootStyle(opts) })
     if (bg) root.appendChild(backgroundLayer(bg, 0.35))
     if (bg) root.appendChild(scrim(opts.brightness))
+    const stacked = shouldStackColumns(opts, columnItems.length)
     root.appendChild(element('div', {
       className: 'ps-columns-layout',
       style: {
@@ -393,8 +394,8 @@ export function columns (opts) {
         boxSizing: 'border-box',
         minWidth: 0,
         display: 'grid',
-        gridTemplateColumns: opts.gridTemplateColumns || defaultColumnsTemplate(columnItems.length),
-        gridTemplateRows: opts.rows || opts.gridTemplateRows || 'minmax(0, 1fr)',
+        gridTemplateColumns: stacked ? 'minmax(0, 1fr)' : (opts.gridTemplateColumns || defaultColumnsTemplate(columnItems.length)),
+        gridTemplateRows: stacked ? defaultRowsTemplate(columnItems.length) : (opts.rows || opts.gridTemplateRows || 'minmax(0, 1fr)'),
         gap: opts.gap || 'clamp(1.5rem, 3vw, 3.25rem)',
         alignItems: opts.alignItems || 'center',
         justifyItems: opts.justifyItems || 'stretch',
@@ -992,12 +993,30 @@ function defaultColumnsTemplate (count) {
   return 'repeat(' + count + ', minmax(0, 1fr))'
 }
 
+function defaultRowsTemplate (count) {
+  count = Math.max(1, count || 1)
+  if (count === 1) return 'minmax(0, 1fr)'
+  return 'repeat(' + count + ', minmax(0, 1fr))'
+}
+
+function shouldStackColumns (opts, count) {
+  if (count < 2) return false
+  if (opts.stackColumns === false) return false
+  if (opts.stackColumns === true) return true
+  if (typeof window === 'undefined') return false
+  const width = Number(window.innerWidth) || 0
+  const height = Number(window.innerHeight) || 0
+  if (!width || !height) return false
+  return width < height || width <= 720
+}
+
 function renderColumn (column, opts, index) {
   const columnOpts = Object.assign({}, opts, column)
   const img = column.image
   const iframeUrl = column.iframe || column.srcdoc
+  const nestedColumns = Array.isArray(column.columns)
   const hasCopy = hasColumnCopy(column)
-  const hasMedia = Boolean(img || iframeUrl)
+  const hasMedia = Boolean(img || iframeUrl || nestedColumns)
   const className = 'ps-columns-column ps-columns-column-' + (index + 1) + (hasMedia ? ' has-media' : '') + (hasCopy ? ' has-copy' : '')
   return element('div', { className, style: columnsColumnStyle(columnOpts) }, [
     renderColumnCopy(column, opts, hasMedia),
@@ -1007,6 +1026,9 @@ function renderColumn (column, opts, index) {
 
 function renderColumnMedia (column, opts) {
   const columnOpts = Object.assign({}, opts, column)
+  if (Array.isArray(column.columns)) {
+    return element('div', { className: 'ps-columns-media ps-columns-nested-media', style: columnsMediaStyle(columnOpts) }, renderNestedColumnSlide(columnOpts))
+  }
   if (column.iframe || column.srcdoc) {
     return element('div', { className: 'ps-columns-media ps-columns-iframe-media', style: columnsMediaStyle(columnOpts) }, columnIframe(columnOpts))
   }
@@ -1014,6 +1036,20 @@ function renderColumnMedia (column, opts) {
     return element('div', { className: 'ps-columns-media ps-columns-image-media', style: columnsMediaStyle(columnOpts) }, element('img', { src: column.image, style: imageContainStyle(columnOpts) }))
   }
   return null
+}
+
+function renderNestedColumnSlide (opts) {
+  const target = element('div', {
+    className: 'ps-columns-nested-slide',
+    style: {
+      width: '100%',
+      height: '100%',
+      minWidth: 0,
+      minHeight: 0
+    }
+  })
+  columns(opts)(target)
+  return target
 }
 
 function columnIframe (opts) {

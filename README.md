@@ -3,13 +3,12 @@
 Write slideshows in YAML or JavaScript instead of fighting a WYSIWYG.
 
 ```yaml
-slides:
-  - title: Hello, world
-    subtitle: A talk that's just a file
-    background: /hero.png
-  - image: /diagram.png
-  - title: A slide can still be anything the browser can render.
-    subtitle: power-slides
+- title: Hello, world
+  subtitle: A talk that's just a file
+  background: /hero.png
+- image: /diagram.png
+- title: A slide can still be anything the browser can render.
+  subtitle: power-slides
 ```
 
 ```bash
@@ -63,7 +62,7 @@ The generated `package.json` is intentionally minimal and runner-friendly:
 }
 ```
 
-`power-slides dev .` / `powerslides dev .` picks its port from `--port <port>`, then `$PORT`, then `9966`. The CLI dev/build shell turns on the built-in Options panel and loads a bundled PeerJS runtime before the deck. Press `o` to reopen Options, then click **Enable remote control** to show the QR code / URL. Set `remote: false` (top-level in `talk.js` or `slides.yaml`/JSON) to disable it, or `remote: { ... }` for PeerJS/options overrides.
+`power-slides dev .` / `powerslides dev .` picks its port from `--port <port>`, then `$PORT`, then `9966`. The CLI dev/build shell turns on the built-in Options panel and loads a bundled PeerJS runtime before the deck. Press `o` to reopen Options, then click **Enable remote control** to show the QR code / URL. Export `remote: false` from `talk.js` to disable it, or `remote: { ... }` for PeerJS/options overrides.
 
 `init` creates a talk folder by generating the local `package.json` and copying the packaged minimal `example/` starter authoring files:
 
@@ -81,96 +80,78 @@ It refuses to run in a non-empty directory unless you pass `--force`, and it doe
 ```js
 import PowerSlides, { text, image, startTalk } from 'power-slides'
 
-startTalk(document.body, {
-  slides: [
-    { title: 'Hello', subtitle: 'Reusable talks' },
-    { image: '/diagram.png', fit: 'contain' }
-  ]
-})
+startTalk(document.body, [
+  { title: 'Hello', subtitle: 'Reusable talks' },
+  { image: '/diagram.png', fit: 'contain' }
+])
 ```
 
 CommonJS `require('power-slides')` still works for older decks, but new talks should use ESM and/or the CLI-generated entry.
 
 ## slides.yaml
 
-A talk is an object with a `slides` array. The title slide is just the first slide. YAML and JSON share one schema; without `--slides`, the CLI picks `slides.yaml`, then `slides.yml`, then `slides.json`.
+`docs/slide-api-v3.md` is the canonical v3 slide spec. A slide spec is a bare YAML or JSON array of slides — no top-level `slides:` wrapper and no talk metadata mixed into the content file. The title slide is just the first slide.
+
+Without `--slides`, the CLI picks `slides.yaml`, then `slides.yml`, then `slides.json`.
 
 ```yaml
-slides:
-  - title: Main point
-    subtitle: Optional subtitle
-    background: /sample.svg
-    brightness: 0.45
-    align: center
-    notes:
-      - Demonstrates the default text shape from docs/slide-api-v3.md.
+- title: Main point
+  subtitle: Optional subtitle
+  background: /sample.svg
+  brightness: 0.45
+  align: center
 
-  - image: /sample.svg
-    fit: contain
-    notes:
-      - Demonstrates the image shape with an existing public asset.
+- image: /sample.svg
+  fit: contain
 
-  - video: /spin.mp4
-    controls: true
-    muted: true
-    loop: true
-    fit: contain
-    notes:
-      - Demonstrates the video shape with an existing public asset.
+- video: /spin.mp4
+  controls: true
+  muted: true
+  loop: true
+  fit: contain
 
-  - background: /sample.svg
-    brightness: 0.55
-    columns:
-      - iframe: https://david.app
-        iframeTitle: Example app
-        device: iphone
-      - title: Demo in context
-        bullets:
-          - Cross-origin page stays untouched
-          - Parent arrows remain available
-    notes:
-      - Demonstrates the columns shape; iframe plus copy belongs here.
+- background: /sample.svg
+  brightness: 0.55
+  columns:
+    - iframe: https://david.app
+      device: iphone
+    - title: Demo in context
+      bullets:
+        - Cross-origin page stays untouched
+        - Parent arrows remain available
 
-  - iframe: https://david.app
-    iframeTitle: Example app
-    device: iphone
-    background: '#061018'
-    notes:
-      - Demonstrates the iframe shape as a full-slide embed.
+- iframe: https://david.app
+  device: iphone
+  background: '#061018'
 
-  - html: |
-      <div style="width:100vw;height:100vh;color:white">
-        <h1>Custom HTML</h1>
-      </div>
-    notes:
-      - Demonstrates the html shape with trusted inline markup.
+- html: |
+    <div style="width:100vw;height:100vh;color:white">
+      <h1>Custom HTML</h1>
+    </div>
 
-  - custom: particleField
-    title: Generative canvas
-    notes:
-      - Demonstrates the custom shape delegated to talk.js.
+- custom: particleField
+  title: Generative canvas
 ```
 
-### Common slide fields
+### v3 slide model
 
-Every YAML slide is an object. Most slides do not need `type`; a normal copy slide is just title/text fields, with optional slide-level styling. Use `custom: rendererName` for custom slides; `type` is rarely needed.
+Every slide object has exactly one content property:
 
-Common slide-level fields, honored by built-ins when sensible:
+- `title` — words on screen; unlocks `subtitle`, `eyebrow`, `bullets`, and `pullquote`
+- `image` — unlocks `fit`
+- `video` — unlocks `fit`, `controls`, `muted`, and `loop`
+- `iframe` — unlocks `device`
+- `html` — trusted inline markup
+- `custom` — delegates to a `talk.js` renderer; any other properties pass through untouched
+- `columns` — the only container; each column is itself a slide object, including nested `columns`
 
-- `background`, `brightness`, `backgroundSize`, `backgroundPosition`, `backgroundColor` — slide background and dimming/styling.
-- `notes` or `note` — string or array of strings for presenter mode.
-- `font`, `color`, `padding`, `align` — shared theme/layout knobs supported by the default text slide and many built-ins.
-- `renderer`, `name`, or `kind` — renderer key checked before built-ins and before inference. This is how custom renderer keys select `talk.js` renderers, and they can also override a built-in slide for one slide.
+Shared properties available on any slide are `background`, `brightness`, and `align`. Use `columns` when you want to combine content types, such as iframe-plus-copy or image-plus-title. On narrow/portrait viewports, columns stack vertically in source order.
 
-Slide list: default text, `image`, `video`, `columns`, `iframe`, `html`, and `custom`. Title-only is a default text slide. Use `columns` for screenshot, recap, and iframe-plus-copy layouts.
-
-Inference: `custom` selects a custom renderer; a `columns` array => `columns`; `image` with no copy fields => `image`; `video` => `video`; `iframe` or `srcdoc` => `iframe`; `html`/`markup` => `html`; otherwise the default text slide. Use semantic fields (`image`, `video`, `iframe`) instead of generic `src`, `img`, or `url`.
+The runtime still tolerates some older helper fields and explicit `type` values for existing decks, but public examples and new docs should use the content-property model above.
 
 ### Slide concept reference
 
-#### Default text slide
-
-Use a type-less slide for normal title/copy. the same slide-level `background` and `brightness` fields are available to other built-ins where they make sense.
+#### `title`
 
 ```yaml
 - eyebrow: Section
@@ -181,26 +162,22 @@ Use a type-less slide for normal title/copy. the same slide-level `background` a
   align: left
 ```
 
-Default/text fields:
-
-- Copy: `eyebrow`, `title` (or `text`), `subtitle`.
-- Slide background: `background`, `backgroundSize` (default `cover`), `backgroundPosition` (default `center`), `backgroundColor`, `brightness`.
-- Layout/theme: `align` (`center` or `left`), `font`, `color`, `padding`, `maxWidth`, `titleSize`, `subtitleSize`, `subtitleOpacity`, `subtitleMaxWidth`, `eyebrowSize`.
+```yaml
+- title: What changed
+  bullets:
+    - YAML stays content-first
+    - JS handles special moments
+  pullquote: Build static files to share.
+```
 
 #### `image`
-
-Full-slide image.
 
 ```yaml
 - image: /diagram.png
   fit: contain
 ```
 
-Fields: `image` and `fit` (or `size`), defaulting to `cover`. Use `contain` to avoid cropping. Use top-level `background` when the asset is the slide background behind copy or another layout.
-
 #### `video`
-
-Full-slide video.
 
 ```yaml
 - video: /fractal-loop.mp4
@@ -210,36 +187,19 @@ Full-slide video.
   fit: contain
 ```
 
-Fields: `video`, `controls`, `muted`, `loop`, `autoplay` (`false` disables default autoplay), `preload`, `poster`, and `fit` (`contain` or `cover`, default `contain`).
-
 #### `columns`
-
-Composition slide with a shared background/dimming layer and an explicit `columns` array. Use it for iframe + copy, screenshot + label, QR + text, recap cards, HTML snippets, bullets, and side-by-side copy.
 
 ```yaml
 - background: /generated/chaser-app.png
   brightness: 0.55
   columns:
     - iframe: https://david.app
-      iframeTitle: Example app
       device: iphone
     - title: Demo in context
       bullets:
         - Cross-origin page stays untouched
         - Parent arrows remain available
 ```
-
-Screenshot example:
-
-```yaml
-- background: /generated/beat-1-you.png
-  columns:
-    - title: Discord messages per day
-    - image: /images/discord-volume.png
-      fit: contain
-```
-
-Recap example:
 
 ```yaml
 - background: /bg.png
@@ -250,37 +210,26 @@ Recap example:
       bullets:
         - YAML stays content-first
         - JS handles special moments
-      pull: Build static files to share.
+      pullquote: Build static files to share.
 ```
-
-Top-level fields: `columns` (array), `background`, `brightness`, `font`, `color`, layout knobs `gridTemplateColumns`, `rows`/`gridTemplateRows`, `gap`, `padding`, `alignItems`, and `justifyItems`. Each column object may include copy fields `eyebrow`, `title`, `subtitle`, `text`, `body`, `copy`, `pull`, `bullets`, media fields `image` or `iframe`/`srcdoc` plus `iframeTitle`, trusted `html`/`markup`, and per-column style knobs such as `fit`, `size`, `align`/`copyAlign`, `copyJustify`, `copyAlignSelf`, `copyMaxWidth`, `copyStyle`, `maxHeight`/`imageMaxHeight`, `maxWidth`/`imageMaxWidth`, `radius`, `shadow`, `imageAlign`, `imageJustify`, `imageAlignSelf`, `imageJustifySelf`, `mediaStyle`, and `imageStyle`.
 
 #### `iframe`
 
-Full-slide embed. If you need iframe + explanatory copy, use `columns` with an iframe column and a copy column.
-
 ```yaml
 - iframe: https://david.app
-  iframeTitle: Example app
   device: iphone
   background: '#061018'
 ```
 
-Fields: `iframe`, `srcdoc`, `iframeTitle`, `allow`, `allowFullscreen`, `loading`, `referrerPolicy`, `sandbox`, `navigationControls`, `forwardKeys`, `background`, `iframeStyle`, `stagePadding`/`rootPadding`. Phone frame: `device: iphone` or `frame: phone`, plus `deviceWidth`/`frameWidth`, `deviceAspectRatio`, `devicePadding`, `deviceBorder`, `deviceRadius`, `deviceBackground`, `deviceShadow`, `deviceStyle`, `screenRadius`, `screenBackground`. Arrow styling: `navControlInset`, `navControlSize`, `navControlOpacity`.
-
 #### `html`
-
-Injects trusted HTML directly into the slide container.
 
 ```yaml
 - html: '<main style="padding:8vw;color:white"><h1>Raw HTML</h1></main>'
 ```
 
-Fields: `html` (or `markup`). Treat this as trusted content; do not put untrusted user input here. Use `html` or `custom` for bespoke layouts when the built-in templates are too coarse.
+Treat `html` as trusted content; do not put untrusted user input here.
 
 #### `custom`
-
-Delegates rendering to `talk.js`. `custom` chooses the renderer. If no renderer matches, the deck shows a “Missing custom renderer” text slide.
 
 ```yaml
 - custom: particleField
@@ -329,9 +278,9 @@ export default { renderers: { custom: () => slide } }
 
 ## API
 
-### `startTalk(el, { slides })`
+### `startTalk(el, slidesOrSpec, [options])`
 
-ESM entry point. Renders the YAML/JSON `slides` array into `el`. The ESM `PowerSlides` object has all data-driven helpers (`text`, `image`, `video`, `columns`, `iframe`, `html`, …) attached.
+ESM entry point. Renders a v3 slide array (or a legacy object with `slides`) into `el`. The ESM `PowerSlides` object has all data-driven helpers (`text`, `image`, `video`, `columns`, `iframe`, `html`, …) attached.
 
 ### `PS.start(el, slides, [isPresenter], [options])`
 
@@ -369,7 +318,7 @@ Full-bleed image slide. `backgroundSize` defaults to `"cover"`; pass `"contain"`
 
 ### `PS.video(url, [options])`
 
-Full-bleed video slide. Defaults: `{ loop: false, muted: false, controls: false, size: 'contain' }`. `size` is `'contain'` or `'cover'`. The video resets and plays every time you navigate to the slide.
+Full-bleed video slide. Defaults: `{ loop: false, muted: false, controls: false, fit: 'contain' }`. `fit` is `'contain'` or `'cover'`. The video resets and plays every time you navigate to the slide.
 
 ### `PS.title(text, [style])`
 

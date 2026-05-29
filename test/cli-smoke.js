@@ -11,6 +11,33 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'power-slides-'))
 const talk = path.join(tmp, 'talk')
 const generatedExamplePeerScript = path.join(root, 'example', 'public', 'peerjs.min.js')
 
+function slideArray (spec) {
+  return Array.isArray(spec) ? spec : (spec && spec.slides) || []
+}
+
+function walkSlideObjects (value, visit) {
+  if (Array.isArray(value)) {
+    for (const item of value) walkSlideObjects(item, visit)
+    return
+  }
+  if (!value || typeof value !== 'object') return
+  visit(value)
+  if (Array.isArray(value.columns)) walkSlideObjects(value.columns, visit)
+}
+
+function assertNoPublicLegacyFields (slides, label) {
+  walkSlideObjects(slides, slide => {
+    assert(!Object.prototype.hasOwnProperty.call(slide, 'iframeTitle'), label + ' does not use iframeTitle')
+    assert(!Object.prototype.hasOwnProperty.call(slide, 'quote'), label + ' does not use removed quote field')
+    assert(!Object.prototype.hasOwnProperty.call(slide, 'attribution'), label + ' does not use removed attribution field')
+    assert(!Object.prototype.hasOwnProperty.call(slide, 'side'), label + ' iframe-plus-copy uses columns, not iframe side')
+    assert(!Object.prototype.hasOwnProperty.call(slide, 'src'), label + ' does not use src alias')
+    assert(!Object.prototype.hasOwnProperty.call(slide, 'img'), label + ' does not use img alias')
+    assert(!Object.prototype.hasOwnProperty.call(slide, 'url'), label + ' does not use url alias')
+    assert(!Object.prototype.hasOwnProperty.call(slide, 'type'), label + ' uses content properties instead of type')
+  })
+}
+
 function cleanupGeneratedExampleArtifacts () {
   fs.rmSync(generatedExamplePeerScript, { force: true })
 }
@@ -35,9 +62,8 @@ require(${JSON.stringify(cli)})
 
 function runDevWatchSmoke (talkDir) {
   const updatedSlides = [
-    'slides:',
-    '  - title: Watched title',
-    '    subtitle: Updated YAML',
+    '- title: Watched title',
+    '  subtitle: Updated YAML',
     ''
   ].join('\n')
   const script = `
@@ -78,7 +104,8 @@ function check () {
   const entry = fs.readFileSync(path.join(talkDir, '.power-slides', 'entry.js'), 'utf8')
   const html = fs.readFileSync(path.join(talkDir, 'public', 'index.html'), 'utf8')
   const spec = JSON.parse(fs.readFileSync(path.join(talkDir, '.power-slides', 'slides.json'), 'utf8'))
-  if (spec.slides && spec.slides[0] && spec.slides[0].title === 'Watched title' && html.includes('<title>Watched title</title>')) {
+  const slides = Array.isArray(spec) ? spec : (spec && spec.slides) || []
+  if (slides[0] && slides[0].title === 'Watched title' && html.includes('<title>Watched title</title>')) {
     if (!entry.includes("import spec from './slides.json'")) throw new Error('entry does not import slides.json')
     if (!entry.includes('remote: remoteOptions')) throw new Error('entry does not enable remote options')
     if (!html.includes('<script src="./peerjs.min.js"></script>')) throw new Error('HTML does not load bundled PeerJS before the deck')
@@ -100,29 +127,31 @@ assert(help.includes('Dev server port (default: $PORT, then 9966)'), 'help docum
 assert(help.includes('default: slides.yaml, slides.yml, or slides.json'), 'help documents YAML default lookup order')
 
 const canonicalShapeDoc = fs.readFileSync(path.join(root, 'docs', 'slide-api-v3.md'), 'utf8')
-const canonicalShapeNames = ['title', 'image', 'video', 'columns', 'iframe', 'html', 'custom']
+const canonicalShapeNames = ['title', 'image', 'video', 'iframe', 'html', 'custom', 'columns']
 for (const shape of canonicalShapeNames) {
   assert(canonicalShapeDoc.includes('## ' + shape), 'canonical v3 doc lists ' + shape + ' shape')
 }
-for (const forbidden of ['type: columns', 'type: image', 'type: video', 'type: iframe', 'type: html', 'type: overlay', 'type: quote', 'type: chart', 'type: summary', 'attribution:']) {
+for (const forbidden of ['type: title', 'type: columns', 'type: image', 'type: video', 'type: iframe', 'type: html', 'type: overlay', 'type: quote', 'type: chart', 'type: summary', 'attribution:', 'iframeTitle:', 'side:', 'src:', 'url:', 'size: contain']) {
   assert(!canonicalShapeDoc.includes(forbidden), 'canonical v3 doc omits legacy field pattern ' + forbidden)
 }
 
 const packageReadme = fs.readFileSync(path.join(root, 'README.md'), 'utf8')
 assert(packageReadme.includes('Slide concept reference'), 'package README has slide concept reference')
-for (const concept of ['image', 'video', 'columns', 'iframe', 'html', 'custom']) {
+for (const concept of canonicalShapeNames) {
   assert(packageReadme.includes('`' + concept + '`'), 'package README documents ' + concept + ' slide concept')
 }
-for (const oldType of ['overlay', 'title', 'quote', 'chart', 'summary', 'citation']) {
+for (const oldType of ['overlay', 'quote', 'chart', 'summary', 'citation']) {
   assert(!packageReadme.includes('#### `' + oldType + '`'), 'package README does not present ' + oldType + ' as a public slide concept')
 }
-assert(packageReadme.includes('default text') && packageReadme.includes('Slide list: default text'), 'package README documents default text shape')
-assert(packageReadme.includes('deviceWidth') && packageReadme.includes('navControlOpacity'), 'package README documents iframe detail fields')
-assert(packageReadme.includes('copyMaxWidth') && packageReadme.includes('gridTemplateColumns') && packageReadme.includes('gridTemplateRows') && packageReadme.includes('mediaStyle') && packageReadme.includes('imageStyle') && packageReadme.includes('`columns` array'), 'package README documents columns layout override fields')
+assert(packageReadme.includes('bare YAML or JSON array of slides'), 'package README documents bare-array slide specs')
+assert(packageReadme.includes('Every slide object has exactly one content property'), 'package README documents the v3 content-property model')
+assert(packageReadme.includes('On narrow/portrait viewports, columns stack vertically'), 'package README documents mobile columns stacking')
 assert(packageReadme.includes('slides(slides, PS)') && packageReadme.includes('renderers'), 'package README documents talk.js hooks')
 assert(packageReadme.includes('npm install') && packageReadme.includes('npm run dev') && packageReadme.includes('powerslides dev .'), 'package README documents npm install/scripts flow')
 assert(packageReadme.includes('bundled PeerJS runtime') && packageReadme.includes('remote: false') && packageReadme.includes('Enable remote control'), 'package README documents CLI remote/options defaults')
-assert(packageReadme.includes('Inference: `custom` selects a custom renderer') && packageReadme.includes('`columns` array') && packageReadme.includes('default text slide') && packageReadme.includes('semantic fields (`image`, `video`, `iframe`)'), 'package README documents v3 inference rules')
+for (const forbidden of ['iframeTitle', 'type: overlay', 'type: title', 'type: chart', 'type: summary', 'type: columns', 'type: image', 'type: video', 'type: iframe', 'type: html', 'side:', 'src:', 'url:', 'size: contain']) {
+  assert(!packageReadme.includes(forbidden), 'package README omits stale v3 anti-pattern ' + forbidden)
+}
 assert(packageReadme.includes('default text, image, video, columns, iframe, html, and custom'), 'package README describes starter canonical shapes')
 
 fs.writeFileSync(generatedExamplePeerScript, 'generated PeerJS runtime artifact\n')
@@ -136,18 +165,19 @@ assert(fs.existsSync(path.join(talk, 'talk.js')), 'init writes optional talk.js'
 assert(fs.existsSync(path.join(talk, 'assets')), 'init creates assets convention')
 assert(fs.existsSync(path.join(talk, 'public')), 'init creates public convention')
 const initializedReadme = fs.readFileSync(path.join(talk, 'README.md'), 'utf8')
-for (const concept of ['image', 'video', 'columns', 'iframe', 'html', 'custom']) {
+for (const concept of canonicalShapeNames) {
   assert(initializedReadme.includes('`' + concept + '`'), 'generated talk README documents ' + concept + ' slide concept')
 }
-for (const oldType of ['overlay', 'title', 'quote', 'chart', 'summary', 'citation']) {
+for (const oldType of ['overlay', 'quote', 'chart', 'summary', 'citation']) {
   assert(!initializedReadme.includes('#### `' + oldType + '`'), 'generated talk README does not present ' + oldType + ' as a public slide concept')
 }
 assert(initializedReadme.includes('Custom renderers in talk.js'), 'generated talk README documents custom renderers')
-assert(initializedReadme.includes('deviceWidth') && initializedReadme.includes('navControlOpacity'), 'generated talk README documents iframe detail fields')
-assert(initializedReadme.includes('copyMaxWidth') && initializedReadme.includes('gridTemplateColumns') && initializedReadme.includes('gridTemplateRows') && initializedReadme.includes('mediaStyle') && initializedReadme.includes('imageStyle') && initializedReadme.includes('`columns` array'), 'generated talk README documents columns layout override fields')
 assert(initializedReadme.includes('npm install') && initializedReadme.includes('npm run dev') && initializedReadme.includes('powerslides dev .'), 'generated talk README documents npm scripts flow')
 assert(initializedReadme.includes('Options and remote control') && initializedReadme.includes('remote: false') && initializedReadme.includes('Enable remote control'), 'generated talk README documents remote/options controls')
-assert(initializedReadme.includes('Most slides do not need `type`') && initializedReadme.includes('Slide list:') && initializedReadme.includes('Use semantic fields'), 'generated talk README documents v3 inference rules')
+assert(initializedReadme.includes('bare YAML array') && initializedReadme.includes('exactly one content property') && initializedReadme.includes('columns stack vertically'), 'generated talk README documents v3 content-property rules')
+for (const forbidden of ['iframeTitle', 'type: overlay', 'type: title', 'type: chart', 'type: summary', 'type: columns', 'type: image', 'type: video', 'type: iframe', 'type: html', 'side:', 'src:', 'url:', 'size: contain']) {
+  assert(!initializedReadme.includes(forbidden), 'generated talk README omits stale v3 anti-pattern ' + forbidden)
+}
 assert(initializedReadme.includes('default text, image, video, columns, iframe, html, and custom'), 'generated talk README describes starter canonical shapes')
 
 assert(fs.existsSync(path.join(talk, 'package.json')), 'init writes package.json')
@@ -184,30 +214,22 @@ for (const media of ['sample.svg', 'spin.mp4']) {
 const initializedSpec = yaml.load(fs.readFileSync(path.join(talk, 'slides.yaml'), 'utf8'))
 const exampleSpec = yaml.load(exampleSlidesSource)
 assert.deepStrictEqual(initializedSpec, exampleSpec, 'init slides parse identically to packaged example')
-assert(!Object.prototype.hasOwnProperty.call(initializedSpec, 'title'), 'init example has no top-level title metadata')
-assert.strictEqual(initializedSpec.slides.length, 7, 'init starter has the seven canonical shapes')
-assert.strictEqual(initializedSpec.slides[0].title, 'Main point', 'starter first slide is default text')
-assert.strictEqual(initializedSpec.slides[0].subtitle, 'Optional subtitle', 'starter default text uses subtitle')
-assert.strictEqual(initializedSpec.slides[0].background, '/sample.svg', 'starter default text demonstrates background')
-assert.strictEqual(initializedSpec.slides[0].brightness, 0.45, 'starter default text demonstrates brightness')
-assert.strictEqual(initializedSpec.slides[1].image, '/sample.svg', 'starter second slide is image')
-assert.strictEqual(initializedSpec.slides[2].video, '/spin.mp4', 'starter third slide is video')
-assert.strictEqual(initializedSpec.slides[3].columns[0].iframe, 'https://example.com/demo', 'starter fourth slide is columns with iframe')
-assert.strictEqual(initializedSpec.slides[3].columns[1].title, 'Demo in context', 'starter columns has copy column')
-assert.strictEqual(initializedSpec.slides[4].iframe, 'https://example.com/demo', 'starter fifth slide is full iframe')
-assert.strictEqual(initializedSpec.slides[4].iframeTitle, 'Example app', 'starter iframe uses iframeTitle for labels')
-assert.strictEqual(initializedSpec.slides[4].device, 'iphone', 'starter iframe demonstrates phone frame')
-assert(initializedSpec.slides[5].html.includes('Custom HTML'), 'starter sixth slide is html')
-assert.strictEqual(initializedSpec.slides[6].custom, 'particleField', 'starter seventh slide is custom')
-for (const slide of initializedSpec.slides) {
-  assert(!Object.prototype.hasOwnProperty.call(slide, 'type'), 'starter uses content properties instead of type')
-  assert(!Object.prototype.hasOwnProperty.call(slide, 'quote'), 'starter does not use removed quote field')
-  assert(!Object.prototype.hasOwnProperty.call(slide, 'attribution'), 'starter does not use removed attribution field')
-  assert(!Object.prototype.hasOwnProperty.call(slide, 'side'), 'starter iframe-plus-copy uses columns, not iframe side')
-  assert(!Object.prototype.hasOwnProperty.call(slide, 'src'), 'starter does not use src alias')
-  assert(!Object.prototype.hasOwnProperty.call(slide, 'img'), 'starter does not use img alias')
-  assert(!Object.prototype.hasOwnProperty.call(slide, 'url'), 'starter does not use url alias')
-}
+assert(Array.isArray(initializedSpec), 'init example is a bare slide array')
+const initializedSlides = slideArray(initializedSpec)
+assert.strictEqual(initializedSlides.length, 7, 'init starter has the seven canonical shapes')
+assert.strictEqual(initializedSlides[0].title, 'Main point', 'starter first slide is title/default text')
+assert.strictEqual(initializedSlides[0].subtitle, 'Optional subtitle', 'starter title slide uses subtitle')
+assert.strictEqual(initializedSlides[0].background, '/sample.svg', 'starter title slide demonstrates background')
+assert.strictEqual(initializedSlides[0].brightness, 0.45, 'starter title slide demonstrates brightness')
+assert.strictEqual(initializedSlides[1].image, '/sample.svg', 'starter second slide is image')
+assert.strictEqual(initializedSlides[2].video, '/spin.mp4', 'starter third slide is video')
+assert.strictEqual(initializedSlides[3].columns[0].iframe, 'https://example.com/demo', 'starter fourth slide is columns with iframe')
+assert.strictEqual(initializedSlides[3].columns[1].title, 'Demo in context', 'starter columns has copy column')
+assert.strictEqual(initializedSlides[4].iframe, 'https://example.com/demo', 'starter fifth slide is full iframe')
+assert.strictEqual(initializedSlides[4].device, 'iphone', 'starter iframe demonstrates phone frame')
+assert(initializedSlides[5].html.includes('Custom HTML'), 'starter sixth slide is html')
+assert.strictEqual(initializedSlides[6].custom, 'particleField', 'starter seventh slide is custom')
+assertNoPublicLegacyFields(initializedSlides, 'starter')
 
 const nonEmpty = path.join(tmp, 'non-empty')
 fs.mkdirSync(nonEmpty)
@@ -222,7 +244,7 @@ assert.strictEqual(fs.readFileSync(path.join(nonEmpty, 'package.json'), 'utf8'),
 assert.strictEqual(fs.readFileSync(path.join(nonEmpty, 'keep.txt'), 'utf8'), 'keep', 'init --force preserves unrelated existing files')
 assert(fs.existsSync(path.join(nonEmpty, 'talk.js')), 'init --force fills missing example files')
 
-assert(!Object.prototype.hasOwnProperty.call(exampleSpec, 'title'), 'example has no top-level title metadata')
+assert(Array.isArray(exampleSpec), 'example is a bare slide array')
 assert.deepStrictEqual(exampleSpec, initializedSpec, 'example and initialized spec remain identical')
 
 fs.writeFileSync(path.join(talk, 'talk.js'), [
@@ -361,8 +383,8 @@ require(cli)
 
 const priority = path.join(tmp, 'priority')
 execFileSync(process.execPath, [cli, 'init', priority], { stdio: 'pipe' })
-fs.writeFileSync(path.join(priority, 'slides.yml'), yaml.dump({ slides: [{ title: 'YML title' }] }, { lineWidth: -1, noRefs: true }))
-fs.writeFileSync(path.join(priority, 'slides.json'), JSON.stringify({ slides: [{ title: 'JSON title' }] }, null, 2))
+fs.writeFileSync(path.join(priority, 'slides.yml'), yaml.dump([{ title: 'YML title' }], { lineWidth: -1, noRefs: true }))
+fs.writeFileSync(path.join(priority, 'slides.json'), JSON.stringify([{ title: 'JSON title' }], null, 2))
 execFileSync(process.execPath, [cli, 'build', priority], { stdio: 'pipe' })
 const priorityHtml = fs.readFileSync(path.join(priority, 'public', 'index.html'), 'utf8')
 assert(priorityHtml.includes('<title>Main point</title>'), 'default build prefers slides.yaml over slides.yml and slides.json')
@@ -373,28 +395,26 @@ assert(explicitHtml.includes('<title>JSON title</title>'), 'explicit --slides ca
 const ymlPreferred = path.join(tmp, 'yml-preferred')
 fs.mkdirSync(ymlPreferred)
 fs.mkdirSync(path.join(ymlPreferred, 'public'))
-fs.writeFileSync(path.join(ymlPreferred, 'slides.yml'), yaml.dump({ slides: [{ title: 'Legacy YML title' }] }, { lineWidth: -1, noRefs: true }))
-fs.writeFileSync(path.join(ymlPreferred, 'slides.json'), JSON.stringify({ slides: [{ title: 'YML fallback JSON title' }] }, null, 2))
+fs.writeFileSync(path.join(ymlPreferred, 'slides.yml'), yaml.dump([{ title: 'YML title' }], { lineWidth: -1, noRefs: true }))
+fs.writeFileSync(path.join(ymlPreferred, 'slides.json'), JSON.stringify([{ title: 'YML fallback JSON title' }], null, 2))
 execFileSync(process.execPath, [cli, 'build', ymlPreferred], { stdio: 'pipe' })
 const ymlPreferredHtml = fs.readFileSync(path.join(ymlPreferred, 'public', 'index.html'), 'utf8')
-assert(ymlPreferredHtml.includes('<title>Legacy YML title</title>'), 'default build supports slides.yml and prefers it over slides.json')
+assert(ymlPreferredHtml.includes('<title>YML title</title>'), 'default build supports slides.yml and prefers it over slides.json')
 
 const jsonOnly = path.join(tmp, 'json-only')
 fs.mkdirSync(jsonOnly)
 fs.mkdirSync(path.join(jsonOnly, 'public'))
-fs.writeFileSync(path.join(jsonOnly, 'slides.json'), JSON.stringify({ slides: [{ title: 'Unambiguous JSON title' }] }, null, 2))
+fs.writeFileSync(path.join(jsonOnly, 'slides.json'), JSON.stringify([{ title: 'Unambiguous JSON title' }], null, 2))
 execFileSync(process.execPath, [cli, 'build', jsonOnly], { stdio: 'pipe' })
 const jsonOnlyHtml = fs.readFileSync(path.join(jsonOnly, 'public', 'index.html'), 'utf8')
 assert(jsonOnlyHtml.includes('<title>Unambiguous JSON title</title>'), 'unambiguous slides.json still builds by default')
 
 import(path.join(root, 'index.mjs')).then(async mod => {
-  const assets = mod.collectAssets({
-    slides: [
-      { title: 'Background', background: 'https://cdn.example/bg.png' },
-      { image: '/local.png' },
-      { iframe: 'https://example.test/embed' }
-    ]
-  })
+  const assets = mod.collectAssets([
+    { title: 'Background', background: 'https://cdn.example/bg.png' },
+    { image: '/local.png' },
+    { iframe: 'https://example.test/embed' }
+  ])
   assert.deepStrictEqual(assets.sort(), ['/local.png', 'https://cdn.example/bg.png', 'https://example.test/embed'].sort())
 
   assert.strictEqual(mod.inferSlideType({ title: 'Testimonial', subtitle: 'Speaker' }), 'text', 'title plus subtitle stays default text')
@@ -509,6 +529,41 @@ import(path.join(root, 'index.mjs')).then(async mod => {
     assert.strictEqual(columnsImage.style.maxHeight, 'min(82vh, 100%)', 'columns image default max height stays inside the padded slide')
     assert.strictEqual(columnsImage.style.objectFit, 'contain', 'columns image still preserves contain fitting')
 
+    const nestedColumnsTarget = new FakeElement('section')
+    const nestedColumnsSlide = mod.columns({
+      columns: [
+        { title: 'Outer' },
+        {
+          columns: [
+            { image: '/nested-a.png', fit: 'contain' },
+            { title: 'Nested' }
+          ]
+        }
+      ]
+    })
+    assert(nestedColumnsSlide.assets.includes('/nested-a.png'), 'recursive columns track nested image assets')
+    nestedColumnsSlide(nestedColumnsTarget)
+    assert.strictEqual(countDeep(nestedColumnsTarget, child => String(child.className).includes('ps-columns-layout')), 2, 'recursive columns render nested column layouts')
+    assert(findDeep(nestedColumnsTarget, child => child.tagName === 'h2' && child.children.includes('Nested')), 'recursive columns render nested title slides')
+    assert(findDeep(nestedColumnsTarget, child => child.tagName === 'img' && child.attributes.src === '/nested-a.png'), 'recursive columns render nested image slides')
+
+    const wideWidth = global.window.innerWidth
+    const wideHeight = global.window.innerHeight
+    global.window.innerWidth = 390
+    global.window.innerHeight = 844
+    const mobileColumnsTarget = new FakeElement('section')
+    mod.columns({ columns: [{ title: 'Top' }, { title: 'Bottom' }] })(mobileColumnsTarget)
+    const mobileColumnsLayout = findDeep(mobileColumnsTarget, child => String(child.className).includes('ps-columns-layout'))
+    assert.strictEqual(mobileColumnsLayout.style.gridTemplateColumns, 'minmax(0, 1fr)', 'columns stack into one column on narrow/portrait viewports')
+    assert.strictEqual(mobileColumnsLayout.style.gridTemplateRows, 'repeat(2, minmax(0, 1fr))', 'columns stack as rows on narrow/portrait viewports')
+    global.window.innerWidth = wideWidth
+    global.window.innerHeight = wideHeight
+
+    const fittedVideoTarget = new FakeElement('section')
+    mod.video('/demo.mp4', { fit: 'cover' })(fittedVideoTarget)
+    const fittedVideo = findDeep(fittedVideoTarget, child => child.tagName === 'video')
+    assert.strictEqual(fittedVideo.style.objectFit, 'cover', 'video helper honors fit for objectFit')
+
     const target = new FakeElement('section')
     let nextCount = 0
     let prevCount = 0
@@ -555,26 +610,20 @@ import(path.join(root, 'index.mjs')).then(async mod => {
     assert(!containsDeep(phoneFrame, phoneControls), 'phone-framed iframe keeps nav controls on the parent slide')
 
     const showcaseSpec = yaml.load(fs.readFileSync(path.join(root, 'examples', 'showcase', 'slides.yaml'), 'utf8'))
-    assert.strictEqual(showcaseSpec.slides.length, 7, 'showcase demonstrates every canonical shape in doc order')
-    assert.strictEqual(mod.inferSlideType(showcaseSpec.slides[0]), 'text', 'showcase shape 1 is default text')
-    assert.strictEqual(mod.inferSlideType(showcaseSpec.slides[1]), 'image', 'showcase shape 2 is image')
-    assert.strictEqual(mod.inferSlideType(showcaseSpec.slides[2]), 'video', 'showcase shape 3 is video')
-    assert.strictEqual(mod.inferSlideType(showcaseSpec.slides[3]), 'columns', 'showcase shape 4 is columns')
-    assert.strictEqual(mod.inferSlideType(showcaseSpec.slides[4]), 'iframe', 'showcase shape 5 is iframe')
-    assert.strictEqual(mod.inferSlideType(showcaseSpec.slides[5]), 'html', 'showcase shape 6 is html')
-    assert.strictEqual(showcaseSpec.slides[6].custom, 'particleField', 'showcase shape 7 is custom')
-    assert(showcaseSpec.slides.some(slide => slide.video === '/spin.mp4'), 'showcase includes video shape')
-    assert(showcaseSpec.slides.some(slide => slide.html && slide.html.includes('Custom HTML')), 'showcase includes html shape')
-    assert(showcaseSpec.slides.some(slide => slide.custom === 'particleField'), 'showcase includes custom shape')
-    for (const slide of showcaseSpec.slides) {
-      assert(!Object.prototype.hasOwnProperty.call(slide, 'quote'), 'showcase does not use removed quote field')
-      assert(!Object.prototype.hasOwnProperty.call(slide, 'attribution'), 'showcase does not use removed attribution field')
-      assert(!Object.prototype.hasOwnProperty.call(slide, 'side'), 'showcase does not use iframe side layout')
-      assert(!Object.prototype.hasOwnProperty.call(slide, 'src'), 'showcase does not use src alias')
-      assert(!Object.prototype.hasOwnProperty.call(slide, 'img'), 'showcase does not use img alias')
-      assert(!Object.prototype.hasOwnProperty.call(slide, 'url'), 'showcase does not use url alias')
-      assert(!Object.prototype.hasOwnProperty.call(slide, 'type'), 'showcase uses content properties instead of type')
-    }
+    assert(Array.isArray(showcaseSpec), 'showcase is a bare slide array')
+    const showcaseSlides = slideArray(showcaseSpec)
+    assert.strictEqual(showcaseSlides.length, 7, 'showcase demonstrates every canonical shape in doc order')
+    assert.strictEqual(mod.inferSlideType(showcaseSlides[0]), 'text', 'showcase shape 1 is title/default text')
+    assert.strictEqual(mod.inferSlideType(showcaseSlides[1]), 'image', 'showcase shape 2 is image')
+    assert.strictEqual(mod.inferSlideType(showcaseSlides[2]), 'video', 'showcase shape 3 is video')
+    assert.strictEqual(mod.inferSlideType(showcaseSlides[3]), 'columns', 'showcase shape 4 is columns')
+    assert.strictEqual(mod.inferSlideType(showcaseSlides[4]), 'iframe', 'showcase shape 5 is iframe')
+    assert.strictEqual(mod.inferSlideType(showcaseSlides[5]), 'html', 'showcase shape 6 is html')
+    assert.strictEqual(showcaseSlides[6].custom, 'particleField', 'showcase shape 7 is custom')
+    assert(showcaseSlides.some(slide => slide.video === '/spin.mp4'), 'showcase includes video shape')
+    assert(showcaseSlides.some(slide => slide.html && slide.html.includes('Custom HTML')), 'showcase includes html shape')
+    assert(showcaseSlides.some(slide => slide.custom === 'particleField'), 'showcase includes custom shape')
+    assertNoPublicLegacyFields(showcaseSlides, 'showcase')
 
     prevButton.onclick(fakeKey('click'))
     nextButton.onclick(fakeKey('click'))
@@ -625,6 +674,15 @@ function containsDeep (root, target) {
   if (!root || !target) return false
   if (root === target) return true
   return (root.children || []).some(child => containsDeep(child, target))
+}
+
+function countDeep (root, predicate) {
+  if (!root) return 0
+  let count = predicate(root) ? 1 : 0
+  for (const child of root.children || []) {
+    count += countDeep(child, predicate)
+  }
+  return count
 }
 
 function createFakeDocument () {

@@ -441,33 +441,23 @@ The scripts call the \`powerslides\` bin alias:
 
 The generated dev/build shell enables the power-slides Options panel by default. Press \`o\` to reopen Options after the button fades. Click **Enable remote control** to start PeerJS, then scan the QR code or open the shown URL on your phone/controller.
 
-To disable the shell remote UI, export \`remote: false\` from \`talk.js\` or set top-level \`remote: false\` in \`slides.yaml\`/JSON. To override PeerJS/runtime options, use \`remote: { ... }\`.
+To disable the shell remote UI, export \`remote: false\` from \`talk.js\`. To override PeerJS/runtime options, export \`remote: { ... }\` from \`talk.js\`.
 
 ## Authoring schema quick reference
 
-The talk file is a YAML object with a \`slides\` array. Most slides do not need \`type\`; a normal copy slide is just title/text fields, with optional slide-level styling. Use \`custom: rendererName\` for custom slides; \`type\` is rarely needed. Every slide may include \`notes\` or \`note\` for presenter mode. Common slide-level \`background\`, \`brightness\`, background sizing/color, \`font\`, \`color\`, \`padding\`, and \`align\` are honored by built-ins when sensible. \`renderer\`, \`name\`, or \`kind\` selects a \`talk.js\` renderer before built-ins and before inference.
+\`slides.yaml\` is a bare YAML array. There is no top-level \`slides:\` wrapper and no talk metadata mixed into the content file.
 
-Slide list:
+Every slide object has exactly one content property:
 
-- default text
-- image
-- video
-- columns
-- iframe
-- html
-- custom
+- \`title\` — words on screen; unlocks \`subtitle\`, \`eyebrow\`, \`bullets\`, and \`pullquote\`
+- \`image\` — unlocks \`fit\`
+- \`video\` — unlocks \`fit\`, \`controls\`, \`muted\`, and \`loop\`
+- \`iframe\` — unlocks \`device\`
+- \`html\` — trusted inline markup
+- \`custom\` — delegates to a \`talk.js\` renderer; any other properties pass through untouched
+- \`columns\` — the only container; each column is itself a slide object, including nested \`columns\`
 
-Inference: \`custom\` selects a custom renderer; a \`columns\` array infers \`columns\`; \`image\` with no copy fields infers \`image\`; \`video\` infers \`video\`; \`iframe\` or \`srcdoc\` infers \`iframe\`; \`html\`/\`markup\` infers \`html\`; otherwise slides render as the default text/copy slide. Use semantic fields (\`image\`, \`video\`, \`iframe\`) instead of generic \`src\`, \`img\`, or \`url\`.
-
-Public slide concepts:
-
-- default/text copy slide — normal title/text/subtitle slide; use no \`type\`, or \`type: text\` when explicitness helps. Fields: \`eyebrow\`, \`title\`/\`text\`, \`subtitle\`, \`background\`, \`brightness\`, \`align\`, \`font\`, \`color\`, \`backgroundColor\`, \`padding\`, \`maxWidth\`, \`titleSize\`, \`subtitleSize\`, \`subtitleOpacity\`, \`subtitleMaxWidth\`, \`eyebrowSize\`, \`backgroundSize\`, \`backgroundPosition\`.
-- \`image\` — full-slide image. Fields: \`image\`, \`fit\`/\`size\` (\`cover\` or \`contain\`).
-- \`video\` — full-slide video. Fields: \`video\`, \`controls\`, \`muted\`, \`loop\`, \`autoplay\`, \`preload\`, \`poster\`, \`fit\`.
-- \`columns\` — array-based composition slide with shared background/scrim. Use it for iframe + copy, screenshot + label, QR + text, recap cards, HTML snippets, bullets, and side-by-side copy. Top-level fields: \`columns\` array, \`background\`, \`brightness\`, \`font\`, \`color\`, layout knobs \`gridTemplateColumns\`, \`rows\`/\`gridTemplateRows\`, \`gap\`, \`padding\`, \`alignItems\`, \`justifyItems\`. Each column supports \`eyebrow\`, \`title\`, \`subtitle\`, \`text\`, \`body\`, \`copy\`, \`pull\`, \`bullets\`, media fields \`image\` or \`iframe\`/\`srcdoc\` plus \`iframeTitle\`, trusted \`html\`/\`markup\`, plus style knobs including \`align\`/\`copyAlign\`, \`copyJustify\`, \`copyAlignSelf\`, \`copyMaxWidth\`, \`copyStyle\`, \`fit\`, \`maxHeight\`/\`imageMaxHeight\`, \`maxWidth\`/\`imageMaxWidth\`, \`radius\`, \`shadow\`, \`imageAlign\`, \`imageJustify\`, \`imageAlignSelf\`, \`imageJustifySelf\`, \`mediaStyle\`, and \`imageStyle\`.
-- \`iframe\` — full-slide external URL or \`srcdoc\`. Use \`columns\` for iframe-plus-copy. Fields: \`iframe\`, \`srcdoc\`, \`iframeTitle\`, \`allow\`, \`allowFullscreen\`, \`loading\`, \`referrerPolicy\`, \`sandbox\`, \`navigationControls\`, \`forwardKeys\`, \`background\`, \`iframeStyle\`, \`stagePadding\`/\`rootPadding\`. Phone frame: \`device: iphone\` or \`frame: phone\`, plus \`deviceWidth\`/\`frameWidth\`, \`deviceAspectRatio\`, \`devicePadding\`, \`deviceBorder\`, \`deviceRadius\`, \`deviceBackground\`, \`deviceShadow\`, \`deviceStyle\`, \`screenRadius\`, \`screenBackground\`. Arrow styling: \`navControlInset\`, \`navControlSize\`, \`navControlOpacity\`.
-- \`html\` — trusted raw markup. Fields: \`html\`/\`markup\`.
-- \`custom\` — render with \`talk.js\`. Fields: \`custom\`; all other fields pass through.
+Shared properties available on any slide are \`background\`, \`brightness\`, and \`align\`. Use \`columns\` when you want to combine content types, such as iframe-plus-copy or image-plus-title. On narrow/portrait viewports, columns stack vertically in source order.
 
 ## Custom renderers in talk.js
 

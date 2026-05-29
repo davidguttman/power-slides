@@ -1,53 +1,30 @@
-slides:
-  - title: Main point
-    subtitle: Optional subtitle
-    background: /sample.svg
-    brightness: 0.45
-    align: center
-    notes:
-      - Demonstrates the default text shape from docs/slide-api-v3.md.
-
-  - image: /sample.svg
-    fit: contain
-    notes:
-      - Demonstrates the image shape with an existing public asset.
-
-  - video: /spin.mp4
-    controls: true
-    muted: true
-    loop: true
-    fit: contain
-    notes:
-      - Demonstrates the video shape with an existing public asset.
-
-  - background: /sample.svg
-    brightness: 0.55
-    columns:
-      - iframe: https://example.com/demo
-        iframeTitle: Example app
-        device: iphone
-      - title: Demo in context
-        bullets:
-          - Cross-origin page stays untouched
-          - Parent arrows remain available
-    notes:
-      - Demonstrates the columns shape; iframe plus copy belongs here.
-
-  - iframe: https://example.com/demo
-    iframeTitle: Example app
-    device: iphone
-    background: '#061018'
-    notes:
-      - Demonstrates the iframe shape as a full-slide embed.
-
-  - html: |
-      <div style="width:100vw;height:100vh;color:white">
-        <h1>Custom HTML</h1>
-      </div>
-    notes:
-      - Demonstrates the html shape with trusted inline markup.
-
-  - custom: particleField
-    title: Generative canvas
-    notes:
-      - Demonstrates the custom shape delegated to talk.js.
+- title: Main point
+  subtitle: Optional subtitle
+  background: /sample.svg
+  brightness: 0.45
+  align: center
+- image: /sample.svg
+  fit: contain
+- video: /spin.mp4
+  controls: true
+  muted: true
+  loop: true
+  fit: contain
+- background: /sample.svg
+  brightness: 0.55
+  columns:
+    - iframe: https://example.com/demo
+      device: iphone
+    - title: Demo in context
+      bullets:
+        - Cross-origin page stays untouched
+        - Parent arrows remain available
+- iframe: https://example.com/demo
+  device: iphone
+  background: '#061018'
+- html: |
+    <div style="width:100vw;height:100vh;color:white">
+      <h1>Custom HTML</h1>
+    </div>
+- custom: particleField
+  title: Generative canvas

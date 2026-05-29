@@ -24,6 +24,6 @@ export default {
 
   // beforeStart(PS, spec) runs once after slides.yaml is parsed and before startTalk().
   // beforeStart (PS, spec) {
-  //   console.log('Starting', spec.slides.length, 'slides')
+  //   console.log('Starting', Array.isArray(spec) ? spec.length : spec.slides.length, 'slides')
   // }
 }
