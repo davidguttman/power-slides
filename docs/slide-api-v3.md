@@ -11,9 +11,10 @@ A slide is a set of **properties**. One exclusive content property decides what
 the slide is; other properties are unlocked by (and only meaningful alongside)
 that content property.
 
-## Exclusive content properties
+## Content property
 
-Exactly one per slide. These are mutually exclusive:
+Every slide has exactly one content property. Six are leaf content types — a
+slide is one and only one of these:
 
 - `title` — words on screen
 - `image`
@@ -21,11 +22,15 @@ Exactly one per slide. These are mutually exclusive:
 - `iframe`
 - `html`
 - `custom`
-- `columns`
 
-They can only be combined with `columns`. `columns` is the one container that
-holds other content properties (each column is itself a slide-shaped object
-with its own exclusive content property + modifiers).
+`columns` is the seventh, and it's different: it's a **container**, not a leaf.
+A `columns` slide holds an array of slides, and each of those is again exactly
+one content property (including, if you want, another `columns`).
+
+So you never combine two content types on one slide. To put two together — an
+image beside a title, a video next to bullets — you nest them as columns. That
+is the only way content types combine, and it falls straight out of "a column
+is a slide."
 
 ## Shared properties
 
