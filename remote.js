@@ -13,6 +13,7 @@ const DECK_REMOTE_ENABLED_STORAGE_PREFIX = 'power-slides.remote.enabled'
 const PREVIEW_BASE_WIDTH = 1280
 const PREVIEW_BASE_HEIGHT = 720
 const PREVIEW_ASPECT_RATIO = PREVIEW_BASE_WIDTH + ' / ' + PREVIEW_BASE_HEIGHT
+const DEFAULT_CONTROLLER_SLIDE_DURATION_SECONDS = 75
 
 module.exports = createRemote
 module.exports.isOptionsKey = isOptionsKey
@@ -29,6 +30,7 @@ module.exports._test = {
   PREVIEW_ASPECT_RATIO,
   PREVIEW_BASE_HEIGHT,
   PREVIEW_BASE_WIDTH,
+  DEFAULT_CONTROLLER_SLIDE_DURATION_SECONDS,
   PACKAGE_VERSION,
   acceptDeckHello,
   buildHelloMessage,
@@ -38,6 +40,13 @@ module.exports._test = {
   connectControllerDeck,
   getControllerStorageKey,
   getControllerTimerSeconds,
+  getControllerSlideTimerSeconds,
+  getEstimatedControllerTalkDurationSeconds,
+  getEstimatedControllerSlidePaceSeconds,
+  getControllerSlidePositionText,
+  getControllerStatusColor,
+  getControllerStatusTone,
+  updateControllerTimerDisplays,
   getDeckPeerId,
   getDeckPeerIdStorageKey,
   getDeckRemoteEnabledStorageKey,
@@ -48,6 +57,11 @@ module.exports._test = {
   isDeckRemoteEnabled,
   handleControllerData,
   formatControllerTimer,
+  formatControllerSlideTimer,
+  formatControllerTalkTimer,
+  formatControllerTalkTimerDisplay,
+  formatControllerTalkEstimate,
+  getRobustCompletedSlideDurationSeconds,
   getPreviewStageScale,
   getPreviewStageStyle,
   getPreviewStageTransform,
@@ -92,6 +106,9 @@ function createRemote (PS, opts) {
     reconnectAttempts: 0,
     timerStartedAt: null,
     timerNow: null,
+    slideTimerStartedAt: null,
+    slideTimerNow: null,
+    completedSlideDurations: [],
     timerInterval: null,
     overlay: null,
     button: null,
@@ -254,7 +271,14 @@ function connectControllerDeck (PS, state) {
     if (state.deckConnection !== conn) return
     if (!message) return
 
-    if (handleControllerData(state, message)) updateRemoteOptions(PS, state)
+    if (handleControllerData(state, message)) {
+      ensureControllerTimerInterval(PS, state)
+      if (state.controllerPreviewDirty === false) {
+        updateControllerTimerDisplays(state)
+      } else {
+        updateRemoteOptions(PS, state)
+      }
+    }
   })
 
   conn.on('close', function () {
@@ -348,13 +372,54 @@ function handleControllerData (state, message) {
   if (message.type === 'locked') {
     state.deckLocked = true
     state.status = 'Deck locked to another controller'
+    state.controllerPreviewDirty = true
     return true
   }
 
   if (message.type !== 'state') return false
-  state.slideNumber = message.slideNumber
-  state.slideCount = message.slideCount
+
+  if (!Array.isArray(state.completedSlideDurations)) state.completedSlideDurations = []
+
+  const previousSlideNumber = state.slideNumber
+  const previousSlideCount = state.slideCount
+  const nextSlideNumber = message.slideNumber
+  const nextSlideCount = message.slideCount
+  const now = getControllerNow(state)
+  const slideChanged = nextSlideNumber !== previousSlideNumber
+  const slideCountChanged = nextSlideCount !== previousSlideCount
+
+  if (slideChanged && state.timerStartedAt != null) {
+    recordControllerCompletedSlideDuration(state, previousSlideNumber, state.slideTimerStartedAt, now)
+  }
+
+  if (state.timerStartedAt != null) state.timerNow = now
+
+  if (state.slideTimerStartedAt == null || slideChanged) {
+    state.slideTimerStartedAt = now
+  }
+
+  state.slideTimerNow = now
+  state.slideNumber = nextSlideNumber
+  state.slideCount = nextSlideCount
   state.notes = message.notes || []
+  state.controllerPreviewDirty = slideChanged || slideCountChanged
+  return true
+}
+
+function recordControllerCompletedSlideDuration (state, slideNumber, startedAt, endedAt) {
+  if (!state || startedAt == null || endedAt == null || endedAt < startedAt) return false
+
+  const parsedSlideNumber = parseInt(slideNumber, 10)
+  if (!parsedSlideNumber || parsedSlideNumber < 1) return false
+
+  const durationSeconds = Math.floor((endedAt - startedAt) / 1000)
+  if (durationSeconds <= 0) return false
+
+  if (!Array.isArray(state.completedSlideDurations)) state.completedSlideDurations = []
+  state.completedSlideDurations.push({
+    slideNumber: parsedSlideNumber,
+    durationSeconds
+  })
   return true
 }
 
@@ -559,7 +624,7 @@ function remoteOptionsPanel (PS, state) {
       width: 'min(620px, calc(100vw - 32px))',
       'max-height': 'calc(100vh - 32px)',
       overflow: 'auto',
-      padding: '24px',
+      padding: isController ? '10px' : '24px',
       background: '#111',
       border: '1px solid rgba(255, 255, 255, 0.2)',
       'border-radius': '16px',
@@ -628,12 +693,11 @@ function controllerView (PS, state) {
   return h('div.ps-controller-view', {
     style: {
       display: 'grid',
-      gap: '14px',
+      gap: '10px',
       'touch-action': 'manipulation'
     }
   }, [
-    controllerTimerView(PS, state),
-    remoteStatusView(state),
+    controllerTopBarView(PS, state),
     controllerPreviewsView(PS, state),
     h('div.ps-controller-controls', {
       style: {
@@ -648,51 +712,180 @@ function controllerView (PS, state) {
   ])
 }
 
-function controllerTimerView (PS, state) {
-  const running = Boolean(state.timerStartedAt)
-
-  return h('div.ps-controller-timer', {
+function controllerTopBarView (PS, state) {
+  return h('div.ps-controller-top-bar', {
     style: {
-      display: 'flex',
+      display: 'grid',
+      'grid-template-columns': '1fr auto 1fr',
       'align-items': 'center',
-      'justify-content': 'space-between',
-      gap: '12px',
-      padding: '12px 14px',
-      background: 'rgba(255, 255, 255, 0.08)',
-      border: '1px solid rgba(255, 255, 255, 0.14)',
-      'border-radius': '12px'
+      gap: '6px',
+      padding: '0',
+      background: 'transparent',
+      border: '0',
+      'border-radius': '0',
+      'font-size': '12px',
+      'line-height': 1.2
     }
+  }, [
+    h('div.ps-controller-top-left', {
+      style: {
+        display: 'flex',
+        'justify-content': 'flex-start',
+        'align-items': 'center',
+        'min-width': 0
+      }
+    }, controllerSlideTimerView(state)),
+    h('div.ps-controller-top-center', {
+      style: {
+        display: 'flex',
+        'justify-content': 'center',
+        'align-items': 'center',
+        gap: '4px',
+        'justify-self': 'center',
+        'min-width': 0,
+        'white-space': 'nowrap'
+      }
+    }, [
+      controllerStatusDotView(state),
+      h('strong.ps-controller-slide-position', {
+        'aria-label': 'slide ' + getControllerSlidePositionText(state),
+        style: {
+          color: '#fff',
+          'font-size': '14px',
+          'font-variant-numeric': 'tabular-nums',
+          'text-transform': 'none'
+        }
+      }, getControllerSlidePositionText(state))
+    ]),
+    h('div.ps-controller-top-right', {
+      style: {
+        display: 'flex',
+        'justify-content': 'flex-end',
+        'align-items': 'center',
+        'min-width': 0
+      }
+    }, controllerTalkTimerView(PS, state))
+  ])
+}
+
+function getControllerSlidePositionText (state) {
+  const count = Math.max(0, parseInt(state && state.slideCount, 10) || 0)
+  const current = count ? clampSlideNumber(state && state.slideNumber, count) : 0
+  return current + '/' + count
+}
+
+function controllerTalkTimerView (PS, state) {
+  const running = state && state.timerStartedAt != null
+
+  return h('div.ps-controller-presentation-timer', {
+    style: controllerTimerPillStyle()
   }, running
     ? [
         h('span', {
-          style: {
-            color: '#bbb',
-            'font-size': '12px',
-            'font-weight': 700,
-            'letter-spacing': '0.08em',
-            'text-transform': 'uppercase'
-          }
-        }, 'Timer'),
+          style: controllerTimerLabelStyle()
+        }, 'talk '),
         h('strong.ps-controller-timer-display', {
-          style: {
-            'font-variant-numeric': 'tabular-nums',
-            'font-size': '24px'
-          }
-        }, formatControllerTimer(getControllerTimerSeconds(state)))
+          style: controllerTimerDisplayStyle()
+        }, formatControllerTalkTimerDisplay(state))
       ]
-    : [
-        h('span', {
-          style: {
-            color: '#bbb',
-            'font-size': '14px'
-          }
-        }, 'Presentation timer'),
-        h('button', {
-          type: 'button',
-          onclick: startControllerTimer(PS, state),
-          style: remoteButtonStyle()
-        }, 'Start timer')
-      ])
+    : h('button', {
+      type: 'button',
+      onclick: startControllerTimer(PS, state),
+      style: compactTimerButtonStyle()
+    }, 'start timer'))
+}
+
+function controllerSlideTimerView (state) {
+  return h('div.ps-controller-current-slide-timer', {
+    'aria-label': 'Current slide duration',
+    title: 'Current slide duration',
+    style: controllerTimerPillStyle()
+  }, [
+    h('span', {
+      style: controllerTimerLabelStyle()
+    }, 'slide '),
+    h('strong.ps-controller-slide-timer-display', {
+      style: controllerTimerDisplayStyle()
+    }, formatControllerSlideTimer(getControllerSlideTimerSeconds(state)))
+  ])
+}
+
+function controllerTimerPillStyle () {
+  return {
+    display: 'flex',
+    'align-items': 'baseline',
+    gap: '3px',
+    padding: '0',
+    background: 'transparent',
+    border: '0',
+    'border-radius': '0',
+    'white-space': 'nowrap'
+  }
+}
+
+function controllerStatusDotView (state) {
+  const status = state && state.status ? String(state.status) : 'Remote status unknown'
+
+  return h('span.ps-controller-status-dot', {
+    title: status,
+    'aria-label': 'Status: ' + status,
+    role: 'img',
+    style: {
+      display: 'inline-block',
+      width: '9px',
+      height: '9px',
+      flex: '0 0 auto',
+      background: getControllerStatusColor(status),
+      'border-radius': '999px'
+    }
+  })
+}
+
+function getControllerStatusColor (status) {
+  const tone = getControllerStatusTone(status)
+  if (tone === 'green') return '#37d67a'
+  if (tone === 'yellow') return '#ffd43b'
+  return '#ff5c5c'
+}
+
+function getControllerStatusTone (status) {
+  const text = String(status || '').toLowerCase()
+
+  if (/\bconnected\b/.test(text)) return 'green'
+  if (/\b(connecting|reconnecting|ready|waiting|starting|creating|retrying|busy)\b/.test(text)) return 'yellow'
+  if (/\b(locked|disconnected|unavailable|disabled|error|failed|denied|closed|lost|off|taken|rejected)\b/.test(text)) return 'red'
+  return 'red'
+}
+
+function controllerTimerLabelStyle () {
+  return {
+    color: '#bbb',
+    'font-size': '10px',
+    'font-weight': 700,
+    'letter-spacing': '0.06em',
+    'text-transform': 'none'
+  }
+}
+
+function controllerTimerDisplayStyle () {
+  return {
+    'font-variant-numeric': 'tabular-nums',
+    'font-size': '14px'
+  }
+}
+
+function compactTimerButtonStyle () {
+  return {
+    color: '#111',
+    background: '#8bd3ff',
+    border: '1px solid rgba(255, 255, 255, 0.35)',
+    'border-radius': '999px',
+    padding: '3px 8px',
+    'min-height': '24px',
+    'font-size': '11px',
+    'font-weight': 700,
+    cursor: 'pointer'
+  }
 }
 
 function controllerPreviewsView (PS, state) {
@@ -705,16 +898,18 @@ function controllerPreviewsView (PS, state) {
       margin: '0'
     }
   }, [
-    slidePreviewCard(PS, numbers.current, numbers.slideCount, 'Current', 'current'),
-    slidePreviewCard(PS, numbers.next, numbers.slideCount, 'Next', 'next')
+    slidePreviewCard(PS, numbers.current, numbers.slideCount, 'current'),
+    slidePreviewCard(PS, numbers.next, numbers.slideCount, 'next')
   ])
 }
 
-function slidePreviewCard (PS, slideNumber, slideCount, label, variant) {
+function slidePreviewCard (PS, slideNumber, slideCount, variant) {
   const isNext = variant === 'next'
+  const label = isNext ? 'next' : 'current'
   const body = h('div.ps-controller-preview-body', { style: getPreviewViewportStyle() })
   const frame = createPreviewFrame()
   body.appendChild(frame)
+  if (isNext) body.appendChild(controllerNextPreviewBadge())
 
   renderSlidePreviewFrame(PS && PS.slides, slideNumber, frame, {
     emptyText: isNext ? 'No next slide' : 'No current slide'
@@ -728,18 +923,28 @@ function slidePreviewCard (PS, slideNumber, slideCount, label, variant) {
       gap: '6px',
       width: '100%'
     }
-  }, [
-    h('div.ps-controller-preview-label', {
-      style: {
-        color: '#bbb',
-        'font-size': '12px',
-        'font-weight': 700,
-        'letter-spacing': '0.08em',
-        'text-transform': 'uppercase'
-      }
-    }, label),
-    body
-  ])
+  }, body)
+}
+
+function controllerNextPreviewBadge () {
+  return h('span.ps-controller-next-preview-badge', {
+    style: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      'z-index': 1,
+      padding: '2px 6px',
+      color: '#fff',
+      background: 'rgba(0, 0, 0, 0.7)',
+      'border-radius': '999px',
+      'font-size': '10px',
+      'font-weight': 700,
+      'letter-spacing': '0.04em',
+      'line-height': 1.2,
+      'text-transform': 'lowercase',
+      'pointer-events': 'none'
+    }
+  }, 'next')
 }
 
 function createPreviewFrame () {
@@ -928,28 +1133,129 @@ function fitPreviewStage (viewport, stage) {
 
 function startControllerTimer (PS, state) {
   return function () {
-    if (state.timerStartedAt) return
+    if (state.timerStartedAt != null) return
 
-    state.timerStartedAt = Date.now()
-    state.timerNow = state.timerStartedAt
+    const now = getControllerNow(state)
+    state.timerStartedAt = now
+    state.timerNow = now
+    state.slideTimerStartedAt = now
+    state.slideTimerNow = now
+    state.completedSlideDurations = []
 
-    if (!state.timerInterval) {
-      state.timerInterval = setInterval(function () {
-        state.timerNow = Date.now()
-        updateRemoteOptions(PS, state)
-      }, 1000)
-    }
-
+    ensureControllerTimerInterval(PS, state)
     updateRemoteOptions(PS, state)
   }
 }
 
-function getControllerTimerSeconds (state, now) {
-  if (!state || !state.timerStartedAt) return 0
+function ensureControllerTimerInterval (PS, state) {
+  if (!PS || !state || state.timerInterval) return
+  if (state.timerStartedAt == null && state.slideTimerStartedAt == null) return
 
-  const current = now == null ? (state.timerNow || Date.now()) : now
-  const elapsed = Math.floor((current - state.timerStartedAt) / 1000)
+  const setIntervalFn = state.opts && state.opts.setInterval ? state.opts.setInterval : setInterval
+
+  state.timerInterval = setIntervalFn(function () {
+    const now = getControllerNow(state)
+    if (state.timerStartedAt != null) state.timerNow = now
+    if (state.slideTimerStartedAt != null) state.slideTimerNow = now
+    updateControllerTimerDisplays(state)
+  }, 1000)
+
+  if (state.timerInterval && typeof state.timerInterval.unref === 'function') state.timerInterval.unref()
+}
+
+function updateControllerTimerDisplays (state) {
+  if (!state || !state.overlay || typeof state.overlay.querySelector !== 'function') return false
+
+  const slideTimerLabel = state.overlay.querySelector('.ps-controller-current-slide-timer')
+  const slideTimer = slideTimerLabel && typeof slideTimerLabel.querySelector === 'function'
+    ? slideTimerLabel.querySelector('.ps-controller-slide-timer-display')
+    : state.overlay.querySelector('.ps-controller-slide-timer-display')
+  const presentationTimer = state.overlay.querySelector('.ps-controller-timer-display')
+  let updated = false
+
+  if (slideTimer) {
+    slideTimer.textContent = formatControllerSlideTimer(getControllerSlideTimerSeconds(state))
+    updated = true
+  }
+
+  if (presentationTimer) {
+    presentationTimer.textContent = formatControllerTalkTimerDisplay(state)
+    updated = true
+  }
+
+  return updated
+}
+
+function getControllerTimerSeconds (state, now) {
+  if (!state || state.timerStartedAt == null) return 0
+
+  return getElapsedTimerSeconds(state.timerStartedAt, now == null ? state.timerNow : now, state)
+}
+
+function getControllerSlideTimerSeconds (state, now) {
+  if (!state || state.slideTimerStartedAt == null) return 0
+
+  return getElapsedTimerSeconds(state.slideTimerStartedAt, now == null ? state.slideTimerNow : now, state)
+}
+
+function getEstimatedControllerTalkDurationSeconds (state, now) {
+  if (!state || state.timerStartedAt == null) return null
+
+  const elapsedSeconds = getControllerTimerSeconds(state, now)
+  const slideCount = Math.max(0, parseInt(state.slideCount, 10) || 0)
+  if (!slideCount) return elapsedSeconds
+
+  const slideNumber = clampSlideNumber(state.slideNumber, slideCount)
+  const paceSeconds = getEstimatedControllerSlidePaceSeconds(state.completedSlideDurations)
+  const currentSlideElapsedSeconds = getControllerSlideTimerSeconds(state, now)
+  const currentSlideRemainingSeconds = Math.max(0, paceSeconds - currentSlideElapsedSeconds)
+  const futureSlideCount = Math.max(0, slideCount - slideNumber)
+
+  return elapsedSeconds + currentSlideRemainingSeconds + (futureSlideCount * paceSeconds)
+}
+
+function getEstimatedControllerSlidePaceSeconds (completedSlideDurations) {
+  const durations = normalizeCompletedSlideDurations(completedSlideDurations)
+  const robustCompletedPace = getRobustCompletedSlideDurationSeconds(durations)
+  if (!robustCompletedPace) return DEFAULT_CONTROLLER_SLIDE_DURATION_SECONDS
+
+  const priorWeight = Math.max(0, 3 - durations.length)
+  if (!priorWeight) return robustCompletedPace
+
+  return Math.round(((robustCompletedPace * durations.length) + (DEFAULT_CONTROLLER_SLIDE_DURATION_SECONDS * priorWeight)) / (durations.length + priorWeight))
+}
+
+function getRobustCompletedSlideDurationSeconds (completedSlideDurations) {
+  const durations = normalizeCompletedSlideDurations(completedSlideDurations).sort(function (a, b) { return a - b })
+  if (!durations.length) return 0
+
+  const trimmedDurations = durations.length >= 5 ? durations.slice(1, -1) : durations
+  const middle = Math.floor(trimmedDurations.length / 2)
+
+  if (trimmedDurations.length % 2) return trimmedDurations[middle]
+  return Math.round((trimmedDurations[middle - 1] + trimmedDurations[middle]) / 2)
+}
+
+function normalizeCompletedSlideDurations (completedSlideDurations) {
+  if (!Array.isArray(completedSlideDurations)) return []
+
+  return completedSlideDurations.map(function (duration) {
+    if (duration && typeof duration === 'object') return parseInt(duration.durationSeconds, 10)
+    return parseInt(duration, 10)
+  }).filter(function (duration) {
+    return duration > 0
+  })
+}
+
+function getElapsedTimerSeconds (startedAt, current, state) {
+  const resolvedCurrent = current == null ? getControllerNow(state) : current
+  const elapsed = Math.floor((resolvedCurrent - startedAt) / 1000)
   return elapsed > 0 ? elapsed : 0
+}
+
+function getControllerNow (state) {
+  if (state && state.opts && typeof state.opts.now === 'function') return state.opts.now()
+  return Date.now()
 }
 
 function formatControllerTimer (seconds) {
@@ -958,6 +1264,42 @@ function formatControllerTimer (seconds) {
   const remainder = safeSeconds % 60
 
   return padTimerPart(minutes) + ':' + padTimerPart(remainder)
+}
+
+function formatControllerSlideTimer (seconds) {
+  const safeSeconds = Math.max(0, parseInt(seconds, 10) || 0)
+  const hours = Math.floor(safeSeconds / 3600)
+  const minutes = Math.floor((safeSeconds % 3600) / 60)
+  const remainder = safeSeconds % 60
+
+  if (hours > 0) return hours + 'h ' + minutes + 'm ' + remainder + 's'
+  if (minutes > 0) return minutes + 'm ' + remainder + 's'
+  return remainder + 's'
+}
+
+function formatControllerTalkTimer (seconds) {
+  const safeSeconds = Math.max(0, parseInt(seconds, 10) || 0)
+  const totalMinutes = Math.floor(safeSeconds / 60)
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+
+  if (hours > 0 && minutes > 0) return hours + 'h ' + minutes + 'm'
+  if (hours > 0) return hours + 'h'
+  return minutes + 'm'
+}
+
+function formatControllerTalkTimerDisplay (state) {
+  const elapsedText = formatControllerTalkTimer(getControllerTimerSeconds(state))
+  const estimateSeconds = getEstimatedControllerTalkDurationSeconds(state)
+
+  if (estimateSeconds == null) return elapsedText
+  return elapsedText + ' / ' + formatControllerTalkEstimate(estimateSeconds)
+}
+
+function formatControllerTalkEstimate (seconds) {
+  const safeSeconds = Math.max(0, parseInt(seconds, 10) || 0)
+  const roundedSeconds = Math.round(safeSeconds / 60) * 60
+  return '~' + formatControllerTalkTimer(roundedSeconds)
 }
 
 function padTimerPart (value) {
