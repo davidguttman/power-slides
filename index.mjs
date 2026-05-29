@@ -1049,21 +1049,35 @@ export function preloadAssets (urls) {
   return Promise.all(unique(urls).map(preloadOne).filter(Boolean))
 }
 
+const preloadingVideos = new Set()
+const preloadingImages = new Set()
+
 function preloadOne (url) {
   if (!url || url.indexOf('#') === 0) return null
   return new Promise(resolve => {
     const clean = String(url).replace(/#.*$/, '')
     if (/\.(mp4|webm|mov)(\?|$)/i.test(clean)) {
       const el = document.createElement('video')
+      preloadingVideos.add(el)
+      const done = function () {
+        preloadingVideos.delete(el)
+        resolve(url)
+      }
       el.preload = 'auto'
+      el.onloadeddata = done
+      el.onerror = done
       el.src = url
-      el.onloadeddata = function () { resolve(url) }
-      el.onerror = function () { resolve(url) }
+      if (typeof el.load === 'function') el.load()
       return
     }
     const img = new window.Image()
-    img.onload = function () { resolve(url) }
-    img.onerror = function () { resolve(url) }
+    preloadingImages.add(img)
+    const done = function () {
+      preloadingImages.delete(img)
+      resolve(url)
+    }
+    img.onload = done
+    img.onerror = done
     img.src = url
   })
 }

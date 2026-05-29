@@ -405,6 +405,32 @@ import(path.join(root, 'index.mjs')).then(async mod => {
   global.document = createFakeDocument()
   global.window = createFakeWindow()
   try {
+    await mod.preloadAssets(['#/current', '/assets/movie.mp4'])
+    const preloadedVideo = global.document.createdElements.find(el => el.tagName === 'video')
+    assert(preloadedVideo, 'preloadAssets creates a video element for video assets')
+    assert.strictEqual(global.document.createdElements.filter(el => el.tagName === 'video').length, 1, 'preloadAssets ignores hash-only URLs')
+    assert.strictEqual(preloadedVideo.preload, 'auto', 'preloadAssets requests full video preloading')
+    assert.strictEqual(preloadedVideo.src, '/assets/movie.mp4', 'preloadAssets assigns the video src')
+    assert.strictEqual(preloadedVideo.loadCount, 1, 'preloadAssets explicitly starts video loading')
+
+    let imagePreloadSettled = false
+    const imagePreload = mod.preloadSlideAssets([
+      { type: 'overlay', background: '/skip-first.png' },
+      { type: 'quote', image: '/assets/photo.png', background: '/assets/bg.png' },
+      { type: 'overlay', background: '/assets/bg.png' }
+    ], { startIndex: 1 })
+    imagePreload.then(() => { imagePreloadSettled = true })
+    assert.strictEqual(global.window.createdImages.length, 2, 'preloadSlideAssets creates Image objects for unique image/background assets')
+    assert.deepStrictEqual(global.window.createdImages.map(img => img.src).sort(), ['/assets/bg.png', '/assets/photo.png'], 'preloadSlideAssets assigns image preload src values')
+    await Promise.resolve()
+    assert.strictEqual(imagePreloadSettled, false, 'image preload promise waits for image load/error events')
+    global.window.createdImages[0].onload()
+    await Promise.resolve()
+    assert.strictEqual(imagePreloadSettled, false, 'image preload promise waits for all image assets')
+    global.window.createdImages[1].onerror()
+    await imagePreload
+    assert.strictEqual(imagePreloadSettled, true, 'image preload promise resolves after image load/error events')
+
     function Peer () {}
     const remoteTarget = global.document.body
     const deck = mod.startTalk(remoteTarget, ['Remote-enabled ESM deck'], { remote: { Peer, buttonHideMs: 1 } })
@@ -668,8 +694,11 @@ function containsDeep (root, target) {
 function createFakeDocument () {
   const document = {
     body: new FakeElement('body'),
+    createdElements: [],
     createElement (tagName) {
-      return new FakeElement(tagName)
+      const el = new FakeElement(tagName)
+      this.createdElements.push(el)
+      return el
     },
     createTextNode (text) {
       return String(text)
@@ -679,7 +708,7 @@ function createFakeDocument () {
 }
 
 function createFakeWindow () {
-  return {
+  const win = {
     innerWidth: 1024,
     innerHeight: 768,
     location: {
@@ -690,12 +719,19 @@ function createFakeWindow () {
       pathname: '/'
     },
     listeners: {},
+    createdImages: [],
     addEventListener (name, fn) {
       this.listeners[name] = this.listeners[name] || []
       this.listeners[name].push(fn)
-    },
-    Image: function FakeImage () {}
+    }
   }
+  win.Image = function FakeImage () {
+    this.onload = null
+    this.onerror = null
+    this.src = ''
+    win.createdImages.push(this)
+  }
+  return win
 }
 
 function createFakeContentWindow () {
@@ -724,6 +760,16 @@ class FakeElement {
     this.onclick = null
     this.focused = false
     if (tagName === 'iframe') this.contentWindow = createFakeContentWindow()
+    if (tagName === 'video') {
+      this.loadCount = 0
+      this.load = () => {
+        this.loadCount++
+        setImmediate(() => {
+          if (typeof this.onloadeddata === 'function') this.onloadeddata()
+          this.dispatch('loadeddata')
+        })
+      }
+    }
   }
 
   appendChild (child) {
