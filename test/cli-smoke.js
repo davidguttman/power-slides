@@ -204,7 +204,7 @@ const exampleSlidesSource = fs.readFileSync(path.join(root, 'example', 'slides.y
 const exampleTalkSource = fs.readFileSync(path.join(root, 'example', 'talk.js'), 'utf8')
 assert.strictEqual(fs.readFileSync(path.join(talk, 'slides.yaml'), 'utf8'), exampleSlidesSource, 'init copies packaged example slides.yaml')
 assert.strictEqual(fs.readFileSync(path.join(talk, 'talk.js'), 'utf8'), exampleTalkSource, 'init copies packaged example talk.js')
-for (const media of ['sample.svg', 'spin.mp4']) {
+for (const media of ['sample.svg', 'fractal-loop.mp4']) {
   assert.deepStrictEqual(
     fs.readFileSync(path.join(talk, 'public', media)),
     fs.readFileSync(path.join(root, 'example', 'public', media)),
@@ -222,7 +222,7 @@ assert.strictEqual(initializedSlides[0].subtitle, 'Optional subtitle', 'starter 
 assert.strictEqual(initializedSlides[0].background, '/sample.svg', 'starter title slide demonstrates background')
 assert.strictEqual(initializedSlides[0].brightness, 0.45, 'starter title slide demonstrates brightness')
 assert.strictEqual(initializedSlides[1].image, '/sample.svg', 'starter second slide is image')
-assert.strictEqual(initializedSlides[2].video, '/spin.mp4', 'starter third slide is video')
+assert.strictEqual(initializedSlides[2].video, '/fractal-loop.mp4', 'starter third slide is video')
 assert.strictEqual(initializedSlides[3].columns[0].iframe, 'https://example.com/demo', 'starter fourth slide is columns with iframe')
 assert.strictEqual(initializedSlides[3].columns[1].title, 'Demo in context', 'starter columns has copy column')
 assert.strictEqual(initializedSlides[4].iframe, 'https://example.com/demo', 'starter fifth slide is full iframe')
@@ -310,7 +310,7 @@ try {
   assert.strictEqual(installedTalkPackage.scripts.dev, 'powerslides dev .', 'installed power-slides init writes powerslides dev script')
   assert.strictEqual(installedTalkPackage.scripts.build, 'powerslides build .', 'installed power-slides init writes powerslides build script')
   assert(fs.existsSync(path.join(installedTalk, 'public', 'sample.svg')), 'installed power-slides init copies starter image media')
-  assert(fs.existsSync(path.join(installedTalk, 'public', 'spin.mp4')), 'installed power-slides init copies starter video media')
+  assert(fs.existsSync(path.join(installedTalk, 'public', 'fractal-loop.mp4')), 'installed power-slides init copies starter video media')
   assert(!fs.existsSync(path.join(installedTalk, 'public', 'index.html')), 'installed power-slides init excludes generated public index')
   const installedAliasTalk = path.join(tmp, 'installed-alias-talk')
   const installedAliasCli = path.join(binDir, process.platform === 'win32' ? 'powerslides.cmd' : 'powerslides')
@@ -620,7 +620,7 @@ import(path.join(root, 'index.mjs')).then(async mod => {
     assert.strictEqual(mod.inferSlideType(showcaseSlides[4]), 'iframe', 'showcase shape 5 is iframe')
     assert.strictEqual(mod.inferSlideType(showcaseSlides[5]), 'html', 'showcase shape 6 is html')
     assert.strictEqual(showcaseSlides[6].custom, 'particleField', 'showcase shape 7 is custom')
-    assert(showcaseSlides.some(slide => slide.video === '/spin.mp4'), 'showcase includes video shape')
+    assert(showcaseSlides.some(slide => slide.video === '/fractal-loop.mp4'), 'showcase includes video shape')
     assert(showcaseSlides.some(slide => slide.html && slide.html.includes('Custom HTML')), 'showcase includes html shape')
     assert(showcaseSlides.some(slide => slide.custom === 'particleField'), 'showcase includes custom shape')
     assertNoPublicLegacyFields(showcaseSlides, 'showcase')

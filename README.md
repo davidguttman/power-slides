@@ -69,7 +69,7 @@ The generated `package.json` is intentionally minimal and runner-friendly:
 - `package.json` — local npm scripts plus a dev dependency on the published `power-slides` package
 - `slides.yaml` — seven starter slides: default text, image, video, columns, iframe, html, and custom
 - `talk.js` — commented optional ESM hooks; no custom animated slides in the starter
-- `public/` — files served at `/`, including the starter `sample.svg` image and `spin.mp4` video assets
+- `public/` — files served at `/`, including the starter `sample.svg` image and `fractal-loop.mp4` video assets
 - `assets/` — source assets not served directly
 - `README.md` — talk-local authoring notes
 
@@ -104,7 +104,7 @@ Without `--slides`, the CLI picks `slides.yaml`, then `slides.yml`, then `slides
 - image: /sample.svg
   fit: contain
 
-- video: /spin.mp4
+- video: /fractal-loop.mp4
   controls: true
   muted: true
   loop: true

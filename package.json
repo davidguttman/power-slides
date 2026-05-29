@@ -77,13 +77,13 @@
     "example/talk.js",
     "example/assets",
     "example/public/sample.svg",
-    "example/public/spin.mp4",
+    "example/public/fractal-loop.mp4",
     "examples/showcase/slides.yaml",
     "examples/showcase/talk.js",
     "examples/showcase/assets",
     "examples/showcase/public/fist-bump.gif",
     "examples/showcase/public/multipass.gif",
-    "examples/showcase/public/spin.mp4",
+    "examples/showcase/public/fractal-loop.mp4",
     "README.md"
   ]
 }

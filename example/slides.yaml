@@ -5,7 +5,7 @@
   align: center
 - image: /sample.svg
   fit: contain
-- video: /spin.mp4
+- video: /fractal-loop.mp4
   controls: true
   muted: true
   loop: true
