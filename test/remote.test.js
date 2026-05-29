@@ -585,10 +585,332 @@ test('controller timer formats elapsed seconds as MM:SS', function () {
 
 test('controller timer elapsed seconds clamp before start and before first full second', function () {
   assert.equal(remote.getControllerTimerSeconds({}, 12000), 0)
+  assert.equal(remote.getControllerTimerSeconds({ timerStartedAt: 0, timerNow: 3500 }), 3)
   assert.equal(remote.getControllerTimerSeconds({ timerStartedAt: 10000, timerNow: 10500 }), 0)
   assert.equal(remote.getControllerTimerSeconds({ timerStartedAt: 10000, timerNow: 12999 }), 2)
   assert.equal(remote.getControllerTimerSeconds({ timerStartedAt: 10000 }, 71000), 61)
   assert.equal(remote.getControllerTimerSeconds({ timerStartedAt: 10000 }, 9000), 0)
+})
+
+test('controller slide timer formats elapsed seconds as compact human text', function () {
+  assert.equal(remote.formatControllerSlideTimer(0), '0s')
+  assert.equal(remote.formatControllerSlideTimer(9), '9s')
+  assert.equal(remote.formatControllerSlideTimer(65), '1m 5s')
+  assert.equal(remote.formatControllerSlideTimer(4803), '1h 20m 3s')
+  assert.equal(remote.formatControllerSlideTimer(-10), '0s')
+
+  assert.equal(remote.formatControllerSlideTimer(remote.getControllerSlideTimerSeconds({}, 12000)), '0s')
+  assert.equal(remote.formatControllerSlideTimer(remote.getControllerSlideTimerSeconds({ slideTimerStartedAt: 0, slideTimerNow: 3500 })), '3s')
+  assert.equal(remote.formatControllerSlideTimer(remote.getControllerSlideTimerSeconds({ slideTimerStartedAt: 10000, slideTimerNow: 12999 })), '2s')
+  assert.equal(remote.formatControllerSlideTimer(remote.getControllerSlideTimerSeconds({ slideTimerStartedAt: 10000 }, 71000)), '1m 1s')
+  assert.equal(remote.formatControllerSlideTimer(remote.getControllerSlideTimerSeconds({ slideTimerStartedAt: 10000 }, 9000)), '0s')
+})
+
+test('controller talk timer formats elapsed seconds without seconds', function () {
+  assert.equal(remote.formatControllerTalkTimer(0), '0m')
+  assert.equal(remote.formatControllerTalkTimer(9), '0m')
+  assert.equal(remote.formatControllerTalkTimer(65), '1m')
+  assert.equal(remote.formatControllerTalkTimer(3599), '59m')
+  assert.equal(remote.formatControllerTalkTimer(3600), '1h')
+  assert.equal(remote.formatControllerTalkTimer(4803), '1h 20m')
+  assert.equal(remote.formatControllerTalkTimer(-10), '0m')
+})
+
+test('controller talk estimate formats approximate totals without seconds', function () {
+  assert.equal(remote.formatControllerTalkEstimate(0), '~0m')
+  assert.equal(remote.formatControllerTalkEstimate(2399), '~40m')
+  assert.equal(remote.formatControllerTalkEstimate(2415), '~40m')
+  assert.equal(remote.formatControllerTalkEstimate(4803), '~1h 20m')
+})
+
+test('controller talk estimate uses robust completed-slide pace with an early prior', function () {
+  assert.equal(remote.getRobustCompletedSlideDurationSeconds([]), 0)
+  assert.equal(remote.getRobustCompletedSlideDurationSeconds([10, 50, 60, 70, 600]), 60)
+  assert.equal(remote.getEstimatedControllerSlidePaceSeconds([]), remote.DEFAULT_CONTROLLER_SLIDE_DURATION_SECONDS)
+  assert.equal(remote.getEstimatedControllerSlidePaceSeconds([{ slideNumber: 1, durationSeconds: 30 }]), 60)
+  assert.equal(remote.getEstimatedControllerSlidePaceSeconds([{ durationSeconds: 30 }, { durationSeconds: 60 }]), 55)
+  assert.equal(remote.getEstimatedControllerSlidePaceSeconds([{ durationSeconds: 30 }, { durationSeconds: 60 }, { durationSeconds: 600 }]), 60)
+
+  const state = {
+    timerStartedAt: 0,
+    timerNow: 240000,
+    slideTimerStartedAt: 165000,
+    slideTimerNow: 240000,
+    slideNumber: 3,
+    slideCount: 32,
+    completedSlideDurations: [{ durationSeconds: 60 }, { durationSeconds: 90 }]
+  }
+
+  assert.equal(remote.getEstimatedControllerTalkDurationSeconds(state), 2415)
+  assert.equal(remote.formatControllerTalkTimerDisplay(state), '4m / ~40m')
+})
+
+test('controller slide position text clamps current and total slide counts', function () {
+  assert.equal(remote.getControllerSlidePositionText({ slideNumber: 1, slideCount: 12 }), '1/12')
+  assert.equal(remote.getControllerSlidePositionText({ slideNumber: 99, slideCount: 12 }), '12/12')
+  assert.equal(remote.getControllerSlidePositionText({ slideNumber: 0, slideCount: 12 }), '1/12')
+  assert.equal(remote.getControllerSlidePositionText({ slideNumber: 1, slideCount: 0 }), '0/0')
+})
+
+test('controller status tone maps common connection states', function () {
+  assert.equal(remote.getControllerStatusTone('Connected to deck'), 'green')
+  assert.equal(remote.getControllerStatusTone('Remote connected'), 'green')
+  assert.equal(remote.getControllerStatusTone('Connecting to deck...'), 'yellow')
+  assert.equal(remote.getControllerStatusTone('Reconnecting to deck...'), 'yellow')
+  assert.equal(remote.getControllerStatusTone('Remote ready'), 'yellow')
+  assert.equal(remote.getControllerStatusTone('Remote peer ID busy. Retrying...'), 'yellow')
+  assert.equal(remote.getControllerStatusTone('Deck locked to another controller'), 'red')
+  assert.equal(remote.getControllerStatusTone('Disconnected from deck'), 'red')
+  assert.equal(remote.getControllerStatusTone('PeerJS unavailable. Load PeerJS and try again.'), 'red')
+  assert.equal(remote.getControllerStatusTone('Remote error'), 'red')
+})
+
+test('controller slide timer starts and resets only when the deck slide changes', function () {
+  let now = 0
+  const state = {
+    opts: { now: function () { return now } },
+    timerStartedAt: 0,
+    timerNow: 0,
+    slideNumber: 1,
+    slideCount: 3,
+    notes: []
+  }
+
+  assert.equal(remote.handleControllerData(state, { type: 'state', slideNumber: 1, slideCount: 3, notes: ['one'] }), true)
+  assert.equal(state.slideTimerStartedAt, 0)
+  assert.equal(state.slideTimerNow, 0)
+  assert.deepEqual(state.completedSlideDurations, [])
+  assert.equal(remote.getControllerSlideTimerSeconds(state), 0)
+
+  now = 2500
+  assert.equal(remote.handleControllerData(state, { type: 'state', slideNumber: 1, slideCount: 3, notes: ['one again'] }), true)
+  assert.equal(state.slideTimerStartedAt, 0)
+  assert.equal(state.slideTimerNow, 2500)
+  assert.deepEqual(state.completedSlideDurations, [])
+  assert.equal(remote.getControllerSlideTimerSeconds(state), 2)
+
+  now = 8000
+  assert.equal(remote.handleControllerData(state, { type: 'state', slideNumber: 2, slideCount: 3, notes: ['two'] }), true)
+  assert.equal(state.slideNumber, 2)
+  assert.equal(state.slideTimerStartedAt, 8000)
+  assert.equal(state.slideTimerNow, 8000)
+  assert.deepEqual(state.completedSlideDurations, [{ slideNumber: 1, durationSeconds: 8 }])
+  assert.equal(remote.getControllerSlideTimerSeconds(state), 0)
+
+  now = 9500
+  assert.equal(remote.handleControllerData(state, { type: 'state', slideNumber: 2, slideCount: 3, notes: ['two again'] }), true)
+  assert.deepEqual(state.completedSlideDurations, [{ slideNumber: 1, durationSeconds: 8 }])
+
+  now = 13000
+  assert.equal(remote.handleControllerData(state, { type: 'state', slideNumber: 3, slideCount: 3, notes: ['three'] }), true)
+  assert.deepEqual(state.completedSlideDurations, [
+    { slideNumber: 1, durationSeconds: 8 },
+    { slideNumber: 2, durationSeconds: 5 }
+  ])
+})
+
+test('controller timer start resets setup slide timing before recording completed pace', function () {
+  let now = 0
+  const intervals = []
+  const connections = []
+  const state = controllerReconnectState({
+    opts: {
+      now: function () { return now },
+      setInterval: function (callback, delay) {
+        const timer = { callback, delay, unref: function () {} }
+        intervals.push(timer)
+        return timer
+      }
+    },
+    connections
+  })
+  state.role = 'controller'
+  state.overlay = fakeElement('div')
+
+  withFakeBrowser('https://talk.example/deck?ps-remote=deck-1&ps-pair=pair-1', function () {
+    const conn = remote.connectControllerDeck(fakePS(), state)
+
+    conn.emit('open')
+    conn.emit('data', { type: 'state', slideNumber: 1, slideCount: 3, notes: [] })
+    assert.equal(intervals.length, 1)
+
+    now = 600000
+    conn.emit('data', { type: 'state', slideNumber: 1, slideCount: 3, notes: ['setup'] })
+    assert.deepEqual(state.completedSlideDurations, [])
+    assert.equal(state.overlay.querySelector('.ps-controller-current-slide-timer').textContent, 'slide 10m 0s')
+    assert.equal(state.overlay.querySelector('.ps-controller-presentation-timer').textContent, 'start timer')
+
+    const startButton = findButtonByText(state.overlay, 'start timer')
+    assert.ok(startButton)
+    startButton.onclick()
+
+    assert.equal(state.timerStartedAt, 600000)
+    assert.equal(state.slideTimerStartedAt, 600000)
+    assert.equal(state.slideTimerNow, 600000)
+    assert.deepEqual(state.completedSlideDurations, [])
+    assert.equal(state.overlay.querySelector('.ps-controller-current-slide-timer').textContent, 'slide 0s')
+    assert.equal(state.overlay.querySelector('.ps-controller-presentation-timer').textContent, 'talk 0m / ~4m')
+
+    now = 610000
+    conn.emit('data', { type: 'state', slideNumber: 2, slideCount: 3, notes: [] })
+
+    assert.deepEqual(state.completedSlideDurations, [{ slideNumber: 1, durationSeconds: 10 }])
+    assert.equal(remote.getEstimatedControllerSlidePaceSeconds(state.completedSlideDurations), 53)
+    assert.equal(remote.getEstimatedControllerTalkDurationSeconds(state, now), 116)
+    assert.equal(state.overlay.querySelector('.ps-controller-presentation-timer').textContent, 'talk 0m / ~2m')
+  })
+})
+
+test('controller timer ticks update display text without rebuilding preview frames', function () {
+  let now = 0
+  const intervals = []
+  const connections = []
+  const state = controllerReconnectState({
+    opts: {
+      now: function () { return now },
+      setInterval: function (callback, delay) {
+        const timer = { callback, delay, unref: function () {} }
+        intervals.push(timer)
+        return timer
+      }
+    },
+    connections
+  })
+  state.role = 'controller'
+  state.overlay = fakeElement('div')
+  state.timerStartedAt = null
+  state.timerNow = null
+  state.slideTimerStartedAt = null
+  state.slideTimerNow = null
+  state.timerInterval = null
+
+  withFakeBrowser('https://talk.example/deck?ps-remote=deck-1&ps-pair=pair-1', function () {
+    const conn = remote.connectControllerDeck(fakePS(), state)
+
+    conn.emit('open')
+    conn.emit('data', { type: 'state', slideNumber: 1, slideCount: 2, notes: [] })
+
+    assert.equal(intervals.length, 1)
+    assert.equal(intervals[0].delay, 1000)
+
+    const framesAfterState = state.overlay.querySelectorAll('.ps-controller-preview-frame')
+    assert.equal(framesAfterState.length, 2)
+    const topBar = state.overlay.querySelector('.ps-controller-top-bar')
+    const topLeft = state.overlay.querySelector('.ps-controller-top-left')
+    const topCenter = state.overlay.querySelector('.ps-controller-top-center')
+    const topRight = state.overlay.querySelector('.ps-controller-top-right')
+    const statusDot = state.overlay.querySelector('.ps-controller-status-dot')
+    const slidePosition = state.overlay.querySelector('.ps-controller-slide-position')
+    const talkTimerPill = state.overlay.querySelector('.ps-controller-presentation-timer')
+    const currentSlideTimer = state.overlay.querySelector('.ps-controller-current-slide-timer')
+    const previewLabels = state.overlay.querySelectorAll('.ps-controller-preview-label')
+    const nextBadges = state.overlay.querySelectorAll('.ps-controller-next-preview-badge')
+
+    assert.equal(topBar.style.display, 'grid')
+    assert.equal(topBar.style['grid-template-columns'], '1fr auto 1fr')
+    assert.equal(topBar.style.padding, '0')
+    assert.equal(topBar.style.border, '0')
+    assert.equal(topBar.style.background, 'transparent')
+    assert.equal(currentSlideTimer.parentNode, topLeft)
+    assert.equal(currentSlideTimer.textContent, 'slide 0s')
+    assert.equal(currentSlideTimer['aria-label'], 'Current slide duration')
+    assert.equal(statusDot.parentNode, topCenter)
+    assert.equal(slidePosition.parentNode, topCenter)
+    assert.equal(topCenter.textContent, '1/2')
+    assert.equal(slidePosition.textContent, '1/2')
+    assert.equal(slidePosition['aria-label'], 'slide 1/2')
+    assert.equal(slidePosition.style['text-transform'], 'none')
+    assert.equal(talkTimerPill.parentNode, topRight)
+    assert.equal(talkTimerPill.style.padding, '0')
+    assert.equal(talkTimerPill.style.border, '0')
+    assert.equal(talkTimerPill.style.background, 'transparent')
+    assert.equal(talkTimerPill.textContent, 'start timer')
+    assert.equal(state.overlay.querySelector('.ps-controller-timer-display'), null)
+    assert.equal(previewLabels.length, 0)
+    assert.equal(nextBadges.length, 1)
+    assert.equal(nextBadges[0].textContent, 'next')
+    assert.ok(String(nextBadges[0].parentNode.className).indexOf('ps-controller-preview-body') !== -1)
+    assert.equal(nextBadges[0].style.position, 'absolute')
+    assert.equal(nextBadges[0].style.top, '0')
+    assert.equal(nextBadges[0].style.left, '0')
+    assert.equal(nextBadges[0].style.border, undefined)
+    assert.equal(statusDot.textContent, '')
+    assert.equal(statusDot.title, 'Connected to deck')
+    assert.equal(statusDot['aria-label'], 'Status: Connected to deck')
+    assert.equal(statusDot.style.background, remote.getControllerStatusColor('Connected to deck'))
+    assert.equal(state.overlay.querySelector('.ps-controller-slide-timer-display').textContent, '0s')
+    assert.equal(state.overlay.querySelector('.ps-controller-timer-display'), null)
+
+    now = 2500
+    conn.emit('data', { type: 'state', slideNumber: 1, slideCount: 2, notes: ['same slide'] })
+
+    const framesAfterSameSlideState = state.overlay.querySelectorAll('.ps-controller-preview-frame')
+    assert.equal(state.overlay.querySelector('.ps-controller-current-slide-timer'), currentSlideTimer)
+    assert.equal(state.overlay.querySelector('.ps-controller-status-dot'), statusDot)
+    assert.equal(state.overlay.querySelector('.ps-controller-current-slide-timer').textContent, 'slide 2s')
+    assert.equal(state.overlay.querySelector('.ps-controller-slide-timer-display').textContent, '2s')
+    assert.equal(state.overlay.querySelectorAll('.ps-controller-preview-label').length, 0)
+    assert.equal(state.overlay.querySelector('.ps-controller-next-preview-badge'), nextBadges[0])
+    assert.equal(framesAfterSameSlideState.length, 2)
+    assert.equal(framesAfterSameSlideState[0], framesAfterState[0])
+    assert.equal(framesAfterSameSlideState[1], framesAfterState[1])
+
+    now = 3500
+    intervals[0].callback()
+
+    const framesAfterSlideTick = state.overlay.querySelectorAll('.ps-controller-preview-frame')
+    assert.equal(state.overlay.querySelector('.ps-controller-current-slide-timer'), currentSlideTimer)
+    assert.equal(currentSlideTimer.textContent, 'slide 3s')
+    assert.equal(state.overlay.querySelector('.ps-controller-slide-timer-display').textContent, '3s')
+    assert.equal(state.overlay.querySelector('.ps-controller-timer-display'), null)
+    assert.equal(framesAfterSlideTick.length, 2)
+    assert.equal(framesAfterSlideTick[0], framesAfterState[0])
+    assert.equal(framesAfterSlideTick[1], framesAfterState[1])
+
+    const startButton = findButtonByText(state.overlay, 'start timer')
+    assert.ok(startButton)
+    assert.equal(startButton.style.padding, '3px 8px')
+    assert.equal(startButton.style.border, '1px solid rgba(255, 255, 255, 0.35)')
+    startButton.onclick()
+
+    const framesAfterStart = state.overlay.querySelectorAll('.ps-controller-preview-frame')
+    const currentSlideTimerAfterStart = state.overlay.querySelector('.ps-controller-current-slide-timer')
+    const talkTimerAfterStart = state.overlay.querySelector('.ps-controller-timer-display')
+    assert.equal(framesAfterStart.length, 2)
+    assert.equal(intervals.length, 1)
+    assert.equal(findButtonByText(state.overlay, 'start timer'), null)
+    assert.ok(talkTimerAfterStart)
+    assert.equal(currentSlideTimerAfterStart.textContent, 'slide 0s')
+    assert.equal(state.overlay.querySelector('.ps-controller-slide-timer-display').textContent, '0s')
+    assert.equal(talkTimerAfterStart.textContent, '0m / ~3m')
+    assert.equal(state.overlay.querySelector('.ps-controller-presentation-timer').textContent, 'talk 0m / ~3m')
+
+    now = 6500
+    intervals[0].callback()
+
+    const framesAfterPresentationTick = state.overlay.querySelectorAll('.ps-controller-preview-frame')
+    assert.equal(state.overlay.querySelector('.ps-controller-current-slide-timer'), currentSlideTimerAfterStart)
+    assert.equal(currentSlideTimerAfterStart.textContent, 'slide 3s')
+    assert.equal(state.overlay.querySelector('.ps-controller-slide-timer-display').textContent, '3s')
+    assert.equal(state.overlay.querySelector('.ps-controller-timer-display').textContent, '0m / ~3m')
+    assert.equal(state.overlay.querySelector('.ps-controller-presentation-timer').textContent, 'talk 0m / ~3m')
+    assert.equal(framesAfterPresentationTick.length, 2)
+    assert.equal(framesAfterPresentationTick[0], framesAfterStart[0])
+    assert.equal(framesAfterPresentationTick[1], framesAfterStart[1])
+
+    now = 68500
+    intervals[0].callback()
+
+    const framesAfterPresentationMinuteTick = state.overlay.querySelectorAll('.ps-controller-preview-frame')
+    assert.equal(state.overlay.querySelector('.ps-controller-current-slide-timer'), currentSlideTimerAfterStart)
+    assert.equal(currentSlideTimerAfterStart.textContent, 'slide 1m 5s')
+    assert.equal(state.overlay.querySelector('.ps-controller-slide-timer-display').textContent, '1m 5s')
+    assert.equal(state.overlay.querySelector('.ps-controller-timer-display').textContent, '1m / ~3m')
+    assert.equal(state.overlay.querySelector('.ps-controller-presentation-timer').textContent, 'talk 1m / ~3m')
+    assert.equal(framesAfterPresentationMinuteTick.length, 2)
+    assert.equal(framesAfterPresentationMinuteTick[0], framesAfterStart[0])
+    assert.equal(framesAfterPresentationMinuteTick[1], framesAfterStart[1])
+  })
 })
 
 test('controller previews contain-scale a full 16:9 iframe viewport', function () {
@@ -797,7 +1119,7 @@ function fakeDocument () {
 }
 
 function fakeElement (tag) {
-  return {
+  const element = {
     nodeName: String(tag || 'div').toUpperCase(),
     nodeType: 1,
     className: '',
@@ -822,8 +1144,66 @@ function fakeElement (tag) {
       this['on' + event] = handler
     },
     removeEventListener: function () {},
+    querySelector: function (selector) {
+      return this.querySelectorAll(selector)[0] || null
+    },
+    querySelectorAll: function (selector) {
+      const matches = []
+      collectMatches(this, selector, matches)
+      return matches
+    },
     cloneNode: function () { return fakeElement(tag) }
   }
+
+  Object.defineProperty(element, 'innerHTML', {
+    get: function () { return '' },
+    set: function () {
+      this.childNodes.forEach(function (child) {
+        child.parentNode = null
+      })
+      this.childNodes = []
+    }
+  })
+
+  Object.defineProperty(element, 'textContent', {
+    get: function () {
+      return this.childNodes.map(function (child) {
+        return child.textContent || ''
+      }).join('')
+    },
+    set: function (value) {
+      this.innerHTML = ''
+      if (value !== '') this.appendChild(new FakeText(value))
+    }
+  })
+
+  return element
+}
+
+function collectMatches (element, selector, matches) {
+  element.childNodes.forEach(function (child) {
+    if (matchesSelector(child, selector)) matches.push(child)
+    if (child.childNodes) collectMatches(child, selector, matches)
+  })
+}
+
+function matchesSelector (element, selector) {
+  if (!element || element.nodeType !== 1) return false
+
+  if (selector[0] === '.') {
+    const className = selector.slice(1)
+    return String(element.className || '').split(/\s+/).indexOf(className) !== -1
+  }
+
+  return element.nodeName === String(selector).toUpperCase()
+}
+
+function findButtonByText (root, text) {
+  const buttons = root.querySelectorAll('button')
+  for (let i = 0; i < buttons.length; i++) {
+    if (buttons[i].textContent === text) return buttons[i]
+  }
+  return null
 }
 
 function fakeStyle () {
