@@ -142,6 +142,9 @@ property and its modifiers, rendered by the same slide renderer, scaled to fill
 the column instead of the viewport. That includes `image`, `video`, `iframe`,
 `html`, `custom`, `title`, and even nested `columns`.
 
+On a portrait / narrow viewport (e.g. a phone), columns stack vertically as
+rows instead of sitting side by side, in source order top to bottom.
+
 ```yaml
 - columns:
     - title: Left column
