@@ -36,8 +36,7 @@ require(${JSON.stringify(cli)})
 function runDevWatchSmoke (talkDir) {
   const updatedSlides = [
     'slides:',
-    '  - type: overlay',
-    '    title: Watched title',
+    '  - title: Watched title',
     '    subtitle: Updated YAML',
     ''
   ].join('\n')
@@ -100,17 +99,31 @@ const help = runCliWithBlockedBuildDeps(['--help'])
 assert(help.includes('Dev server port (default: $PORT, then 9966)'), 'help documents $PORT dev port fallback')
 assert(help.includes('default: slides.yaml, slides.yml, or slides.json'), 'help documents YAML default lookup order')
 
-const packageReadme = fs.readFileSync(path.join(root, 'README.md'), 'utf8')
-assert(packageReadme.includes('Built-in slide type reference'), 'package README has slide type reference')
-for (const type of ['overlay', 'title', 'image', 'video', 'quote', 'chart', 'summary', 'iframe', 'html', 'custom']) {
-  assert(packageReadme.includes('`' + type + '`'), 'package README documents ' + type + ' slide type')
+const canonicalShapeDoc = fs.readFileSync(path.join(root, 'docs', 'slide-api-v3.md'), 'utf8')
+const canonicalShapeNames = ['title', 'image', 'video', 'columns', 'iframe', 'html', 'custom']
+for (const shape of canonicalShapeNames) {
+  assert(canonicalShapeDoc.includes('## ' + shape), 'canonical v3 doc lists ' + shape + ' shape')
 }
+for (const forbidden of ['type: columns', 'type: image', 'type: video', 'type: iframe', 'type: html', 'type: overlay', 'type: quote', 'type: chart', 'type: summary', 'attribution:']) {
+  assert(!canonicalShapeDoc.includes(forbidden), 'canonical v3 doc omits legacy field pattern ' + forbidden)
+}
+
+const packageReadme = fs.readFileSync(path.join(root, 'README.md'), 'utf8')
+assert(packageReadme.includes('Slide concept reference'), 'package README has slide concept reference')
+for (const concept of ['image', 'video', 'columns', 'iframe', 'html', 'custom']) {
+  assert(packageReadme.includes('`' + concept + '`'), 'package README documents ' + concept + ' slide concept')
+}
+for (const oldType of ['overlay', 'title', 'quote', 'chart', 'summary', 'citation']) {
+  assert(!packageReadme.includes('#### `' + oldType + '`'), 'package README does not present ' + oldType + ' as a public slide concept')
+}
+assert(packageReadme.includes('default text') && packageReadme.includes('Slide list: default text'), 'package README documents default text shape')
 assert(packageReadme.includes('deviceWidth') && packageReadme.includes('navControlOpacity'), 'package README documents iframe detail fields')
-assert(packageReadme.includes('copyMaxWidth') && packageReadme.includes('gridTemplateColumns') && packageReadme.includes('gridTemplateRows') && packageReadme.includes('mediaStyle') && packageReadme.includes('imageStyle'), 'package README documents quote/chart layout override fields')
+assert(packageReadme.includes('copyMaxWidth') && packageReadme.includes('gridTemplateColumns') && packageReadme.includes('gridTemplateRows') && packageReadme.includes('mediaStyle') && packageReadme.includes('imageStyle') && packageReadme.includes('`columns` array'), 'package README documents columns layout override fields')
 assert(packageReadme.includes('slides(slides, PS)') && packageReadme.includes('renderers'), 'package README documents talk.js hooks')
 assert(packageReadme.includes('npm install') && packageReadme.includes('npm run dev') && packageReadme.includes('powerslides dev .'), 'package README documents npm install/scripts flow')
 assert(packageReadme.includes('bundled PeerJS runtime') && packageReadme.includes('remote: false') && packageReadme.includes('Enable remote control'), 'package README documents CLI remote/options defaults')
-assert(packageReadme.includes('dimmed background title/overlay') && packageReadme.includes('quote plus image over the same background'), 'package README describes starter background and quote patterns')
+assert(packageReadme.includes('Inference: `custom` selects a custom renderer') && packageReadme.includes('`columns` array') && packageReadme.includes('default text slide') && packageReadme.includes('semantic fields (`image`, `video`, `iframe`)'), 'package README documents v3 inference rules')
+assert(packageReadme.includes('default text, image, video, columns, iframe, html, and custom'), 'package README describes starter canonical shapes')
 
 fs.writeFileSync(generatedExamplePeerScript, 'generated PeerJS runtime artifact\n')
 runCliWithBlockedBuildDeps(['init', talk])
@@ -123,15 +136,19 @@ assert(fs.existsSync(path.join(talk, 'talk.js')), 'init writes optional talk.js'
 assert(fs.existsSync(path.join(talk, 'assets')), 'init creates assets convention')
 assert(fs.existsSync(path.join(talk, 'public')), 'init creates public convention')
 const initializedReadme = fs.readFileSync(path.join(talk, 'README.md'), 'utf8')
-for (const type of ['overlay', 'title', 'image', 'video', 'quote', 'chart', 'summary', 'iframe', 'html', 'custom']) {
-  assert(initializedReadme.includes('`' + type + '`'), 'generated talk README documents ' + type + ' slide type')
+for (const concept of ['image', 'video', 'columns', 'iframe', 'html', 'custom']) {
+  assert(initializedReadme.includes('`' + concept + '`'), 'generated talk README documents ' + concept + ' slide concept')
+}
+for (const oldType of ['overlay', 'title', 'quote', 'chart', 'summary', 'citation']) {
+  assert(!initializedReadme.includes('#### `' + oldType + '`'), 'generated talk README does not present ' + oldType + ' as a public slide concept')
 }
 assert(initializedReadme.includes('Custom renderers in talk.js'), 'generated talk README documents custom renderers')
 assert(initializedReadme.includes('deviceWidth') && initializedReadme.includes('navControlOpacity'), 'generated talk README documents iframe detail fields')
-assert(initializedReadme.includes('copyMaxWidth') && initializedReadme.includes('gridTemplateColumns') && initializedReadme.includes('gridTemplateRows') && initializedReadme.includes('mediaStyle') && initializedReadme.includes('imageStyle'), 'generated talk README documents quote/chart layout override fields')
+assert(initializedReadme.includes('copyMaxWidth') && initializedReadme.includes('gridTemplateColumns') && initializedReadme.includes('gridTemplateRows') && initializedReadme.includes('mediaStyle') && initializedReadme.includes('imageStyle') && initializedReadme.includes('`columns` array'), 'generated talk README documents columns layout override fields')
 assert(initializedReadme.includes('npm install') && initializedReadme.includes('npm run dev') && initializedReadme.includes('powerslides dev .'), 'generated talk README documents npm scripts flow')
 assert(initializedReadme.includes('Options and remote control') && initializedReadme.includes('remote: false') && initializedReadme.includes('Enable remote control'), 'generated talk README documents remote/options controls')
-assert(initializedReadme.includes('background` plus `brightness') && initializedReadme.includes('`quote` with both `image` and `background`'), 'generated talk README describes starter background and quote patterns')
+assert(initializedReadme.includes('Most slides do not need `type`') && initializedReadme.includes('Slide list:') && initializedReadme.includes('Use semantic fields'), 'generated talk README documents v3 inference rules')
+assert(initializedReadme.includes('default text, image, video, columns, iframe, html, and custom'), 'generated talk README describes starter canonical shapes')
 
 assert(fs.existsSync(path.join(talk, 'package.json')), 'init writes package.json')
 const initializedPackage = JSON.parse(fs.readFileSync(path.join(talk, 'package.json'), 'utf8'))
@@ -157,47 +174,40 @@ const exampleSlidesSource = fs.readFileSync(path.join(root, 'example', 'slides.y
 const exampleTalkSource = fs.readFileSync(path.join(root, 'example', 'talk.js'), 'utf8')
 assert.strictEqual(fs.readFileSync(path.join(talk, 'slides.yaml'), 'utf8'), exampleSlidesSource, 'init copies packaged example slides.yaml')
 assert.strictEqual(fs.readFileSync(path.join(talk, 'talk.js'), 'utf8'), exampleTalkSource, 'init copies packaged example talk.js')
-for (const media of ['sample.svg']) {
+for (const media of ['sample.svg', 'spin.mp4']) {
   assert.deepStrictEqual(
     fs.readFileSync(path.join(talk, 'public', media)),
     fs.readFileSync(path.join(root, 'example', 'public', media)),
     'init copies starter public media ' + media
   )
 }
-assert(!fs.existsSync(path.join(talk, 'public', 'spin.mp4')), 'init starter does not copy showcase video media')
-
 const initializedSpec = yaml.load(fs.readFileSync(path.join(talk, 'slides.yaml'), 'utf8'))
 const exampleSpec = yaml.load(exampleSlidesSource)
 assert.deepStrictEqual(initializedSpec, exampleSpec, 'init slides parse identically to packaged example')
 assert(!Object.prototype.hasOwnProperty.call(initializedSpec, 'title'), 'init example has no top-level title metadata')
-assert.strictEqual(initializedSpec.slides.length, 5, 'init starter has the requested five-slide minimal set')
-assert.strictEqual(initializedSpec.slides[0].title, 'power-slides starter', 'init starter opens with the requested title')
-assert.strictEqual(initializedSpec.slides[0].subtitle, 'Backgrounds, brightness, and content-first YAML', 'init starter introduces background/brightness YAML')
-assert.strictEqual(initializedSpec.slides[0].background, '/sample.svg', 'init starter title uses the tiny bundled SVG as a background')
-assert.strictEqual(initializedSpec.slides[0].brightness, 0.48, 'init starter title demonstrates brightness')
-assert.strictEqual(initializedSpec.slides[0].align, 'center', 'init starter title demonstrates centered overlay copy')
-const initializedQuote = initializedSpec.slides[1]
-assert.strictEqual(initializedQuote.type, 'quote', 'init starter includes a quote slide')
-assert.strictEqual(initializedQuote.image, '/sample.svg', 'init starter quote demonstrates a side image')
-assert.strictEqual(initializedQuote.background, '/sample.svg', 'init starter quote demonstrates a background image')
-assert.strictEqual(initializedQuote.brightness, 0.62, 'init starter quote demonstrates background brightness')
-assert(/supporting media/.test(initializedQuote.quote), 'init starter quote copy explains the quote/media pattern')
-assert.strictEqual(initializedSpec.slides[2].type, 'image', 'init starter includes a simple built-in media slide')
-assert.strictEqual(initializedSpec.slides[2].src, '/sample.svg', 'init starter media slide uses the tiny bundled SVG')
-const initializedIframe = initializedSpec.slides.find(slide => slide.type === 'iframe')
-assert(initializedIframe, 'init example includes an iframe slide')
-assert.strictEqual(initializedIframe.src, 'https://david.app/', 'init example iframe embeds david.app as an external URL')
-assert.strictEqual(initializedIframe.device, 'iphone', 'init example uses the reusable iPhone device frame')
-assert.strictEqual(initializedIframe.layout, 'phone-right', 'init example demonstrates phone plus side-copy layout')
-assert.strictEqual(initializedIframe.background, '#061018', 'init example iframe demonstrates its supported background field')
-assert(initializedIframe.side && initializedIframe.side.title && initializedIframe.side.bullets.length, 'init example includes reusable side copy')
-assert(!initializedIframe.srcdoc, 'init example iframe is a real external iframe, not srcdoc')
-assert(!initializedIframe.hint, 'init example does not render distracting text hint copy')
-assert.strictEqual(initializedSpec.slides[4].type, 'summary', 'init starter closes with summary/next steps')
-assert.strictEqual(initializedSpec.slides[4].background, '/sample.svg', 'init starter closing summary demonstrates background')
-assert.strictEqual(initializedSpec.slides[4].brightness, 0.68, 'init starter closing summary demonstrates brightness')
-assert(initializedSpec.slides[4].card.bullets.some(item => /talk\.js stub/.test(item)), 'init starter points to the commented talk.js stub')
-assert(initializedSpec.slides[4].card.bullets.some(item => /examples\/showcase/.test(item)), 'init starter points to the showcase example for custom renderers')
+assert.strictEqual(initializedSpec.slides.length, 7, 'init starter has the seven canonical shapes')
+assert.strictEqual(initializedSpec.slides[0].title, 'Main point', 'starter first slide is default text')
+assert.strictEqual(initializedSpec.slides[0].subtitle, 'Optional subtitle', 'starter default text uses subtitle')
+assert.strictEqual(initializedSpec.slides[0].background, '/sample.svg', 'starter default text demonstrates background')
+assert.strictEqual(initializedSpec.slides[0].brightness, 0.45, 'starter default text demonstrates brightness')
+assert.strictEqual(initializedSpec.slides[1].image, '/sample.svg', 'starter second slide is image')
+assert.strictEqual(initializedSpec.slides[2].video, '/spin.mp4', 'starter third slide is video')
+assert.strictEqual(initializedSpec.slides[3].columns[0].iframe, 'https://example.com/demo', 'starter fourth slide is columns with iframe')
+assert.strictEqual(initializedSpec.slides[3].columns[1].title, 'Demo in context', 'starter columns has copy column')
+assert.strictEqual(initializedSpec.slides[4].iframe, 'https://example.com/demo', 'starter fifth slide is full iframe')
+assert.strictEqual(initializedSpec.slides[4].iframeTitle, 'Example app', 'starter iframe uses iframeTitle for labels')
+assert.strictEqual(initializedSpec.slides[4].device, 'iphone', 'starter iframe demonstrates phone frame')
+assert(initializedSpec.slides[5].html.includes('Custom HTML'), 'starter sixth slide is html')
+assert.strictEqual(initializedSpec.slides[6].custom, 'particleField', 'starter seventh slide is custom')
+for (const slide of initializedSpec.slides) {
+  assert(!Object.prototype.hasOwnProperty.call(slide, 'type'), 'starter uses content properties instead of type')
+  assert(!Object.prototype.hasOwnProperty.call(slide, 'quote'), 'starter does not use removed quote field')
+  assert(!Object.prototype.hasOwnProperty.call(slide, 'attribution'), 'starter does not use removed attribution field')
+  assert(!Object.prototype.hasOwnProperty.call(slide, 'side'), 'starter iframe-plus-copy uses columns, not iframe side')
+  assert(!Object.prototype.hasOwnProperty.call(slide, 'src'), 'starter does not use src alias')
+  assert(!Object.prototype.hasOwnProperty.call(slide, 'img'), 'starter does not use img alias')
+  assert(!Object.prototype.hasOwnProperty.call(slide, 'url'), 'starter does not use url alias')
+}
 
 const nonEmpty = path.join(tmp, 'non-empty')
 fs.mkdirSync(nonEmpty)
@@ -213,29 +223,15 @@ assert.strictEqual(fs.readFileSync(path.join(nonEmpty, 'keep.txt'), 'utf8'), 'ke
 assert(fs.existsSync(path.join(nonEmpty, 'talk.js')), 'init --force fills missing example files')
 
 assert(!Object.prototype.hasOwnProperty.call(exampleSpec, 'title'), 'example has no top-level title metadata')
-assert.strictEqual(exampleSpec.slides[0].title, 'power-slides starter', 'example uses first slide as title slide')
-assert.strictEqual(exampleSpec.slides[0].background, '/sample.svg', 'example title slide uses background')
-assert.strictEqual(exampleSpec.slides[0].brightness, 0.48, 'example title slide uses brightness')
-assert.strictEqual(exampleSpec.slides[1].type, 'quote', 'example includes quote slide')
-assert.strictEqual(exampleSpec.slides[1].image, '/sample.svg', 'example quote includes side image')
-assert.strictEqual(exampleSpec.slides[1].background, '/sample.svg', 'example quote includes background')
-const exampleIframe = exampleSpec.slides.find(slide => slide.type === 'iframe')
-assert(exampleIframe, 'example includes an iframe slide')
-assert.strictEqual(exampleIframe.src, 'https://david.app/', 'example iframe embeds david.app as an external URL')
-assert.strictEqual(exampleIframe.device, 'iphone', 'example iframe uses the reusable iPhone device frame')
-assert.strictEqual(exampleIframe.layout, 'phone-right', 'example iframe demonstrates phone plus side-copy layout')
-assert.strictEqual(exampleIframe.background, '#061018', 'example iframe demonstrates supported background field')
-assert(exampleIframe.side && exampleIframe.side.title && exampleIframe.side.bullets.length, 'example iframe includes reusable side copy')
-assert(!exampleIframe.srcdoc, 'example iframe is a real external iframe, not srcdoc')
-assert(!exampleIframe.hint, 'example iframe does not render distracting text hint copy')
+assert.deepStrictEqual(exampleSpec, initializedSpec, 'example and initialized spec remain identical')
 
 fs.writeFileSync(path.join(talk, 'talk.js'), [
-  'import { overlay } from \'power-slides\'',
+  'import { text } from \'power-slides\'',
   '',
   'export default {',
   '  renderers: {',
   '    thanks (slide) {',
-  '      return overlay({ title: slide.title || \'Imported helper works\' })',
+  '      return text({ title: slide.title || \'Imported helper works\' })',
   '    }',
   '  }',
   '}',
@@ -252,7 +248,7 @@ assert(match, 'build writes cache-busted script URL')
 assert(fs.existsSync(path.join(publicDir, match[0])), 'build writes bundle')
 assert(!html.includes('entry.js'), 'build HTML points at production bundle')
 
-assert(html.includes('<title>power-slides starter</title>'), 'build infers HTML title from first YAML slide')
+assert(html.includes('<title>Main point</title>'), 'build infers HTML title from first YAML slide')
 assert(html.includes('<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">'), 'build HTML locks mobile viewport zoom')
 const generatedEntry = fs.readFileSync(path.join(talk, '.power-slides', 'entry.js'), 'utf8')
 const generatedSlides = JSON.parse(fs.readFileSync(path.join(talk, '.power-slides', 'slides.json'), 'utf8'))
@@ -260,8 +256,8 @@ assert(generatedEntry.includes("import spec from './slides.json'"), 'generated e
 assert(generatedEntry.includes('remoteOptions') && generatedEntry.includes('remote: remoteOptions'), 'generated entry enables remote/options shell by default')
 assert(html.includes('<script src="./peerjs.min.js"></script>') && html.indexOf('peerjs.min.js') < html.indexOf(match[0]), 'build HTML loads bundled PeerJS before the deck bundle')
 assert(fs.existsSync(path.join(publicDir, 'peerjs.min.js')), 'build copies bundled PeerJS into public output')
-assert(!generatedEntry.includes('power-slides starter'), 'generated entry does not bake slide title content')
-assert(!generatedEntry.includes('Backgrounds, brightness, and content-first YAML'), 'generated entry does not bake slide subtitle content')
+assert(!generatedEntry.includes('Main point'), 'generated entry does not bake slide title content')
+assert(!generatedEntry.includes('Optional subtitle'), 'generated entry does not bake slide subtitle content')
 assert.deepStrictEqual(generatedSlides, initializedSpec, 'generated slides.json matches parsed YAML spec')
 
 const devWatchTalk = path.join(tmp, 'dev-watch-talk')
@@ -291,8 +287,8 @@ try {
   assert.strictEqual(installedTalkPackage.devDependencies['power-slides'], '^' + rootPackage.version, 'installed power-slides init uses current package version in generated devDependency')
   assert.strictEqual(installedTalkPackage.scripts.dev, 'powerslides dev .', 'installed power-slides init writes powerslides dev script')
   assert.strictEqual(installedTalkPackage.scripts.build, 'powerslides build .', 'installed power-slides init writes powerslides build script')
-  assert(fs.existsSync(path.join(installedTalk, 'public', 'sample.svg')), 'installed power-slides init copies starter media')
-  assert(!fs.existsSync(path.join(installedTalk, 'public', 'spin.mp4')), 'installed power-slides init does not copy showcase video media')
+  assert(fs.existsSync(path.join(installedTalk, 'public', 'sample.svg')), 'installed power-slides init copies starter image media')
+  assert(fs.existsSync(path.join(installedTalk, 'public', 'spin.mp4')), 'installed power-slides init copies starter video media')
   assert(!fs.existsSync(path.join(installedTalk, 'public', 'index.html')), 'installed power-slides init excludes generated public index')
   const installedAliasTalk = path.join(tmp, 'installed-alias-talk')
   const installedAliasCli = path.join(binDir, process.platform === 'win32' ? 'powerslides.cmd' : 'powerslides')
@@ -365,11 +361,11 @@ require(cli)
 
 const priority = path.join(tmp, 'priority')
 execFileSync(process.execPath, [cli, 'init', priority], { stdio: 'pipe' })
-fs.writeFileSync(path.join(priority, 'slides.yml'), yaml.dump({ slides: [{ type: 'overlay', title: 'YML title' }] }, { lineWidth: -1, noRefs: true }))
-fs.writeFileSync(path.join(priority, 'slides.json'), JSON.stringify({ slides: [{ type: 'overlay', title: 'JSON title' }] }, null, 2))
+fs.writeFileSync(path.join(priority, 'slides.yml'), yaml.dump({ slides: [{ title: 'YML title' }] }, { lineWidth: -1, noRefs: true }))
+fs.writeFileSync(path.join(priority, 'slides.json'), JSON.stringify({ slides: [{ title: 'JSON title' }] }, null, 2))
 execFileSync(process.execPath, [cli, 'build', priority], { stdio: 'pipe' })
 const priorityHtml = fs.readFileSync(path.join(priority, 'public', 'index.html'), 'utf8')
-assert(priorityHtml.includes('<title>power-slides starter</title>'), 'default build prefers slides.yaml over slides.yml and slides.json')
+assert(priorityHtml.includes('<title>Main point</title>'), 'default build prefers slides.yaml over slides.yml and slides.json')
 execFileSync(process.execPath, [cli, 'build', priority, '--slides', 'slides.json'], { stdio: 'pipe' })
 const explicitHtml = fs.readFileSync(path.join(priority, 'public', 'index.html'), 'utf8')
 assert(explicitHtml.includes('<title>JSON title</title>'), 'explicit --slides can select JSON spec')
@@ -377,8 +373,8 @@ assert(explicitHtml.includes('<title>JSON title</title>'), 'explicit --slides ca
 const ymlPreferred = path.join(tmp, 'yml-preferred')
 fs.mkdirSync(ymlPreferred)
 fs.mkdirSync(path.join(ymlPreferred, 'public'))
-fs.writeFileSync(path.join(ymlPreferred, 'slides.yml'), yaml.dump({ slides: [{ type: 'overlay', title: 'Legacy YML title' }] }, { lineWidth: -1, noRefs: true }))
-fs.writeFileSync(path.join(ymlPreferred, 'slides.json'), JSON.stringify({ slides: [{ type: 'overlay', title: 'YML fallback JSON title' }] }, null, 2))
+fs.writeFileSync(path.join(ymlPreferred, 'slides.yml'), yaml.dump({ slides: [{ title: 'Legacy YML title' }] }, { lineWidth: -1, noRefs: true }))
+fs.writeFileSync(path.join(ymlPreferred, 'slides.json'), JSON.stringify({ slides: [{ title: 'YML fallback JSON title' }] }, null, 2))
 execFileSync(process.execPath, [cli, 'build', ymlPreferred], { stdio: 'pipe' })
 const ymlPreferredHtml = fs.readFileSync(path.join(ymlPreferred, 'public', 'index.html'), 'utf8')
 assert(ymlPreferredHtml.includes('<title>Legacy YML title</title>'), 'default build supports slides.yml and prefers it over slides.json')
@@ -386,7 +382,7 @@ assert(ymlPreferredHtml.includes('<title>Legacy YML title</title>'), 'default bu
 const jsonOnly = path.join(tmp, 'json-only')
 fs.mkdirSync(jsonOnly)
 fs.mkdirSync(path.join(jsonOnly, 'public'))
-fs.writeFileSync(path.join(jsonOnly, 'slides.json'), JSON.stringify({ slides: [{ type: 'overlay', title: 'Unambiguous JSON title' }] }, null, 2))
+fs.writeFileSync(path.join(jsonOnly, 'slides.json'), JSON.stringify({ slides: [{ title: 'Unambiguous JSON title' }] }, null, 2))
 execFileSync(process.execPath, [cli, 'build', jsonOnly], { stdio: 'pipe' })
 const jsonOnlyHtml = fs.readFileSync(path.join(jsonOnly, 'public', 'index.html'), 'utf8')
 assert(jsonOnlyHtml.includes('<title>Unambiguous JSON title</title>'), 'unambiguous slides.json still builds by default')
@@ -394,11 +390,30 @@ assert(jsonOnlyHtml.includes('<title>Unambiguous JSON title</title>'), 'unambigu
 import(path.join(root, 'index.mjs')).then(async mod => {
   const assets = mod.collectAssets({
     slides: [
-      { type: 'overlay', background: 'https://cdn.example/bg.png' },
-      { type: 'quote', image: '/local.png' }
+      { title: 'Background', background: 'https://cdn.example/bg.png' },
+      { image: '/local.png' },
+      { iframe: 'https://example.test/embed' }
     ]
   })
-  assert.deepStrictEqual(assets.sort(), ['/local.png', 'https://cdn.example/bg.png'].sort())
+  assert.deepStrictEqual(assets.sort(), ['/local.png', 'https://cdn.example/bg.png', 'https://example.test/embed'].sort())
+
+  assert.strictEqual(mod.inferSlideType({ title: 'Testimonial', subtitle: 'Speaker' }), 'text', 'title plus subtitle stays default text')
+  assert.strictEqual(mod.inferSlideType({ background: '/generated/chaser-app.png', brightness: 0.55, columns: [{ iframe: 'https://example.test/app', device: 'iphone' }, { title: 'Demo', bullets: ['Parent arrows remain available'] }] }), 'columns', 'columns array infers columns even with shared slide background')
+  assert.strictEqual(mod.inferSlideType({ text: 'Text/media copy', image: '/phone.png', gridTemplateColumns: '1fr 1fr' }), 'text', 'text plus side media no longer over-infers columns without columns array')
+  assert.strictEqual(mod.inferSlideType({ html: '<h1>Trusted HTML</h1>' }), 'html', 'html field infers html slide')
+  assert.strictEqual(mod.inferSlideType({ video: '/demo.mp4?cache=1' }), 'video', 'semantic video field infers video slide')
+  assert.strictEqual(mod.inferSlideType({ iframe: 'https://example.test/app' }), 'iframe', 'semantic iframe field infers iframe slide')
+  assert.strictEqual(mod.inferSlideType({ url: 'https://example.test/app', device: 'iphone', side: { title: 'Demo' } }), 'text', 'legacy url field no longer infers iframe slide')
+  assert.strictEqual(mod.inferSlideType({ card: { title: 'Recap', bullets: ['One'] }, title: 'Summary' }), 'text', 'card fields no longer infer a separate summary shape')
+  assert.strictEqual(mod.inferSlideType({ image: '/diagram.png', fit: 'contain' }), 'image', 'semantic image field infers image slide')
+  assert.strictEqual(mod.inferSlideType({ src: '/diagram.png', fit: 'contain' }), 'text', 'legacy src no longer infers a media slide')
+  assert.strictEqual(mod.inferSlideType({ type: 'image', image: '/diagram.png', fit: 'contain' }), 'image', 'explicit image type preserves semantic image slide')
+  assert.strictEqual(mod.inferSlideType({ background: '/hero.png' }), 'text', 'background alone stays default text because all shapes can use background styling')
+  assert.strictEqual(mod.inferSlideType({ title: 'Real talk title', background: '/hero.png' }), 'text', 'title plus background stays default text')
+  assert.strictEqual(mod.inferSlideType({ title: 'Chart-like title', image: '/chart.png', background: '/hero.png', brightness: 0.6 }), 'text', 'title plus media-ish fields remains default text without columns array')
+  assert.strictEqual(mod.inferSlideType({ custom: 'demo' }), 'custom', 'custom property selects custom shape')
+  assert.strictEqual(mod.inferSlideType({ name: 'customRenderer', image: '/diagram.png' }), 'text', 'custom renderer keys prevent built-in inference')
+  assert.strictEqual(mod.renderSlideObject({ name: 'special', image: '/diagram.png' }, { renderers: { special: () => 'named-renderer' } }), 'named-renderer', 'named custom renderer wins before inference')
 
   const previousDocument = global.document
   const previousWindow = global.window
@@ -441,78 +456,58 @@ import(path.join(root, 'index.mjs')).then(async mod => {
     deck.openOptions()
     assert(findDeep(remoteTarget, child => String(child.className).includes('ps-remote-options')), 'ESM startTalk opens the remote/options overlay')
 
-    const quoteTarget = new FakeElement('section')
-    const quoteSlide = mod.quote({ quote: 'Tiny UI', image: '/phone.png' })
-    assert(quoteSlide.assets.includes('/phone.png'), 'quote helper tracks side image asset')
-    quoteSlide(quoteTarget)
-    const quoteRoot = quoteTarget.children[0]
-    const quoteLayout = findDeep(quoteRoot, child => String(child.className).includes('ps-quote-layout'))
-    const quoteCopy = findDeep(quoteRoot, child => String(child.className).includes('ps-quote-copy'))
-    const quoteMedia = findDeep(quoteRoot, child => String(child.className).includes('ps-quote-media'))
-    const quoteImage = findDeep(quoteRoot, child => child.tagName === 'img')
-    assert(quoteLayout, 'quote helper renders a named layout wrapper')
-    assert.strictEqual(quoteLayout.style.width, '100%', 'quote layout fills the slide width')
-    assert.strictEqual(quoteLayout.style.boxSizing, 'border-box', 'quote layout keeps padding inside the slide')
-    assert.strictEqual(quoteLayout.style.minWidth, 0, 'quote layout can shrink grid columns')
-    assert.strictEqual(quoteLayout.style.gridTemplateColumns, 'minmax(0, 0.82fr) minmax(0, 1.18fr)', 'quote image slides default to a wider media column')
-    assert.strictEqual(quoteLayout.style.gridTemplateRows, 'minmax(0, 1fr)', 'quote layout constrains the grid row to the slide height')
-    assert.strictEqual(quoteLayout.style.gap, 'clamp(1.5rem, 3vw, 3.25rem)', 'quote image slides use a tighter responsive gap')
-    assert.strictEqual(quoteLayout.style.padding, 'clamp(2rem, 5vh, 4.5rem) clamp(2rem, 5vw, 5rem)', 'quote image slides use responsive bounded padding')
-    assert.strictEqual(quoteCopy.style.justifySelf, 'end', 'quote copy defaults near the media column')
-    assert.strictEqual(quoteCopy.style.textAlign, 'left', 'quote image slide copy defaults left-aligned')
-    assert.strictEqual(quoteCopy.style.maxWidth, 'min(34rem, 100%)', 'quote image slide copy has a sensible max width')
-    assert.strictEqual(quoteMedia.style.width, '100%', 'quote media wrapper fills its grid cell')
-    assert.strictEqual(quoteMedia.style.minWidth, 0, 'quote media wrapper can shrink inside the grid')
-    assert.strictEqual(quoteMedia.style.minHeight, 0, 'quote media wrapper can shrink inside the grid row')
-    assert.strictEqual(quoteMedia.style.alignItems, 'center', 'quote media wrapper centers image vertically by default')
-    assert.strictEqual(quoteMedia.style.justifyContent, 'center', 'quote media wrapper centers image horizontally by default')
-    assert.strictEqual(quoteImage.attributes.src, '/phone.png', 'quote image renders the configured side image')
-    assert.strictEqual(quoteImage.style.maxHeight, 'min(82vh, 100%)', 'quote image default max height stays inside the padded slide')
-    assert.strictEqual(quoteImage.style.objectFit, 'contain', 'quote image still preserves contain fitting')
+    assert.strictEqual(mod.default.columns, mod.columns, 'default export exposes columns helper')
+    const inferredColumnsTarget = new FakeElement('section')
+    const inferredColumnsSlide = mod.renderSlideObject({
+      background: '/generated/chaser-app.png',
+      brightness: 0.55,
+      columns: [
+        { iframe: 'https://example.test/app', device: 'iphone' },
+        { title: 'Demo', bullets: ['Cross-origin page stays untouched', 'Parent arrows remain available'] }
+      ]
+    })
+    assert(inferredColumnsSlide.assets.includes('/generated/chaser-app.png'), 'inferred columns slide tracks shared background asset')
+    assert(inferredColumnsSlide.assets.includes('https://example.test/app'), 'inferred columns slide tracks column iframe URL')
+    inferredColumnsSlide(inferredColumnsTarget)
+    const inferredColumnsRoot = inferredColumnsTarget.children[0]
+    const inferredColumnsLayout = findDeep(inferredColumnsRoot, child => String(child.className).includes('ps-columns-layout'))
+    const inferredColumnsIframe = findDeep(inferredColumnsRoot, child => child.tagName === 'iframe')
+    const inferredColumnsPhone = findDeep(inferredColumnsRoot, child => String(child.className).includes('ps-iframe-device-iphone'))
+    const inferredColumnsHeading = findDeep(inferredColumnsRoot, child => child.tagName === 'h2')
+    assert(inferredColumnsLayout, 'renderSlideObject uses columns renderer when columns array is present')
+    assert.strictEqual(inferredColumnsIframe.attributes.src, 'https://example.test/app', 'columns renderer supports iframe media columns')
+    assert(inferredColumnsPhone, 'columns iframe column supports reusable iPhone frame')
+    assert(inferredColumnsHeading.children.includes('Demo'), 'columns renderer supports copy columns next to iframe media')
 
-    const quoteOverrideTarget = new FakeElement('section')
-    mod.quote({
-      quote: 'Override',
-      image: '/override.png',
-      columns: '1fr 2fr',
-      rows: 'minmax(0, 2fr)',
-      gap: '1rem',
-      padding: '2rem',
-      align: 'right',
-      copyJustify: 'center',
-      copyMaxWidth: '20rem',
-      copyStyle: { color: 'red' },
-      imageAlign: 'flex-start',
-      imageJustify: 'flex-end',
-      mediaStyle: { background: 'blue' },
-      imageStyle: { maxHeight: '40vh' }
-    })(quoteOverrideTarget)
-    const quoteOverrideRoot = quoteOverrideTarget.children[0]
-    const quoteOverrideLayout = findDeep(quoteOverrideRoot, child => String(child.className).includes('ps-quote-layout'))
-    const quoteOverrideCopy = findDeep(quoteOverrideRoot, child => String(child.className).includes('ps-quote-copy'))
-    const quoteOverrideMedia = findDeep(quoteOverrideRoot, child => String(child.className).includes('ps-quote-media'))
-    const quoteOverrideImage = findDeep(quoteOverrideRoot, child => child.tagName === 'img')
-    assert.strictEqual(quoteOverrideLayout.style.gridTemplateColumns, '1fr 2fr', 'quote columns override controls grid proportions')
-    assert.strictEqual(quoteOverrideLayout.style.gridTemplateRows, 'minmax(0, 2fr)', 'quote rows override controls grid row sizing')
-    assert.strictEqual(quoteOverrideLayout.style.gap, '1rem', 'quote gap override is applied')
-    assert.strictEqual(quoteOverrideLayout.style.padding, '2rem', 'quote padding override is applied')
-    assert.strictEqual(quoteOverrideCopy.style.textAlign, 'right', 'quote align controls copy text alignment')
-    assert.strictEqual(quoteOverrideCopy.style.justifySelf, 'center', 'quote copyJustify controls copy placement')
-    assert.strictEqual(quoteOverrideCopy.style.maxWidth, '20rem', 'quote copyMaxWidth controls copy measure')
-    assert.strictEqual(quoteOverrideCopy.style.color, 'red', 'quote copyStyle is merged last')
-    assert.strictEqual(quoteOverrideMedia.style.alignItems, 'flex-start', 'quote imageAlign controls media wrapper alignment')
-    assert.strictEqual(quoteOverrideMedia.style.justifyContent, 'flex-end', 'quote imageJustify controls media wrapper justification')
-    assert.strictEqual(quoteOverrideMedia.style.background, 'blue', 'quote mediaStyle is merged last')
-    assert.strictEqual(quoteOverrideImage.style.maxHeight, '40vh', 'quote imageStyle is merged last')
-
-    const chartTarget = new FakeElement('section')
-    const chartSlide = mod.chart({ quote: 'Chart', src: '/chart.png', gridTemplateColumns: '2fr 3fr' })
-    assert(chartSlide.assets.includes('/chart.png'), 'chart helper tracks image assets through quote')
-    chartSlide(chartTarget)
-    const chartLayout = findDeep(chartTarget.children[0], child => String(child.className).includes('ps-quote-layout'))
-    const chartHeading = findDeep(chartTarget.children[0], child => child.tagName === 'h1')
-    assert.strictEqual(chartLayout.style.gridTemplateColumns, '2fr 3fr', 'chart inherits quote grid override fields')
-    assert.strictEqual(chartHeading.style.fontSize, '3.2vw', 'chart still uses the smaller default quote text size')
+    const columnsTarget = new FakeElement('section')
+    const columnsSlide = mod.columns({ columns: [{ title: 'Tiny UI' }, { image: '/phone.png', fit: 'contain' }] })
+    assert(columnsSlide.assets.includes('/phone.png'), 'columns helper tracks side image asset')
+    columnsSlide(columnsTarget)
+    const columnsRoot = columnsTarget.children[0]
+    const columnsLayout = findDeep(columnsRoot, child => String(child.className).includes('ps-columns-layout'))
+    const columnsCopy = findDeep(columnsRoot, child => String(child.className).includes('ps-columns-copy'))
+    const columnsMedia = findDeep(columnsRoot, child => String(child.className).includes('ps-columns-media'))
+    const columnsImage = findDeep(columnsRoot, child => child.tagName === 'img')
+    const columnsHeading = findDeep(columnsRoot, child => child.tagName === 'h2')
+    assert(columnsLayout, 'columns helper renders a named layout wrapper')
+    assert.strictEqual(columnsLayout.style.width, '100%', 'columns layout fills the slide width')
+    assert.strictEqual(columnsLayout.style.boxSizing, 'border-box', 'columns layout keeps padding inside the slide')
+    assert.strictEqual(columnsLayout.style.minWidth, 0, 'columns layout can shrink grid columns')
+    assert.strictEqual(columnsLayout.style.gridTemplateColumns, 'repeat(2, minmax(0, 1fr))', 'columns array defaults to an even two-column grid')
+    assert.strictEqual(columnsLayout.style.gridTemplateRows, 'minmax(0, 1fr)', 'columns layout constrains the grid row to the slide height')
+    assert.strictEqual(columnsLayout.style.gap, 'clamp(1.5rem, 3vw, 3.25rem)', 'columns slides use a responsive gap')
+    assert.strictEqual(columnsLayout.style.padding, 'clamp(2rem, 5vh, 4.5rem) clamp(2rem, 5vw, 5rem)', 'columns slides use responsive bounded padding')
+    assert.strictEqual(columnsCopy.style.textAlign, 'center', 'columns copy defaults centered inside its column')
+    assert.strictEqual(columnsCopy.style.maxWidth, 'min(58rem, 100%)', 'columns copy has a sensible max width')
+    assert(columnsHeading && columnsHeading.children.includes('Tiny UI'), 'columns helper renders title copy inside a column')
+    assert.strictEqual(columnsMedia.style.width, '100%', 'columns media wrapper fills its grid cell')
+    assert.strictEqual(columnsMedia.style.minWidth, 0, 'columns media wrapper can shrink inside the grid')
+    assert.strictEqual(columnsMedia.style.minHeight, 0, 'columns media wrapper can shrink inside the grid row')
+    assert.strictEqual(columnsMedia.style.alignItems, 'center', 'columns media wrapper centers image vertically by default')
+    assert.strictEqual(columnsMedia.style.justifyContent, 'center', 'columns media wrapper centers image horizontally by default')
+    assert.strictEqual(columnsImage.attributes.src, '/phone.png', 'columns image renders the configured side image')
+    assert.strictEqual(columnsImage.style.maxHeight, 'min(82vh, 100%)', 'columns image default max height stays inside the padded slide')
+    assert.strictEqual(columnsImage.style.objectFit, 'contain', 'columns image still preserves contain fitting')
 
     const target = new FakeElement('section')
     let nextCount = 0
@@ -540,105 +535,46 @@ import(path.join(root, 'index.mjs')).then(async mod => {
     assert.strictEqual(nextButton.children[0], '›', 'next iframe nav control is an arrow, not talk copy')
 
     const srcTarget = new FakeElement('section')
-    mod.iframe('https://example.test/demo', { title: 'Src test', navigationControls: false })(srcTarget)
+    mod.iframe('https://example.test/demo', { iframeTitle: 'Src test', navigationControls: false })(srcTarget)
     const srcRoot = srcTarget.children[0]
     const srcFrame = findDeep(srcRoot, child => child.tagName === 'iframe')
     assert.strictEqual(srcFrame.attributes.src, 'https://example.test/demo', 'iframe helper preserves normal src URLs')
     assert(!findDeep(srcRoot, child => String(child.className).includes('ps-iframe-nav-controls')), 'iframe navigation controls can be disabled')
 
     const phoneTarget = new FakeElement('section')
-    mod.iframe('https://david.app/', {
-      title: 'Phone demo',
-      device: 'iphone',
-      layout: 'phone-right',
-      side: {
-        eyebrow: 'External demo',
-        title: 'Copy beside phone',
-        subtitle: 'Parent slide copy, not iframe copy.',
-        bullets: ['Reusable YAML', 'No iframe overlay']
-      }
-    })(phoneTarget)
+    mod.iframe('https://david.app/', { title: 'Phone demo', device: 'iphone' })(phoneTarget)
     const phoneRoot = phoneTarget.children[0]
-    const phoneLayout = findDeep(phoneRoot, child => String(child.className).includes('ps-iframe-phone-layout'))
-    const phoneSideCopy = findDeep(phoneRoot, child => String(child.className).includes('ps-iframe-side-copy'))
-    const phoneSideTitle = findDeep(phoneRoot, child => String(child.className).includes('ps-iframe-side-title'))
-    const phoneBullets = findDeep(phoneRoot, child => String(child.className).includes('ps-iframe-side-bullets'))
     const phoneDevice = findDeep(phoneRoot, child => String(child.className).includes('ps-iframe-device-iphone'))
     const phoneControls = phoneRoot.children.find(child => String(child.className).includes('ps-iframe-nav-controls'))
     const phoneScreen = findDeep(phoneRoot, child => String(child.className).includes('ps-iframe-device-screen'))
-    const phoneSpeaker = findDeep(phoneRoot, child => String(child.className).includes('ps-iframe-device-speaker'))
-    const phoneSafeArea = findDeep(phoneRoot, child => String(child.className).includes('ps-iframe-device-safe-area'))
     const phoneFrame = findDeep(phoneRoot, child => child.tagName === 'iframe')
-    assert(String(phoneRoot.className).includes('ps-iframe-layout-phone-right'), 'phone side-copy layout is marked on the root')
-    assert(phoneLayout, 'phone side-copy layout renders a reusable parent container')
-    assert(phoneSideCopy && phoneSideTitle && phoneSideTitle.children.includes('Copy beside phone'), 'phone side-copy layout renders talk copy beside the device')
-    assert(phoneBullets && phoneBullets.children.length === 2, 'phone side-copy layout renders bullets')
     assert(phoneDevice, 'iframe helper renders an iPhone-like device frame when requested')
-    assert.strictEqual(phoneLayout.children[0], phoneSideCopy, 'phone-right layout puts side copy before the phone')
-    assert.strictEqual(phoneLayout.children[1], phoneDevice, 'phone-right layout puts the phone on the right')
     assert.strictEqual(phoneFrame.attributes.src, 'https://david.app/', 'phone-framed iframe preserves external src URL')
     assert(phoneScreen && phoneScreen.children.includes(phoneFrame), 'phone-framed iframe renders inside the rounded device screen')
     assert(phoneControls && !containsDeep(phoneDevice, phoneControls), 'phone-framed iframe keeps arrow controls outside/over the device frame')
     assert(!containsDeep(phoneFrame, phoneControls), 'phone-framed iframe keeps nav controls on the parent slide')
-    assert(!phoneSpeaker, 'phone frame does not add a fake speaker/notch overlay')
-    assert(!phoneSafeArea, 'phone frame does not add a notch safe-area overlay')
 
-    const phoneLeftTarget = new FakeElement('section')
-    mod.iframe('https://example.test/mobile', { device: 'iphone', layout: 'phone-left', side: { title: 'Phone first' } })(phoneLeftTarget)
-    const phoneLeftRoot = phoneLeftTarget.children[0]
-    const phoneLeftLayout = findDeep(phoneLeftRoot, child => String(child.className).includes('ps-iframe-phone-layout'))
-    const phoneLeftDevice = findDeep(phoneLeftRoot, child => String(child.className).includes('ps-iframe-device-iphone'))
-    const phoneLeftSideCopy = findDeep(phoneLeftRoot, child => String(child.className).includes('ps-iframe-side-copy'))
-    assert(String(phoneLeftRoot.className).includes('ps-iframe-layout-phone-left'), 'phone-left layout is marked on the root')
-    assert.strictEqual(phoneLeftLayout.children[0], phoneLeftDevice, 'phone-left layout puts the phone first')
-    assert.strictEqual(phoneLeftLayout.children[1], phoneLeftSideCopy, 'phone-left layout puts side copy after the phone')
-
-    const talkSource = fs.readFileSync(path.join(root, 'examples', 'showcase', 'talk.js'), 'utf8')
-    const talkConfig = (await import('data:text/javascript;base64,' + Buffer.from(talkSource).toString('base64'))).default
-    const talkSlides = talkConfig.slides([
-      { type: 'iframe', src: 'https://david.app/', device: 'iphone', layout: 'phone-right', side: { title: 'Columns' } },
-      { type: 'custom', name: 'end', title: 'Summary columns' }
-    ])
-    const talkIframe = talkSlides[0]
-    assert.strictEqual(talkIframe.stagePadding, 'clamp(2.2rem, 5vh, 4.2rem) clamp(3.5rem, 7vw, 7rem)', 'showcase iframe puts stage padding on the outer slide')
-    assert.strictEqual(talkIframe.layoutWidth, 'min(1180px, 92vw)', 'showcase iframe uses the shared column container width')
-    assert.strictEqual(talkIframe.layoutPadding, '0', 'showcase iframe leaves the inner grid unpadded')
-    assert.strictEqual(talkIframe.layoutGap, 'clamp(2.4rem, 4.8vw, 5rem)', 'showcase iframe uses the shared column gap')
-    assert.strictEqual(talkIframe.layoutStyle.gridTemplateColumns, 'minmax(0, 0.92fr) minmax(20rem, 0.78fr)', 'showcase iframe uses shared two-column proportions')
-    assert.strictEqual(talkIframe.deviceWidth, 'min(54vh, 30vw, 430px)', 'showcase iframe makes the phone frame larger than the previous narrow default')
-    assert.strictEqual(talkIframe.side.maxWidth, '35rem', 'showcase iframe side copy is capped to the shared copy rail')
-    assert.strictEqual(talkIframe.side.style.borderTop, undefined, 'showcase iframe side copy has no horizontal top border')
-    assert.strictEqual(talkIframe.side.style.borderBottom, undefined, 'showcase iframe side copy has no horizontal bottom border')
-
-    const themedPhoneTarget = new FakeElement('section')
-    mod.iframe(talkIframe.src, talkIframe)(themedPhoneTarget)
-    const themedPhoneRoot = themedPhoneTarget.children[0]
-    const themedPhoneLayout = findDeep(themedPhoneRoot, child => String(child.className).includes('ps-iframe-phone-layout'))
-    const themedPhoneSideCopy = findDeep(themedPhoneRoot, child => String(child.className).includes('ps-iframe-side-copy'))
-    const themedPhoneDevice = findDeep(themedPhoneRoot, child => String(child.className).includes('ps-iframe-device-iphone'))
-    assert.strictEqual(themedPhoneRoot.style.padding, talkIframe.stagePadding, 'rendered example phone slide applies padding to the outer stage')
-    assert.strictEqual(themedPhoneRoot.style.boxSizing, 'border-box', 'rendered example phone slide keeps stage padding inside the slide')
-    assert.strictEqual(themedPhoneLayout.style.width, talkIframe.layoutWidth, 'rendered example phone slide uses the shared column container')
-    assert.strictEqual(themedPhoneLayout.style.maxWidth, '100%', 'rendered example phone slide can shrink within the padded stage')
-    assert.strictEqual(themedPhoneLayout.style.padding, '0', 'rendered example phone slide does not shrink columns with inner grid padding')
-    assert.strictEqual(themedPhoneLayout.style.gridTemplateColumns, talkIframe.layoutStyle.gridTemplateColumns, 'rendered example phone slide uses shared column proportions')
-    assert.strictEqual(themedPhoneSideCopy.style.borderTop, undefined, 'rendered example phone side copy has no horizontal top border')
-    assert.strictEqual(themedPhoneSideCopy.style.borderBottom, undefined, 'rendered example phone side copy has no horizontal bottom border')
-    assert.strictEqual(themedPhoneDevice.style.width, talkIframe.deviceWidth, 'rendered example phone frame uses the larger themed width')
-
-    const summaryTarget = new FakeElement('section')
-    talkConfig.renderers.end(talkSlides[1])(summaryTarget)
-    const summaryRoot = summaryTarget.children[0]
-    const summaryColumns = findDeep(summaryRoot, child => String(child.className).includes('talk-columns'))
-    const summaryPanel = findDeep(summaryRoot, child => String(child.className).includes('talk-panel'))
-    const summaryStyle = findDeep(summaryRoot, child => child.tagName === 'style')
-    assert(summaryColumns && summaryColumns.children.length === 2, 'summary slide renders copy and card inside the shared two-column wrapper')
-    assert(summaryPanel, 'summary slide still renders the closing card')
-    assert(summaryStyle.textContent.includes(`padding: ${talkIframe.stagePadding};`), 'summary slide uses the same outer stage padding as the phone slide')
-    assert(summaryStyle.textContent.includes(`width: ${talkIframe.layoutWidth};`), 'summary slide uses the same column container width as the phone slide')
-    assert(summaryStyle.textContent.includes('max-width: 100%;'), 'summary slide can shrink columns within the padded stage')
-    assert(summaryStyle.textContent.includes(`grid-template-columns: ${talkIframe.layoutStyle.gridTemplateColumns};`), 'summary slide uses the same column proportions as the phone slide')
-    assert(summaryStyle.textContent.includes('max-width: 31rem;'), 'summary slide caps the card width so it does not stretch to the edge')
+    const showcaseSpec = yaml.load(fs.readFileSync(path.join(root, 'examples', 'showcase', 'slides.yaml'), 'utf8'))
+    assert.strictEqual(showcaseSpec.slides.length, 7, 'showcase demonstrates every canonical shape in doc order')
+    assert.strictEqual(mod.inferSlideType(showcaseSpec.slides[0]), 'text', 'showcase shape 1 is default text')
+    assert.strictEqual(mod.inferSlideType(showcaseSpec.slides[1]), 'image', 'showcase shape 2 is image')
+    assert.strictEqual(mod.inferSlideType(showcaseSpec.slides[2]), 'video', 'showcase shape 3 is video')
+    assert.strictEqual(mod.inferSlideType(showcaseSpec.slides[3]), 'columns', 'showcase shape 4 is columns')
+    assert.strictEqual(mod.inferSlideType(showcaseSpec.slides[4]), 'iframe', 'showcase shape 5 is iframe')
+    assert.strictEqual(mod.inferSlideType(showcaseSpec.slides[5]), 'html', 'showcase shape 6 is html')
+    assert.strictEqual(showcaseSpec.slides[6].custom, 'particleField', 'showcase shape 7 is custom')
+    assert(showcaseSpec.slides.some(slide => slide.video === '/spin.mp4'), 'showcase includes video shape')
+    assert(showcaseSpec.slides.some(slide => slide.html && slide.html.includes('Custom HTML')), 'showcase includes html shape')
+    assert(showcaseSpec.slides.some(slide => slide.custom === 'particleField'), 'showcase includes custom shape')
+    for (const slide of showcaseSpec.slides) {
+      assert(!Object.prototype.hasOwnProperty.call(slide, 'quote'), 'showcase does not use removed quote field')
+      assert(!Object.prototype.hasOwnProperty.call(slide, 'attribution'), 'showcase does not use removed attribution field')
+      assert(!Object.prototype.hasOwnProperty.call(slide, 'side'), 'showcase does not use iframe side layout')
+      assert(!Object.prototype.hasOwnProperty.call(slide, 'src'), 'showcase does not use src alias')
+      assert(!Object.prototype.hasOwnProperty.call(slide, 'img'), 'showcase does not use img alias')
+      assert(!Object.prototype.hasOwnProperty.call(slide, 'url'), 'showcase does not use url alias')
+      assert(!Object.prototype.hasOwnProperty.call(slide, 'type'), 'showcase uses content properties instead of type')
+    }
 
     prevButton.onclick(fakeKey('click'))
     nextButton.onclick(fakeKey('click'))

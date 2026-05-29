@@ -12,10 +12,10 @@ export default {
   //   return slides.map(slide => Object.assign({ font: 'Inter, system-ui, sans-serif' }, slide))
   // },
 
-  // renderers add named custom slides used by `type: custom` with `name`/`kind`/`renderer`.
+  // renderers add named custom slides used by `custom`/`name`/`kind`/`renderer`.
   // renderers: {
   //   demo (slide, PS) {
-  //     return PS.overlay({
+  //     return PS.text({
   //       title: slide.title || 'Custom renderer',
   //       subtitle: 'Rendered from talk.js'
   //     })

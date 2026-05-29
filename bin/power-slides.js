@@ -312,7 +312,7 @@ function resolveSlidesPath (talkDir, explicitPath) {
 function titleFromSpec (spec) {
   const slides = Array.isArray(spec) ? spec : (spec && spec.slides) || []
   const first = slides[0]
-  if (first && typeof first === 'object') return first.title || first.text || first.quote || 'power-slides talk'
+  if (first && typeof first === 'object') return first.title || first.text || 'power-slides talk'
   if (typeof first === 'string') return first
   return 'power-slides talk'
 }
@@ -410,12 +410,12 @@ This is a minimal power-slides talk starter. The content stays in \`slides.yaml\
 ## Files
 
 - \`package.json\` installs the published \`power-slides\` package as a dev dependency and exposes runner-friendly npm scripts.
-- \`slides.yaml\` contains the five-slide starter: dimmed background title, quote plus image over the same background, media image, iPhone iframe, and closing summary.
+- \`slides.yaml\` contains the seven-slide starter: default text, image, video, columns, iframe, html, and custom.
 - \`talk.js\` is a commented optional ESM stub for theming, custom renderers, and escape hatches.
 - \`public/\` is served at the web root for media such as the bundled \`sample.svg\` image.
 - \`assets/\` is for source assets you do not serve directly.
 
-The starter is intentionally YAML-only. It demonstrates the reusable content primitives used by real talks: \`background\` plus \`brightness\` for readable overlay/summary slides, \`quote\` with both \`image\` and \`background\`, a full media image, and a phone-framed iframe with side copy.
+The starter is intentionally YAML-only. It demonstrates the v3 slide shapes: default text with slide-level \`background\` and \`brightness\`, image, video, columns for iframe-plus-copy, full-slide iframe, and trusted HTML.
 
 Install once, then run with npm scripts:
 
@@ -439,26 +439,35 @@ The scripts call the \`powerslides\` bin alias:
 
 ## Options and remote control
 
-The generated dev/build shell enables the power-slides Options overlay by default. Press \`o\` to reopen Options after the button fades. Click **Enable remote control** to start PeerJS, then scan the QR code or open the shown URL on your phone/controller.
+The generated dev/build shell enables the power-slides Options panel by default. Press \`o\` to reopen Options after the button fades. Click **Enable remote control** to start PeerJS, then scan the QR code or open the shown URL on your phone/controller.
 
 To disable the shell remote UI, export \`remote: false\` from \`talk.js\` or set top-level \`remote: false\` in \`slides.yaml\`/JSON. To override PeerJS/runtime options, use \`remote: { ... }\`.
 
 ## Authoring schema quick reference
 
-The talk file is a YAML object with a \`slides\` array. If a slide omits \`type\`, it renders as \`overlay\`. Every slide may include \`notes\` or \`note\` for presenter mode. \`renderer\`, \`name\`, or \`kind\` selects a \`talk.js\` renderer before built-ins.
+The talk file is a YAML object with a \`slides\` array. Most slides do not need \`type\`; a normal copy slide is just title/text fields, with optional slide-level styling. Use \`custom: rendererName\` for custom slides; \`type\` is rarely needed. Every slide may include \`notes\` or \`note\` for presenter mode. Common slide-level \`background\`, \`brightness\`, background sizing/color, \`font\`, \`color\`, \`padding\`, and \`align\` are honored by built-ins when sensible. \`renderer\`, \`name\`, or \`kind\` selects a \`talk.js\` renderer before built-ins and before inference.
 
-Built-in slide types:
+Slide list:
 
-- \`overlay\` — normal copy slide. Fields: \`eyebrow\`, \`title\`/\`text\`, \`subtitle\`, \`background\`/\`image\`/\`src\`, \`brightness\`, \`align\`, \`font\`, \`color\`, \`backgroundColor\`, \`padding\`, \`maxWidth\`, \`titleSize\`, \`subtitleSize\`, \`subtitleOpacity\`, \`subtitleMaxWidth\`, \`eyebrowSize\`, \`backgroundSize\`, \`backgroundPosition\`.
-- \`title\` — simple centered title. Fields: \`title\`/\`text\`/\`quote\`, \`style\`.
-- \`image\` — full-slide image. Fields: \`src\`/\`img\`/\`image\`/\`background\`, \`fit\`/\`size\` (\`cover\` or \`contain\`).
-- \`video\` — full-slide video. Fields: \`src\`/\`video\`, \`controls\`, \`muted\`, \`loop\`, \`autoplay\`, \`preload\`, \`poster\`, \`size\`.
-- \`quote\` — quote/text plus optional image column. Fields: \`quote\`/\`text\`, \`eyebrow\`, \`image\`/\`img\`/\`src\`, \`background\`, \`brightness\`, \`font\`, \`color\`, \`size\`, layout knobs \`columns\`/\`gridTemplateColumns\`, \`rows\`/\`gridTemplateRows\`, \`gap\`, \`padding\`, \`alignItems\`, \`justifyItems\`, copy knobs \`align\`/\`copyAlign\`, \`copyJustify\`, \`copyAlignSelf\`, \`copyMaxWidth\`, \`copyStyle\`, and image knobs \`fit\`, \`maxHeight\`/\`imageMaxHeight\`, \`maxWidth\`/\`imageMaxWidth\`, \`radius\`, \`shadow\`, \`imageAlign\`, \`imageJustify\`, \`imageAlignSelf\`, \`imageJustifySelf\`, \`mediaStyle\`, \`imageStyle\`.
-- \`chart\` — quote-style chart/screenshot slide. Same fields as \`quote\`; image aliases become the chart image and quote layout overrides still apply.
-- \`summary\` — recap with right-side card. Fields: \`eyebrow\`, \`title\`/\`quote\`, \`background\`, \`brightness\`, \`font\`, \`color\`, \`accent\`, \`card.title\`, \`card.bullets\`, \`card.pull\`.
-- \`iframe\` — external URL or \`srcdoc\`. Fields: \`src\`/\`url\`, \`srcdoc\`, \`title\`, \`allow\`, \`allowFullscreen\`, \`loading\`, \`referrerPolicy\`, \`sandbox\`, \`navigationControls\`, \`forwardKeys\`, \`background\`, \`iframeStyle\`, \`stagePadding\`/\`rootPadding\`. Phone frame: \`device: iphone\` or \`frame: phone\`, plus \`deviceWidth\`/\`frameWidth\`, \`deviceAspectRatio\`, \`devicePadding\`, \`deviceBorder\`, \`deviceRadius\`, \`deviceBackground\`, \`deviceShadow\`, \`deviceStyle\`, \`screenRadius\`, \`screenBackground\`. Side-copy layout: \`layout\`/\`phoneLayout\` (\`phone-right\` or \`phone-left\`), \`layoutWidth\`, \`layoutMaxWidth\`, \`layoutGap\`, \`layoutPadding\`, \`layoutStyle\`, and \`side\` with \`eyebrow\`, \`title\`, \`subtitle\`, \`body\`/\`text\`, \`bullets\`, \`position\`/\`side\`, \`color\`, \`font\`, \`accent\`, \`maxWidth\`, \`style\`, plus \`eyebrowColor\`, \`eyebrowSize\`, \`titleColor\`, \`titleSize\`, \`subtitleColor\`, \`subtitleSize\`, \`bodyColor\`, \`bodySize\`, \`bulletColor\`, \`bulletSize\`, \`bulletGap\` and matching weight/opacity/letter-spacing knobs. Arrow styling: \`navControlInset\`, \`navControlSize\`, \`navControlOpacity\`.
+- default text
+- image
+- video
+- columns
+- iframe
+- html
+- custom
+
+Inference: \`custom\` selects a custom renderer; a \`columns\` array infers \`columns\`; \`image\` with no copy fields infers \`image\`; \`video\` infers \`video\`; \`iframe\` or \`srcdoc\` infers \`iframe\`; \`html\`/\`markup\` infers \`html\`; otherwise slides render as the default text/copy slide. Use semantic fields (\`image\`, \`video\`, \`iframe\`) instead of generic \`src\`, \`img\`, or \`url\`.
+
+Public slide concepts:
+
+- default/text copy slide — normal title/text/subtitle slide; use no \`type\`, or \`type: text\` when explicitness helps. Fields: \`eyebrow\`, \`title\`/\`text\`, \`subtitle\`, \`background\`, \`brightness\`, \`align\`, \`font\`, \`color\`, \`backgroundColor\`, \`padding\`, \`maxWidth\`, \`titleSize\`, \`subtitleSize\`, \`subtitleOpacity\`, \`subtitleMaxWidth\`, \`eyebrowSize\`, \`backgroundSize\`, \`backgroundPosition\`.
+- \`image\` — full-slide image. Fields: \`image\`, \`fit\`/\`size\` (\`cover\` or \`contain\`).
+- \`video\` — full-slide video. Fields: \`video\`, \`controls\`, \`muted\`, \`loop\`, \`autoplay\`, \`preload\`, \`poster\`, \`fit\`.
+- \`columns\` — array-based composition slide with shared background/scrim. Use it for iframe + copy, screenshot + label, QR + text, recap cards, HTML snippets, bullets, and side-by-side copy. Top-level fields: \`columns\` array, \`background\`, \`brightness\`, \`font\`, \`color\`, layout knobs \`gridTemplateColumns\`, \`rows\`/\`gridTemplateRows\`, \`gap\`, \`padding\`, \`alignItems\`, \`justifyItems\`. Each column supports \`eyebrow\`, \`title\`, \`subtitle\`, \`text\`, \`body\`, \`copy\`, \`pull\`, \`bullets\`, media fields \`image\` or \`iframe\`/\`srcdoc\` plus \`iframeTitle\`, trusted \`html\`/\`markup\`, plus style knobs including \`align\`/\`copyAlign\`, \`copyJustify\`, \`copyAlignSelf\`, \`copyMaxWidth\`, \`copyStyle\`, \`fit\`, \`maxHeight\`/\`imageMaxHeight\`, \`maxWidth\`/\`imageMaxWidth\`, \`radius\`, \`shadow\`, \`imageAlign\`, \`imageJustify\`, \`imageAlignSelf\`, \`imageJustifySelf\`, \`mediaStyle\`, and \`imageStyle\`.
+- \`iframe\` — full-slide external URL or \`srcdoc\`. Use \`columns\` for iframe-plus-copy. Fields: \`iframe\`, \`srcdoc\`, \`iframeTitle\`, \`allow\`, \`allowFullscreen\`, \`loading\`, \`referrerPolicy\`, \`sandbox\`, \`navigationControls\`, \`forwardKeys\`, \`background\`, \`iframeStyle\`, \`stagePadding\`/\`rootPadding\`. Phone frame: \`device: iphone\` or \`frame: phone\`, plus \`deviceWidth\`/\`frameWidth\`, \`deviceAspectRatio\`, \`devicePadding\`, \`deviceBorder\`, \`deviceRadius\`, \`deviceBackground\`, \`deviceShadow\`, \`deviceStyle\`, \`screenRadius\`, \`screenBackground\`. Arrow styling: \`navControlInset\`, \`navControlSize\`, \`navControlOpacity\`.
 - \`html\` — trusted raw markup. Fields: \`html\`/\`markup\`.
-- \`custom\` — render with \`talk.js\`. Fields: \`name\`/\`kind\`/\`renderer\`; all other fields pass through.
+- \`custom\` — render with \`talk.js\`. Fields: \`custom\`; all other fields pass through.
 
 ## Custom renderers in talk.js
 
@@ -469,7 +478,7 @@ export default {
   bodyStyle: 'margin:0;background:#000;color:white;overflow:hidden',
   renderers: {
     demo (slide, PS) {
-      return PS.overlay({
+      return PS.text({
         title: slide.title || 'Demo',
         subtitle: 'Rendered by talk.js'
       })

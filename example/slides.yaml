@@ -1,56 +1,53 @@
 slides:
-  - type: overlay
-    eyebrow: Start here
-    title: power-slides starter
-    subtitle: Backgrounds, brightness, and content-first YAML
+  - title: Main point
+    subtitle: Optional subtitle
     background: /sample.svg
-    brightness: 0.48
+    brightness: 0.45
     align: center
     notes:
-      - The starter stays YAML-only while showing the reusable background overlay pattern used by real talks.
+      - Demonstrates the default text shape from docs/slide-api-v3.md.
 
-  - type: quote
-    eyebrow: Reusable pattern
-    quote: Pair a strong line with supporting media while the same background keeps the slide cohesive.
-    image: /sample.svg
-    background: /sample.svg
-    brightness: 0.62
-    notes:
-      - Quote slides can combine copy, an image or QR-style asset, and a dimmed background without custom JavaScript.
-
-  - type: image
-    src: /sample.svg
+  - image: /sample.svg
     fit: contain
     notes:
-      - This is a simple built-in media slide served from public/.
+      - Demonstrates the image shape with an existing public asset.
 
-  - type: iframe
-    src: https://david.app/
-    title: david.app external iframe
+  - video: /spin.mp4
+    controls: true
+    muted: true
+    loop: true
+    fit: contain
+    notes:
+      - Demonstrates the video shape with an existing public asset.
+
+  - background: /sample.svg
+    brightness: 0.55
+    columns:
+      - iframe: https://example.com/demo
+        iframeTitle: Example app
+        device: iphone
+      - title: Demo in context
+        bullets:
+          - Cross-origin page stays untouched
+          - Parent arrows remain available
+    notes:
+      - Demonstrates the columns shape; iframe plus copy belongs here.
+
+  - iframe: https://example.com/demo
+    iframeTitle: Example app
     device: iphone
-    layout: phone-right
     background: '#061018'
-    side:
-      eyebrow: Framework primitive
-      title: Phone-framed iframe
-      subtitle: YAML controls the reusable device frame, slide background, and side-copy layout.
-      bullets:
-        - Cross-origin page stays untouched
-        - Parent arrows remain available
-        - No custom renderer required
     notes:
-      - 'This demonstrates the iPhone iframe primitive: device: iphone plus layout: phone-right.'
+      - Demonstrates the iframe shape as a full-slide embed.
 
-  - type: summary
-    eyebrow: Next steps
-    title: Customize only when needed
-    background: /sample.svg
-    brightness: 0.68
-    card:
-      title: Where to look
-      bullets:
-        - Use the commented talk.js stub for optional hooks.
-        - See examples/showcase/ for custom renderers and animated slides.
-        - Keep normal talks content-first in slides.yaml with background and brightness fields.
+  - html: |
+      <div style="width:100vw;height:100vh;color:white">
+        <h1>Custom HTML</h1>
+      </div>
     notes:
-      - Point users to the stub for extension points and to the showcase for richer examples.
+      - Demonstrates the html shape with trusted inline markup.
+
+  - custom: particleField
+    title: Generative canvas
+    notes:
+      - Demonstrates the custom shape delegated to talk.js.

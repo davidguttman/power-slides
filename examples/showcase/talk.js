@@ -64,7 +64,9 @@ function themedSlides (slides) {
 function themeSlide (slide, index) {
   if (!slide || typeof slide !== 'object' || Array.isArray(slide)) return slide
 
-  if ((slide.type || 'overlay') === 'overlay') {
+  const slideType = slide.type || inferShowcaseSlideType(slide)
+
+  if (slideType === 'text' || slideType === 'overlay') {
     return Object.assign({
       align: 'left',
       font: theme.font,
@@ -80,18 +82,17 @@ function themeSlide (slide, index) {
     }, slide)
   }
 
-  if (slide.type === 'quote') {
+  if (slideType === 'columns') {
     return Object.assign({
       font: theme.font,
       color: palette.white,
       backgroundColor: palette.void,
-      eyebrow: 'Remote image',
       size: 'clamp(2.4rem, 4.15vw, 4.7rem)',
       brightness: 0.58
     }, slide)
   }
 
-  if (slide.type === 'iframe') {
+  if (slideType === 'iframe') {
     return Object.assign({
       font: theme.font,
       color: palette.white,
@@ -108,36 +109,17 @@ function themeSlide (slide, index) {
         justifySelf: 'center'
       },
       deviceShadow: '0 2rem 5rem rgba(0, 0, 0, 0.46), inset 0 0 0.35vh rgba(255, 255, 255, 0.2)'
-    }, slide, {
-      side: themedSide(slide.side)
-    })
+    }, slide)
   }
 
   return slide
 }
 
-function themedSide (side) {
-  const copy = side || {}
-  return Object.assign({
-    color: palette.white,
-    font: theme.font,
-    accent: palette.yellow,
-    maxWidth: theme.columns.copyMaxWidth,
-    eyebrowSize: theme.eyebrowSize,
-    titleSize: 'clamp(2.8rem, 4.8vw, 5.2rem)',
-    subtitleSize: theme.subtitleSize,
-    subtitleColor: palette.muted,
-    subtitleOpacity: 1,
-    bodySize: theme.bodySize,
-    bulletSize: theme.bodySize,
-    bulletColor: palette.muted,
-    bulletOpacity: 1,
-    bulletGap: '0.75em'
-  }, copy, {
-    style: Object.assign({
-      padding: 'clamp(1.2rem, 2vw, 2rem) 0'
-    }, copy.style || {})
-  })
+function inferShowcaseSlideType (slide) {
+  if (slide.renderer || slide.name || slide.kind) return 'text'
+  if (Array.isArray(slide.columns)) return 'columns'
+  if (slide.iframe || slide.srcdoc) return 'iframe'
+  return 'text'
 }
 
 function glitchTerminal (slide) {
