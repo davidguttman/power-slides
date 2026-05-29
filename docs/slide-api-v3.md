@@ -85,11 +85,11 @@ Unlocks: `fit`.
 Unlocks: `fit`, `controls`, `muted`, `loop`.
 
 ```yaml
-- video: /demo.mp4
+- video: /fractal-loop.mp4
 ```
 
 ```yaml
-- video: /demo.mp4
+- video: /fractal-loop.mp4
   controls: true
   muted: true
   loop: true
@@ -101,11 +101,11 @@ Unlocks: `fit`, `controls`, `muted`, `loop`.
 Unlocks: `device`.
 
 ```yaml
-- iframe: https://example.com/demo
+- iframe: https://david.app
 ```
 
 ```yaml
-- iframe: https://example.com/demo
+- iframe: https://david.app
   device: iphone
 ```
 
@@ -125,7 +125,9 @@ to that function untouched.
 
 ```yaml
 - custom: particleField
-  title: Generative canvas
+  count: 4000
+  speed: 0.6
+  palette: ['#ff5f6d', '#ffc371']
 ```
 
 ## columns
@@ -143,7 +145,7 @@ the column instead of the viewport. That includes `image`, `video`, `iframe`,
 
 ```yaml
 - columns:
-    - video: /demo.mp4
+    - video: /fractal-loop.mp4
       muted: true
       loop: true
     - title: What you're seeing
@@ -160,10 +162,18 @@ the column instead of the viewport. That includes `image`, `video`, `iframe`,
 ```
 
 ```yaml
+- columns:
+    - title: Overview
+    - columns:
+        - image: /a.png
+        - image: /b.png
+```
+
+```yaml
 - background: /generated/chaser-app.png
   brightness: 0.55
   columns:
-    - iframe: https://example.com/demo
+    - iframe: https://david.app
       device: iphone
     - title: Demo in context
       bullets:
