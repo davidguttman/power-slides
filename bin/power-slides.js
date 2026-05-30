@@ -424,7 +424,7 @@ Deploy the \`public/\` folder to any static host.
 
 ## Edit slides.yaml
 
-\`slides.yaml\` is a YAML array of slide objects. Each item is one slide; make the first item your title or opening slide if desired. The starter also shows text, image, video, columns, iframe, html, and custom slides.
+\`slides.yaml\` is a YAML array of slide objects. Each item is one slide. The starter also shows text, image, video, columns, iframe, html, and custom slides.
 
 Most decks use these shapes:
 
