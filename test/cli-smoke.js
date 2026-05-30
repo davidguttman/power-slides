@@ -444,10 +444,9 @@ import(path.join(root, 'index.mjs')).then(async mod => {
     { title: 'Speaker notes', notes: ['Pause here', 'Then continue'] },
     { title: 'Note alias', note: 'Alias note' }
   ])
-  assert(Array.isArray(speakerNoteSlides[0]), 'notes metadata wraps the rendered v3 slide')
-  assert.deepStrictEqual(speakerNoteSlides[0].slice(1), ['Pause here', 'Then continue'], 'notes array metadata remains attached to the slide')
-  assert(Array.isArray(speakerNoteSlides[1]), 'note alias metadata wraps the rendered v3 slide')
-  assert.deepStrictEqual(speakerNoteSlides[1].slice(1), ['Alias note'], 'note alias metadata remains attached to the slide')
+  assert(!Array.isArray(speakerNoteSlides[0]), 'notes metadata does not wrap the rendered v3 slide in an array')
+  assert(!Array.isArray(speakerNoteSlides[1]), 'note alias metadata does not wrap the rendered v3 slide in an array')
+  assert.deepStrictEqual(mod.createTalk([['Legacy slide', 'legacy note']]), [], 'old array metadata is not converted into a slide')
 
   const previousDocument = global.document
   const previousWindow = global.window
@@ -482,8 +481,15 @@ import(path.join(root, 'index.mjs')).then(async mod => {
 
     function Peer () {}
     const remoteTarget = global.document.body
-    const deck = mod.startTalk(remoteTarget, ['Remote-enabled ESM deck'], { remote: { Peer, buttonHideMs: 1 } })
+    const deck = mod.startTalk(remoteTarget, [
+      { title: 'Speaker notes', notes: ['Pause here', 'Then continue'] },
+      { title: 'Note alias', note: 'Alias note' },
+      { title: 'Remote-enabled ESM deck' }
+    ], { remote: { Peer, buttonHideMs: 1 } })
     const optionsButton = findDeep(remoteTarget, child => String(child.className).includes('ps-remote-options-button'))
+    assert.deepStrictEqual(deck.notes[0], ['Pause here', 'Then continue'], 'v3 notes metadata attaches to deck state')
+    assert.deepStrictEqual(deck.notes[1], ['Alias note'], 'v3 note metadata attaches to deck state')
+    assert.strictEqual(deck.notes[2], undefined, 'slides without notes do not attach deck notes')
     assert(deck.remoteState, 'ESM startTalk initializes remote/options state when remote is enabled')
     assert.strictEqual(deck.opts.remote.Peer, Peer, 'ESM startTalk keeps the bundled PeerJS constructor in remote options')
     assert(optionsButton, 'ESM startTalk renders the visible remote/options button')

@@ -15,7 +15,7 @@ test('public docs do not advertise presenter mode or isPresenter', function () {
   }
 })
 
-test('CommonJS runtime ignores stale presenter options and creates no notes pane', function () {
+test('CommonJS runtime ignores stale presenter options without array notes metadata', function () {
   const output = execFileSync(process.execPath, ['-e', runtimeSmoke('require')], {
     cwd: root,
     encoding: 'utf8'
@@ -23,7 +23,7 @@ test('CommonJS runtime ignores stale presenter options and creates no notes pane
   assert.equal(output.trim(), 'ok')
 })
 
-test('ESM runtime ignores stale presenter options and creates no notes pane', function () {
+test('ESM runtime ignores stale presenter options without array notes metadata', function () {
   const output = execFileSync(process.execPath, ['-e', runtimeSmoke('import')], {
     cwd: root,
     encoding: 'utf8'
@@ -112,7 +112,7 @@ async function main () {
   assert(slide, 'runtime creates the slide container')
   assert.equal(getStyleValue(slide, 'height'), '100%', 'slide keeps full height even with stale isPresenter option')
   assert.equal(findDeep(target, el => String(el.className).split(/\\s+/).includes('ps-notes')), undefined, 'runtime does not create notes pane')
-  assert.deepEqual(PS.notes[0], ['legacy note'], 'legacy note metadata remains available for compatibility')
+  assert.equal(PS.notes[0], undefined, 'array slide entries are not interpreted as note metadata')
   console.log('ok')
 }
 

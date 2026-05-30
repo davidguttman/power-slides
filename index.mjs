@@ -3,6 +3,7 @@ import createRemote from './remote.js'
 let started = false
 
 const listeners = Object.create(null)
+const slideNotesKey = Symbol.for('power-slides.notes')
 
 const PowerSlides = {
   title,
@@ -45,10 +46,10 @@ const PowerSlides = {
     const notes = (this.notes = [])
 
     slideNotes.forEach(function (slideNote, i) {
-      if (!Array.isArray(slideNote)) return (slides[i] = slideNote)
+      slides[i] = slideNote
 
-      slides[i] = slideNote[0]
-      notes[i] = slideNote.slice(1)
+      const slideNotes = getSlideNotes(slideNote)
+      if (slideNotes) notes[i] = slideNotes
     })
 
     this.container = this.createContainer()
@@ -1213,15 +1214,27 @@ function normalizeTalkModule (talkModule) {
 function normalizeSlide (slide, talk) {
   if (slide == null || slide === false) return null
   if (typeof slide === 'function' || typeof slide === 'string' || isDomNode(slide)) return slide
-  if (Array.isArray(slide)) {
-    const rendered = normalizeSlide(slide[0], talk)
-    return [rendered].concat(slide.slice(1))
-  }
+  if (Array.isArray(slide)) return null
 
   const rendered = renderSlideObject(slide, talk)
-  const notes = slide.notes || slide.note
-  if (!notes) return rendered
-  return [rendered].concat(Array.isArray(notes) ? notes : [notes])
+  const notes = hasOwn(slide, 'notes') ? slide.notes : (hasOwn(slide, 'note') ? slide.note : undefined)
+  if (notes == null) return rendered
+  return attachSlideNotes(rendered, notes)
+}
+
+function attachSlideNotes (slide, notes) {
+  if (!slide || (typeof slide !== 'function' && typeof slide !== 'object')) return slide
+
+  Object.defineProperty(slide, slideNotesKey, {
+    value: Array.isArray(notes) ? notes : [notes],
+    configurable: true
+  })
+  return slide
+}
+
+function getSlideNotes (slide) {
+  if (!slide || (typeof slide !== 'function' && typeof slide !== 'object')) return undefined
+  return slide[slideNotesKey]
 }
 
 function isDomNode (value) {
@@ -1328,7 +1341,7 @@ function hasOwn (obj, key) {
 
 export function startTalk (target, spec, opts) {
   opts = opts || {}
-  const slides = Array.isArray(spec) && (typeof spec[0] === 'function' || Array.isArray(spec[0]) || typeof spec[0] === 'string')
+  const slides = Array.isArray(spec) && (typeof spec[0] === 'function' || typeof spec[0] === 'string')
     ? spec
     : createTalk(spec, opts.talk)
   const deck = PowerSlides.start(target, slides, opts)

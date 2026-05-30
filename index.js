@@ -4,6 +4,7 @@ const xtend = require('xtend')
 const createRemote = require('./remote')
 
 let started
+const slideNotesKey = Symbol.for('power-slides.notes')
 
 const PowerSlides = (module.exports = {
   title: titleSlide,
@@ -29,10 +30,10 @@ const PowerSlides = (module.exports = {
     const notes = (this.notes = [])
 
     slideNotes.forEach(function (slideNote, i) {
-      if (!Array.isArray(slideNote)) return (slides[i] = slideNote)
+      slides[i] = slideNote
 
-      slides[i] = slideNote[0]
-      notes[i] = slideNote.slice(1)
+      const slideNotes = getSlideNotes(slideNote)
+      if (slideNotes) notes[i] = slideNotes
     })
 
     this.container = this.createContainer()
@@ -149,6 +150,11 @@ const PowerSlides = (module.exports = {
 })
 
 Emitter.mixin(PowerSlides)
+
+function getSlideNotes (slide) {
+  if (!slide || (typeof slide !== 'function' && typeof slide !== 'object')) return undefined
+  return slide[slideNotesKey]
+}
 
 function layeredTitleSlide (fgContent, bgSlide, opts) {
   opts = opts || { brightness: 0.6 }
