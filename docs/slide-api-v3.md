@@ -25,7 +25,9 @@ slide is one and only one of these:
 
 `columns` is the seventh, and it's different: it's a **container**, not a leaf.
 A `columns` slide holds an array of slides, and each of those is again exactly
-one content property (including, if you want, another `columns`).
+one content property (including, if you want, another `columns`). You can think
+of any non-`columns` slide as shorthand for `columns` with one member: omitting
+`columns` means “render this one slide full-frame.”
 
 So you never combine two content types on one slide. To put two together — an
 image beside a title, a video next to bullets — you nest them as columns. That

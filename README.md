@@ -29,24 +29,35 @@ That's a talk. Arrow keys to navigate, deep links per slide, presenter notes on 
 
 ## Install
 
+For a first deck, install the CLI once and run it directly:
+
 ```bash
 npm install -g power-slides
 power-slides init my-talk
+cd my-talk
+power-slides dev .
+```
+
+Prefer not to install globally? Use `npx`:
+
+```bash
+npx power-slides init my-talk
+cd my-talk
+npx power-slides dev .
 ```
 
 The package ships a CLI (`power-slides`), an ESM runtime, and a CommonJS runtime for older decks.
 
 ## Quickstart — YAML + CLI
 
+Create `slides.yaml`, put assets in `public/`, and run the deck from the talk folder:
+
 ```bash
-power-slides init my-talk
-cd my-talk
-npm install
-npm run dev      # starts budo; runners such as jump.sh can use npm start
-npm run build    # writes public/index.html + cache-busted bundle
+power-slides dev .      # starts budo
+power-slides build .    # writes public/index.html + cache-busted bundle
 ```
 
-The generated `package.json` is intentionally minimal and runner-friendly:
+`init` also generates a small `package.json` with npm scripts. That is useful for runners, deploys, and projects that want local reproducible commands, but it is not the beginner path:
 
 ```json
 {
@@ -60,6 +71,14 @@ The generated `package.json` is intentionally minimal and runner-friendly:
     "power-slides": "^3.0.0"
   }
 }
+```
+
+To use those local scripts:
+
+```bash
+npm install
+npm run dev      # runners such as jump.sh can use npm start
+npm run build
 ```
 
 `power-slides dev .` / `powerslides dev .` picks its port from `--port <port>`, then `$PORT`, then `9966`. The CLI dev/build shell turns on the built-in Options panel and loads a bundled PeerJS runtime before the deck. Press `o` to reopen Options, then click **Enable remote control** to show the QR code / URL. Export `remote: false` from `talk.js` to disable it, or `remote: { ... }` for PeerJS/options overrides.
@@ -135,7 +154,7 @@ Without `--slides`, the CLI picks `slides.yaml`, then `slides.yml`, then `slides
 
 ### v3 slide model
 
-Every slide object has exactly one content property:
+Every slide object has exactly one content property. Most are leaf content types:
 
 - `title` — words on screen; unlocks `subtitle`, `eyebrow`, `bullets`, and `pullquote`
 - `image` — unlocks `fit`
@@ -143,7 +162,8 @@ Every slide object has exactly one content property:
 - `iframe` — unlocks `device`
 - `html` — trusted inline markup
 - `custom` — delegates to a `talk.js` renderer; any other properties pass through untouched
-- `columns` — the only container; each column is itself a slide object, including nested `columns`
+
+`columns` is different: it is the container form. A `columns` slide holds an array of slide objects, and each column is rendered by the same slide renderer. You can think of a normal non-`columns` slide as shorthand for `columns` with one member: omitting `columns` means “render this one slide full-frame.”
 
 Shared properties available on any slide are `background`, `brightness`, and `align`. Use `columns` when you want to combine content types, such as iframe-plus-copy or image-plus-title. On narrow/portrait viewports, columns stack vertically in source order.
 
