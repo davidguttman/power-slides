@@ -1237,16 +1237,14 @@ export function renderSlideObject (slide, talkModule) {
 
   const renderers = Object.assign({}, talk.renderers || {}, talk.custom || {})
   const explicitRendererKey = slide.renderer || slide.name || slide.kind || slide.custom
-  const rendererKey = explicitRendererKey || slide.type
-  if (rendererKey && typeof renderers[rendererKey] === 'function') {
-    const rendered = renderers[rendererKey](slide, PowerSlides)
+  if (explicitRendererKey && typeof renderers[explicitRendererKey] === 'function') {
+    const rendered = renderers[explicitRendererKey](slide, PowerSlides)
     if (rendered) return rendered
   }
 
-  const slideType = slide.type || (explicitRendererKey ? 'text' : inferSlideType(slide))
+  const slideType = explicitRendererKey ? 'text' : inferSlideType(slide)
   switch (slideType || 'text') {
     case 'text':
-    case 'overlay':
       return text(slide)
     case 'image':
       return image(slide.image, slide)
@@ -1257,7 +1255,7 @@ export function renderSlideObject (slide, talkModule) {
     case 'iframe':
       return iframe(slide.iframe, slide)
     case 'html':
-      return html(slide.html || slide.markup || '')
+      return html(slide.html || '')
     case 'custom':
       return title('Missing custom renderer: ' + (slide.custom || slide.name || slide.kind || 'custom'))
     default:
@@ -1267,12 +1265,11 @@ export function renderSlideObject (slide, talkModule) {
 
 export function inferSlideType (slide) {
   if (!slide || typeof slide !== 'object') return 'text'
-  if (slide.type) return slide.type
   if (slide.custom) return 'custom'
   if (slide.renderer || slide.name || slide.kind) return 'text'
 
   if (looksLikeColumnsSlide(slide)) return 'columns'
-  if (hasAnyOwn(slide, ['html', 'markup'])) return 'html'
+  if (hasOwn(slide, 'html')) return 'html'
   if (looksLikeIframeSlide(slide)) return 'iframe'
   if (looksLikeVideoSlide(slide)) return 'video'
   if (looksLikeImageOnlySlide(slide)) return 'image'

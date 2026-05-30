@@ -427,13 +427,27 @@ import(path.join(root, 'index.mjs')).then(async mod => {
   assert.strictEqual(mod.inferSlideType({ card: { title: 'Recap', bullets: ['One'] }, title: 'Summary' }), 'text', 'card fields no longer infer a separate summary shape')
   assert.strictEqual(mod.inferSlideType({ image: '/diagram.png', fit: 'contain' }), 'image', 'semantic image field infers image slide')
   assert.strictEqual(mod.inferSlideType({ src: '/diagram.png', fit: 'contain' }), 'text', 'legacy src no longer infers a media slide')
-  assert.strictEqual(mod.inferSlideType({ type: 'image', image: '/diagram.png', fit: 'contain' }), 'image', 'explicit image type preserves semantic image slide')
+  assert.strictEqual(mod.inferSlideType({ type: 'image', src: '/diagram.png', fit: 'contain' }), 'text', 'legacy type plus src alias no longer infers an image slide')
+  assert.strictEqual(mod.inferSlideType({ type: 'video', src: '/demo.mp4?cache=1' }), 'text', 'legacy type plus src alias no longer infers a video slide')
+  assert.strictEqual(mod.inferSlideType({ type: 'iframe', url: 'https://example.test/app' }), 'text', 'legacy type plus url alias no longer infers an iframe slide')
+  assert.strictEqual(mod.inferSlideType({ type: 'html', markup: '<h1>Old HTML</h1>' }), 'text', 'legacy type plus markup alias no longer infers an html slide')
+  assert.strictEqual(mod.inferSlideType({ type: 'columns', slides: [{ title: 'Old column' }] }), 'text', 'legacy type plus slides alias no longer infers columns')
+  assert.strictEqual(mod.inferSlideType({ type: 'image', image: '/diagram.png', fit: 'contain' }), 'image', 'type is ignored and the semantic image property still infers image')
   assert.strictEqual(mod.inferSlideType({ background: '/hero.png' }), 'text', 'background alone stays default text because all shapes can use background styling')
   assert.strictEqual(mod.inferSlideType({ title: 'Real talk title', background: '/hero.png' }), 'text', 'title plus background stays default text')
   assert.strictEqual(mod.inferSlideType({ title: 'Chart-like title', image: '/chart.png', background: '/hero.png', brightness: 0.6 }), 'text', 'title plus media-ish fields remains default text without columns array')
   assert.strictEqual(mod.inferSlideType({ custom: 'demo' }), 'custom', 'custom property selects custom shape')
   assert.strictEqual(mod.inferSlideType({ name: 'customRenderer', image: '/diagram.png' }), 'text', 'custom renderer keys prevent built-in inference')
   assert.strictEqual(mod.renderSlideObject({ name: 'special', image: '/diagram.png' }, { renderers: { special: () => 'named-renderer' } }), 'named-renderer', 'named custom renderer wins before inference')
+
+  const speakerNoteSlides = mod.createTalk([
+    { title: 'Speaker notes', notes: ['Pause here', 'Then continue'] },
+    { title: 'Note alias', note: 'Alias note' }
+  ])
+  assert(Array.isArray(speakerNoteSlides[0]), 'notes metadata wraps the rendered v3 slide')
+  assert.deepStrictEqual(speakerNoteSlides[0].slice(1), ['Pause here', 'Then continue'], 'notes array metadata remains attached to the slide')
+  assert(Array.isArray(speakerNoteSlides[1]), 'note alias metadata wraps the rendered v3 slide')
+  assert.deepStrictEqual(speakerNoteSlides[1].slice(1), ['Alias note'], 'note alias metadata remains attached to the slide')
 
   const previousDocument = global.document
   const previousWindow = global.window
