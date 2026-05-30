@@ -434,7 +434,7 @@ Deploy the \`public/\` folder to any static host.
 
 ## Edit slides.yaml
 
-\`slides.yaml\` can be a deck object with \`title\`, \`style\`, and \`slides\`. Put deck-wide CSS defaults in \`style\`; each item in \`slides\` is one slide. The old bare array form still works. The starter also shows text, image, video, columns, iframe, html, and custom slides.
+Write one slide per YAML item. \`slides.yaml\` can be a bare array of slides. The starter also shows text, image, video, columns, iframe, html, and custom slides.
 
 Each slide can have one of the following:
 
@@ -454,6 +454,22 @@ For the full slide schema and \`talk.js\` API, see the package README and \`docs
 Run or build the deck, press \`o\` to open Options, click **Enable remote control**, then scan the QR code or open the shown URL on your phone.
 
 The phone remote navigates the deck.
+
+## Theming and styling
+
+Use a deck object when a talk needs a browser title or deck-wide CSS defaults. \`title\` sets the HTML document title, \`style\` applies CSS to the deck, and \`slides\` holds the same slide list.
+
+\`\`\`yaml
+title: My Talk
+style:
+  fontFamily: Inter, system-ui, sans-serif
+  background: '#061018'
+  color: white
+  "--accent": '#5ffbf1'
+slides:
+  - title: Main point
+    subtitle: Optional subtitle
+\`\`\`
 
 ## Optional talk.js
 

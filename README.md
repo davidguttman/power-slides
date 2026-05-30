@@ -3,21 +3,14 @@
 Create browser-native slideshows from a small `slides.yaml` file, then use your phone as a remote control.
 
 ```yaml
-title: Hello, world
-style:
-  fontFamily: Inter, system-ui, sans-serif
-  background: '#111827'
-  color: white
-  "--accent": '#5ffbf1'
-slides:
-  - title: Hello, world
-    subtitle: A talk that's just a file
-    background: /hero.png
+- title: Hello, world
+  subtitle: A talk that's just a file
+  background: /hero.png
 
-  - image: /diagram.png
+- image: /diagram.png
 
-  - title: A slide can still be anything the browser can render.
-    subtitle: power-slides
+- title: A slide can be anything the browser can render.
+  subtitle: power-slides
 ```
 
 Start a deck with the CLI, edit the YAML, and deploy the built `public/` folder anywhere static files can live.
@@ -49,40 +42,33 @@ Deploy the `public/` folder to any static host.
 
 ## Edit `slides.yaml`
 
-`slides.yaml` can be a deck object with `title`, `style`, and `slides`. Put deck-wide CSS defaults in `style`; each item in `slides` is one slide. The old bare array form still works for simple decks.
+Write one slide per YAML item. `slides.yaml` can be a bare array of slides. The starter also shows text, image, video, columns, iframe, html, and custom slides.
 
 ```yaml
-title: My Talk
-style:
-  fontFamily: Inter, system-ui, sans-serif
-  background: '#061018'
-  color: white
-  "--accent": '#5ffbf1'
-slides:
-  - title: Main point
-    subtitle: Optional subtitle
-    background: /sample.svg
-    brightness: 0.45
-    align: center
+- title: Main point
+  subtitle: Optional subtitle
+  background: /sample.svg
+  brightness: 0.45
+  align: center
 
-  - image: /sample.svg
-    fit: contain
+- image: /sample.svg
+  fit: contain
 
-  - video: /fractal-loop.mp4
-    controls: true
-    muted: true
-    loop: true
-    fit: contain
+- video: /fractal-loop.mp4
+  controls: true
+  muted: true
+  loop: true
+  fit: contain
 
-  - background: /sample.svg
-    brightness: 0.55
-    columns:
-      - iframe: https://david.app
-        device: iphone
-      - title: Demo in context
-        bullets:
-          - Cross-origin page stays untouched
-          - Parent arrows remain available
+- background: /sample.svg
+  brightness: 0.55
+  columns:
+    - iframe: https://david.app
+      device: iphone
+    - title: Demo in context
+      bullets:
+        - Cross-origin page stays untouched
+        - Parent arrows remain available
 ```
 
 ## Slide shapes at a glance
@@ -105,6 +91,22 @@ The full slide shape and advanced API reference lives in `docs/slide-api.md`.
 Run or build the deck, press `o` to open Options, click **Enable remote control**, then scan the QR code or open the shown URL on your phone.
 
 The phone remote navigates the deck.
+
+## Theming and styling
+
+Use a deck object when a talk needs a browser title or deck-wide CSS defaults. `title` sets the HTML document title, `style` applies CSS to the deck, and `slides` holds the same slide list.
+
+```yaml
+title: My Talk
+style:
+  fontFamily: Inter, system-ui, sans-serif
+  background: '#061018'
+  color: white
+  "--accent": '#5ffbf1'
+slides:
+  - title: Main point
+    subtitle: Optional subtitle
+```
 
 ## Optional `talk.js`
 

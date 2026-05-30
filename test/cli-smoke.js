@@ -134,8 +134,34 @@ for (const shape of canonicalShapeNames) {
 for (const forbidden of ['type: title', 'type: columns', 'type: image', 'type: video', 'type: iframe', 'type: html', 'type: overlay', 'type: quote', 'type: chart', 'type: summary', 'attribution:', 'iframeTitle:', 'side:', 'src:', 'url:', 'size: contain']) {
   assert(!slideApiDoc.includes(forbidden), 'slide API doc omits legacy field pattern ' + forbidden)
 }
+assertNoPastVersionLanguage(slideApiDoc, 'slide API doc')
 
 const packageReadme = fs.readFileSync(path.join(root, 'README.md'), 'utf8')
+function between (text, start, end) {
+  const startIndex = text.indexOf(start)
+  assert(startIndex >= 0, 'section start exists: ' + start)
+  const contentStart = startIndex + start.length
+  const endIndex = end ? text.indexOf(end, contentStart) : text.length
+  assert(endIndex >= 0, 'section end exists: ' + end)
+  return text.slice(contentStart, endIndex)
+}
+function assertNoTopLevelDeckFieldsInYaml (text, label) {
+  const yamlBlocks = [...text.matchAll(/```yaml\n([\s\S]*?)\n```/g)].map(match => match[1])
+  assert(yamlBlocks.length > 0, label + ' includes a YAML example')
+  for (const block of yamlBlocks) {
+    assert(!/^title:/m.test(block), label + ' omits top-level title')
+    assert(!/^style:/m.test(block), label + ' omits top-level style')
+    assert(!/^slides:/m.test(block), label + ' omits top-level slides wrapper')
+  }
+}
+function assertNoPastVersionLanguage (text, label) {
+  for (const forbiddenPhrase of ['still works', 'unchanged', 'used to', 'backward-compatible', 'past version', 'past versions']) {
+    assert(!text.toLowerCase().includes(forbiddenPhrase), label + ' omits past-version phrase: ' + forbiddenPhrase)
+  }
+  for (const forbiddenWord of ['old', 'legacy']) {
+    assert(!new RegExp('\\b' + forbiddenWord + '\\b', 'i').test(text), label + ' omits past-version word: ' + forbiddenWord)
+  }
+}
 assert(packageReadme.includes('## Slide shapes at a glance'), 'package README has concise slide shapes section')
 for (const concept of canonicalShapeNames) {
   assert(packageReadme.includes('`' + concept + '`'), 'package README documents ' + concept + ' slide concept')
@@ -143,9 +169,18 @@ for (const concept of canonicalShapeNames) {
 for (const oldType of ['overlay', 'quote', 'chart', 'summary', 'citation']) {
   assert(!packageReadme.includes('#### `' + oldType + '`'), 'package README does not present ' + oldType + ' as a public slide concept')
 }
-assert(packageReadme.includes('`slides.yaml` can be a deck object with `title`, `style`, and `slides`'), 'package README documents object-form slide specs')
-assert(packageReadme.includes('The old bare array form still works'), 'package README documents backward-compatible bare array specs')
-assert(packageReadme.includes('each item in `slides` is one slide'), 'package README explains one slide per YAML item')
+assert(packageReadme.includes('Write one slide per YAML item'), 'package README explains one slide per YAML item')
+assert(packageReadme.includes('`slides.yaml` can be a bare array of slides'), 'package README documents bare array specs in canonical present tense')
+assert(packageReadme.includes('## Theming and styling'), 'package README documents deck theming after remote controls')
+assert(packageReadme.indexOf('## Remote control') < packageReadme.indexOf('## Theming and styling') && packageReadme.indexOf('## Theming and styling') < packageReadme.indexOf('## Optional `talk.js`'), 'package README places theming between remote control and optional talk.js')
+const packageOpening = packageReadme.slice(0, packageReadme.indexOf('## Create your first deck'))
+const packageEditSlides = between(packageReadme, '## Edit `slides.yaml`', '## Slide shapes at a glance')
+const packageTheming = between(packageReadme, '## Theming and styling', '## Optional `talk.js`')
+assertNoTopLevelDeckFieldsInYaml(packageOpening, 'package README opening example')
+assertNoTopLevelDeckFieldsInYaml(packageEditSlides, 'package README early slides.yaml example')
+assert(packageTheming.includes('deck object') && packageTheming.includes('`title` sets the HTML document title') && packageTheming.includes('`style` applies CSS to the deck') && packageTheming.includes('`slides` holds the same slide list'), 'package README explains top-level title/style in theming section')
+assert(/^title: My Talk/m.test(packageTheming) && /^style:/m.test(packageTheming) && /^slides:/m.test(packageTheming), 'package README theming section shows deck object title/style example')
+assertNoPastVersionLanguage(packageReadme, 'package README')
 assert(packageReadme.includes('docs/slide-api.md'), 'package README points full slide/talk API reference to docs')
 assert(packageReadme.includes('For more `talk.js` hooks, see `docs/slide-api.md`'), 'package README keeps talk.js hook details behind docs link')
 for (const earlyDocNoise of ['Slide concept reference', 'Every slide object has exactly one content property', 'slides(slides, PS)', 'beforeStart(PS, spec)', 'bundled PeerJS runtime', 'remote: false']) {
@@ -185,7 +220,15 @@ for (const oldType of ['overlay', 'quote', 'chart', 'summary', 'citation']) {
 assert(initializedReadme.includes('## Optional talk.js'), 'generated talk README documents optional talk.js path')
 assert(initializedReadme.includes('npx power-slides dev .') && initializedReadme.includes('npx power-slides build .'), 'generated talk README foregrounds npx run/build flow')
 assert(initializedReadme.includes('## Remote control') && initializedReadme.includes('press `o`') && initializedReadme.includes('Enable remote control'), 'generated talk README documents user-facing remote controls')
-assert(initializedReadme.includes('deck object with `title`, `style`, and `slides`') && initializedReadme.includes('old bare array form still works') && initializedReadme.includes('each item in `slides` is one slide') && initializedReadme.includes('docs/slide-api.md'), 'generated talk README points detailed schema/API to docs')
+assert(initializedReadme.includes('Write one slide per YAML item') && initializedReadme.includes('`slides.yaml` can be a bare array of slides') && initializedReadme.includes('docs/slide-api.md'), 'generated talk README points detailed schema/API to docs')
+assert(initializedReadme.includes('## Theming and styling'), 'generated talk README documents deck theming after remote controls')
+assert(initializedReadme.indexOf('## Remote control') < initializedReadme.indexOf('## Theming and styling') && initializedReadme.indexOf('## Theming and styling') < initializedReadme.indexOf('## Optional talk.js'), 'generated talk README places theming between remote control and optional talk.js')
+const initializedEditSlides = between(initializedReadme, '## Edit slides.yaml', '## Remote control')
+const initializedTheming = between(initializedReadme, '## Theming and styling', '## Optional talk.js')
+assert(!initializedEditSlides.includes('deck object') && !initializedEditSlides.includes('`title` sets') && !initializedEditSlides.includes('`style` applies'), 'generated talk README keeps top-level title/style out of early slides.yaml section')
+assert(initializedTheming.includes('deck object') && initializedTheming.includes('`title` sets the HTML document title') && initializedTheming.includes('`style` applies CSS to the deck') && initializedTheming.includes('`slides` holds the same slide list'), 'generated talk README explains top-level title/style in theming section')
+assert(/^title: My Talk/m.test(initializedTheming) && /^style:/m.test(initializedTheming) && /^slides:/m.test(initializedTheming), 'generated talk README theming section shows deck object title/style example')
+assertNoPastVersionLanguage(initializedReadme, 'generated talk README')
 for (const earlyDocNoise of ['Every slide object has exactly one content property', 'slides(slides, PS)', 'beforeStart(PS, spec)', 'bodyStyle', 'PeerJS', 'remote: false', 'runtime options']) {
   assert(!initializedReadme.includes(earlyDocNoise), 'generated talk README omits noisy detail: ' + earlyDocNoise)
 }

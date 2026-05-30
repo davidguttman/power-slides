@@ -14,7 +14,7 @@ slides:
   - image: /diagram.png
 ```
 
-The bare array form still works unchanged:
+`slides.yaml` can also be a bare array of slides:
 
 ```yaml
 - title: Main point
@@ -328,4 +328,3 @@ const slide = (el) => { /* render */ }
 slide.assets = ['https://cdn.example.com/background.png']
 export default { renderers: { custom: () => slide } }
 ```
-
