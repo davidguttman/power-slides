@@ -1,19 +1,22 @@
 # power-slides
 
-Create browser-native slideshows from a small `slides.yaml` file, then use your phone as a remote control.
+Start with one `slides.yaml` file, then reveal that it is still just the browser underneath.
 
 ```yaml
-- title: Hello, world
-  subtitle: A talk that's just a file
+- title: Your first deck
+  subtitle: Plain content in slides.yaml. Press o for remote control.
   background: /hero.png
 
 - image: /diagram.png
+  fit: contain
 
-- title: A slide can still be anything the browser can render.
-  subtitle: power-slides
+- iframe: https://example.com/demo
+  device: iphone
+
+- custom: particleField
 ```
 
-Start a deck with the CLI, edit the YAML, and deploy the built `public/` folder anywhere static files can live.
+Start a deck with the CLI, edit the YAML, drop static assets into `public/`, and deploy the built `public/` folder anywhere static files can live.
 
 ## Create your first deck
 
@@ -46,7 +49,7 @@ Start with a YAML list. Each item is one slide.
 
 ```yaml
 - title: Your first deck
-  subtitle: Press o for remote control
+  subtitle: Plain content in slides.yaml. Press o for remote control.
   background: /sample.svg
   brightness: 0.45
   align: center
@@ -63,12 +66,15 @@ Start with a YAML list. Each item is one slide.
 - background: /sample.svg
   brightness: 0.55
   columns:
-    - iframe: https://david.app
-      device: iphone
-    - title: Demo in context
+    - image: /sample.svg
+      fit: contain
+    - title: Composition is the model
       bullets:
-        - Cross-origin page stays untouched
-        - Parent arrows remain available
+        - Columns hold slide-shaped things
+        - Images, copy, and embeds stay separate
+
+- iframe: https://example.com/demo
+  device: iphone
 ```
 
 ## Slide shapes at a glance
@@ -99,7 +105,7 @@ style:
   "--accent": '#5ffbf1'
 slides:
   - title: Your first deck
-    subtitle: Press o for remote control
+    subtitle: Plain content in slides.yaml. Press o for remote control.
 
   - image: /sample.svg
 ```

@@ -438,7 +438,7 @@ Start with a YAML list. Each item is one slide.
 
 \`\`\`yaml
 - title: Your first deck
-  subtitle: Press o for remote control
+  subtitle: Plain content in slides.yaml. Press o for remote control.
   background: /sample.svg
 
 - image: /sample.svg
@@ -448,6 +448,15 @@ Start with a YAML list. Each item is one slide.
   controls: true
   muted: true
   loop: true
+
+- background: /sample.svg
+  columns:
+    - image: /sample.svg
+      fit: contain
+    - title: Composition is the model
+      bullets:
+        - Columns hold slide-shaped things
+        - Images, copy, and embeds stay separate
 \`\`\`
 
 The starter also shows text, image, video, columns, iframe, html, and custom slides.

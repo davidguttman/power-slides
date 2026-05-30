@@ -1,5 +1,5 @@
 - title: Your first deck
-  subtitle: Press o for remote control
+  subtitle: Plain content in slides.yaml. Press o for remote control.
   background: https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1800&q=80
   brightness: 0.45
   align: center
@@ -13,18 +13,23 @@
 - background: https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=1800&q=80
   brightness: 0.55
   columns:
-    - iframe: https://example.com/demo
-      device: iphone
-    - title: Demo in context
+    - image: /fist-bump.gif
+      fit: contain
+    - title: Composition is the model
       bullets:
-        - Cross-origin page stays untouched
-        - Parent arrows remain available
+        - Columns hold slide-shaped things
+        - Images, copy, and embeds stay separate
 - iframe: https://example.com/demo
   device: iphone
   background: '#061018'
+  title: The web can be inside the deck
 - html: |
-    <div style="width:100vw;height:100vh;color:white">
-      <h1>Custom HTML</h1>
+    <div style="width:100vw;height:100vh;display:grid;place-items:center;color:white;font-family:Inter,system-ui,sans-serif;text-align:center">
+      <div>
+        <p style="letter-spacing:.18em;text-transform:uppercase;color:#5ffbf1">Escape hatch</p>
+        <h1>Trusted HTML gets you unstuck.</h1>
+      </div>
     </div>
 - custom: particleField
-  title: Generative canvas
+  title: "Escape hatch: JavaScript"
+  subtitle: talk.js is real browser code when the moment is worth it.
