@@ -41,7 +41,7 @@ Available on any slide regardless of content property:
 - `background` — unlocks `brightness`
 - `brightness` — scrim darkness behind content (only meaningful with `background`)
 - `align`
-- `notes` / `note` — speaker-note metadata; string or array of strings, not projected on the slide
+- `notes` — speaker-note metadata; string or array of strings, not projected on the slide
 
 ## title
 
