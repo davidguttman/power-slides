@@ -1,6 +1,6 @@
 # power-slides
 
-Create browser-native slideshows from a small `slides.yaml` file.
+Create browser-native slideshows from a small `slides.yaml` file, then use your phone as a remote control.
 
 ```yaml
 - title: Hello, world
