@@ -213,3 +213,71 @@ rows instead of sitting side by side, in source order top to bottom.
         - JS handles special moments
       pullquote: Build static files to share.
 ```
+
+## JavaScript module usage
+
+The beginner path is the CLI plus `slides.yaml`. Use the module API when you are embedding `power-slides` inside another browser app or building a custom shell.
+
+```js
+import PowerSlides, { text, image, startTalk } from 'power-slides'
+
+startTalk(document.body, [
+  { title: 'Hello', subtitle: 'Reusable talks' },
+  { image: '/diagram.png', fit: 'contain' }
+])
+```
+
+### `startTalk(el, slidesOrSpec, [options])`
+
+ESM entry point. Renders a slide array into `el`. The ESM `PowerSlides` object has all data-driven helpers (`text`, `image`, `video`, `columns`, `iframe`, `html`, …) attached.
+
+### `PS.image(url, [backgroundSize])`
+
+Full-bleed image slide. `backgroundSize` defaults to `"cover"`; pass `"contain"` to fit the whole image without cropping. See [`background-size` on MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/background-size).
+
+### `PS.video(url, [options])`
+
+Full-bleed video slide. Defaults: `{ loop: false, muted: false, controls: false, fit: 'contain' }`. `fit` is `'contain'` or `'cover'`. The video resets and plays every time you navigate to the slide.
+
+### `PS.title(text, [style])`
+
+A plain centered title slide. Useful as the foreground of `layeredTitle`:
+
+```js
+PS.title('Hello', { color: 'white', fontSize: '5vw' })
+```
+
+### `PS.layeredTitle(foreground, background, [options])`
+
+Stacks a title on top of another slide, typically an image or video.
+
+- `foreground` — string, DOM element, or slide function, for example `PS.title(...)`
+- `background` — any slide function, usually `PS.image(...)` or `PS.video(...)`
+- `options.brightness` — multiplies background brightness; lower means darker and more readable title text
+
+```js
+PS.layeredTitle(
+  'Title Over Image',
+  PS.image('/bg.jpg'),
+  { brightness: 0.5 }
+)
+```
+
+### Navigation
+
+- `PS.nextSlide()` / `PS.prevSlide()` — programmatic navigation
+- Arrow keys — left/right
+- Touch — tap the left 20% / right 20% of the screen
+- URL hash — `#/3` jumps to slide 3, and the hash updates as you navigate
+- Options — when the built-in options UI is enabled, the visible Options button hides after about 5 seconds; press `o` to reopen it
+
+## Asset loading
+
+The first slide renders immediately. After that, power-slides starts loading image/video assets referenced by later slides — including remote URLs — so the deck feels smoother without blocking the first paint. Helpers attach `slide.assets` automatically; custom renderers can do the same:
+
+```js
+const slide = (el) => { /* render */ }
+slide.assets = ['https://cdn.example.com/background.png']
+export default { renderers: { custom: () => slide } }
+```
+

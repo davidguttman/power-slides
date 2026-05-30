@@ -1,30 +1,19 @@
 # power-slides
 
-Write slideshows in YAML or JavaScript instead of fighting a WYSIWYG.
+Write browser-native slideshows from a small `slides.yaml` file instead of fighting a WYSIWYG.
 
 ```yaml
 - title: Hello, world
   subtitle: A talk that's just a file
   background: /hero.png
+
 - image: /diagram.png
+
 - title: A slide can still be anything the browser can render.
   subtitle: power-slides
 ```
 
-```bash
-power-slides dev .
-```
-
-That's a talk. Arrow keys to navigate, deep links per slide, optional remote control. When YAML stops being enough — typewriter effect, live D3 visualization, WebGL toy, fetch from your own API — a slide is just a JS function that owns its DOM. Do whatever the browser can do.
-
-## Why power-slides?
-
-- **Content-first.** A talk is `slides.yaml` (or JSON) plus assets. Add `talk.js` only when JS earns its keep.
-- **A slide can still be a function.** Full power of the browser, per slide.
-- **Keyboard + touch nav out of the box.** Arrows, tap-edges on mobile.
-- **Deep links.** Every slide has a URL hash (`#/7`). Reload, share, jump.
-- **Remote control.** Drive the deck from your phone over PeerJS — built into the shell, no per-talk wiring.
-- **Background preloading.** First slide renders immediately; later images/videos load while you talk.
+Start a deck with the CLI, edit the YAML, and deploy the built `public/` folder anywhere static files can live.
 
 ## Install
 
@@ -34,17 +23,13 @@ For a first deck, install the CLI once:
 npm install -g power-slides
 ```
 
-Prefer not to install globally? Use `npx` in the commands below:
+Prefer not to install globally? Use `npx` for the same commands:
 
 ```bash
 npx power-slides init my-talk
 ```
 
-The package ships a CLI (`power-slides` / `powerslides`) and an ESM runtime.
-
 ## Create your first deck
-
-Start with `init`, then run the deck from the talk folder:
 
 ```bash
 power-slides init my-talk
@@ -52,16 +37,16 @@ cd my-talk
 power-slides dev .
 ```
 
-`init` creates a talk folder by generating the local `package.json` and copying the packaged minimal `example/` starter authoring files:
+`init` creates a talk folder with:
 
-- `package.json` — local npm scripts plus a dev dependency on the published `power-slides` package
-- `slides.yaml` — seven starter slides: default text, image, video, columns, iframe, html, and custom
-- `talk.js` — commented optional ESM hooks; no custom animated slides in the starter
-- `public/` — files served at `/`, including the starter `sample.svg` image and `fractal-loop.mp4` video assets
+- `slides.yaml` — default text, image, video, columns, iframe, html, and custom slide examples
+- `talk.js` — optional JavaScript hooks for custom slides
+- `public/` — files served at `/`, including starter image/video assets
 - `assets/` — source assets not served directly
+- `package.json` — optional local npm scripts for runners/deploys
 - `README.md` — talk-local authoring notes
 
-It refuses to run in a non-empty directory unless you pass `--force`, and it does not overwrite existing files. It copies only the minimal starter media, not the richer animated showcase assets. See `examples/showcase/` for custom renderers and animated slides. It does **not** copy a lockfile, `node_modules`, generated bundles, or `public/index.html` into the talk.
+The generated `package.json` is useful when a host or runner expects npm scripts, but it is not required for the normal beginner flow. Starting from the global CLI is enough.
 
 ## Run, build, and deploy
 
@@ -70,37 +55,31 @@ power-slides dev .      # starts a local dev server
 power-slides build .    # writes a static site into public/
 ```
 
-`build` turns the talk into static files: `public/index.html`, a cache-busted `power-slides.<hash>.js` bundle, the bundled PeerJS browser runtime for remote control, and whatever assets are already in `public/`. Deploy the `public/` folder to any static host. If your host or runner expects npm scripts, use the generated `package.json` path below.
+`build` writes the deployable site into `public/`: `index.html`, the bundled `power-slides` runtime, the remote-control browser bundle, and the assets already in `public/`. Deploy the `public/` folder to any static host.
 
-`init` also generates a small `package.json` with npm scripts. That is useful for runners, deploys, and projects that want local reproducible commands, but it is not the beginner path:
+If you want local reproducible commands or runner-friendly scripts, use the generated npm path:
+
+```bash
+npm install
+npm run dev
+npm run build
+```
+
+The generated scripts are:
 
 ```json
 {
-  "private": true,
   "scripts": {
     "dev": "powerslides dev .",
     "build": "powerslides build .",
     "start": "npm run dev"
-  },
-  "devDependencies": {
-    "power-slides": "^3.0.0"
   }
 }
 ```
 
-To use those local scripts:
+## Edit `slides.yaml`
 
-```bash
-npm install
-npm run dev      # runners such as jump.sh can use npm start
-npm run build
-```
-
-`power-slides dev .` / `powerslides dev .` picks its port from `--port <port>`, then `$PORT`, then `9966`. The CLI dev/build shell turns on the built-in Options panel and loads a bundled PeerJS runtime before the deck. Press `o` to reopen Options, then click **Enable remote control** to show the QR code / URL. Export `remote: false` from `talk.js` to disable it, or `remote: { ... }` for PeerJS/options overrides.
-
-## slides.yaml
-
-`docs/slide-api-v3.md` is the canonical v3 slide spec. A slide spec is a bare YAML or JSON array of slides — no top-level `slides:` wrapper and no talk metadata mixed into the content file. The title slide is just the first slide.
+A talk is a bare YAML or JSON array of slides. There is no top-level `slides:` wrapper and no separate title metadata — the title slide is just the first slide.
 
 Without `--slides`, the CLI picks `slides.yaml`, then `slides.yml`, then `slides.json`.
 
@@ -110,8 +89,6 @@ Without `--slides`, the CLI picks `slides.yaml`, then `slides.yml`, then `slides
   background: /sample.svg
   brightness: 0.45
   align: center
-  notes:
-    - Open by saying why this matters now.
 
 - image: /sample.svg
   fit: contain
@@ -131,21 +108,9 @@ Without `--slides`, the CLI picks `slides.yaml`, then `slides.yml`, then `slides
       bullets:
         - Cross-origin page stays untouched
         - Parent arrows remain available
-
-- iframe: https://david.app
-  device: iphone
-  background: '#061018'
-
-- html: |
-    <div style="width:100vw;height:100vh;color:white">
-      <h1>Custom HTML</h1>
-    </div>
-
-- custom: particleField
-  title: Generative canvas
 ```
 
-### v3 slide model
+## How slides work
 
 Every slide object has exactly one content property. Most are leaf content types:
 
@@ -154,18 +119,15 @@ Every slide object has exactly one content property. Most are leaf content types
 - `video` — unlocks `fit`, `controls`, `muted`, and `loop`
 - `iframe` — unlocks `device`
 - `html` — trusted inline markup
-- `custom` — delegates to a `talk.js` renderer; any other properties pass through untouched
+- `custom` — delegates to a `talk.js` renderer
 
 `columns` is different: it is the container form. A `columns` slide holds an array of slide objects, and each column is rendered by the same slide renderer. You can think of a normal non-`columns` slide as shorthand for `columns` with one member: omitting `columns` means “render this one slide full-frame.”
 
-Shared properties available on any slide are `background`, `brightness`, `align`, and `notes`/`note`. Use `columns` when you want to combine content types, such as iframe-plus-copy or image-plus-title. On narrow/portrait viewports, columns stack vertically in source order.
+Shared properties available on any slide are `background`, `brightness`, `align`, and `notes`/`note`.
 
-`notes` is speaker-note metadata for the current slide. It can be a string or an array of strings, is not shown on the projected slide, and stays attached to the slide for remote/controller surfaces.
+## Slide concept reference
 
-
-### Slide concept reference
-
-#### `title`
+### `title`
 
 ```yaml
 - eyebrow: Section
@@ -184,25 +146,14 @@ Shared properties available on any slide are `background`, `brightness`, `align`
   pullquote: Build static files to share.
 ```
 
-#### speaker notes
-
-```yaml
-- title: Main point
-  notes:
-    - Pause here.
-    - Then show the demo.
-```
-
-Use `notes` or `note` for slide-private speaker notes. They are metadata, not visible slide content.
-
-#### `image`
+### `image`
 
 ```yaml
 - image: /diagram.png
   fit: contain
 ```
 
-#### `video`
+### `video`
 
 ```yaml
 - video: /fractal-loop.mp4
@@ -212,7 +163,9 @@ Use `notes` or `note` for slide-private speaker notes. They are metadata, not vi
   fit: contain
 ```
 
-#### `columns`
+### `columns`
+
+Use `columns` when you want to combine content types, such as iframe-plus-copy or image-plus-title. On narrow/portrait viewports, columns stack vertically in source order.
 
 ```yaml
 - background: /generated/chaser-app.png
@@ -238,7 +191,7 @@ Use `notes` or `note` for slide-private speaker notes. They are metadata, not vi
       pullquote: Build static files to share.
 ```
 
-#### `iframe`
+### `iframe`
 
 ```yaml
 - iframe: https://david.app
@@ -246,143 +199,67 @@ Use `notes` or `note` for slide-private speaker notes. They are metadata, not vi
   background: '#061018'
 ```
 
-#### `html`
+### `notes`
+
+```yaml
+- title: Main point
+  notes:
+    - Pause here.
+    - Then show the demo.
+```
+
+Use `notes` or `note` for slide-private speaker notes. They are metadata, not visible slide content.
+
+### `html` and `custom`
+
+Use `html` for trusted inline markup:
 
 ```yaml
 - html: '<main style="padding:8vw;color:white"><h1>Raw HTML</h1></main>'
 ```
 
-Treat `html` as trusted content; do not put untrusted user input here.
-
-#### `custom`
+Use `custom` when the slide should be rendered by `talk.js`:
 
 ```yaml
 - custom: particleField
   title: Generative canvas
 ```
 
-Any extra fields are passed through to the renderer.
-
 ## Remote control
 
-`power-slides` bundles an app-shell-level options panel and PeerJS remote control, so the shared CLI shell enables it once and each talk stays content-only. CLI dev/build entries copy the PeerJS browser runtime into the output and load it before the deck. Custom shells can pass a constructor as `remote.Peer`, or expose `window.Peer` before enabling remote control.
+The CLI shell includes remote control and loads the bundled PeerJS runtime for you. Run or build the deck, press `o` to open Options, then click **Enable remote control** to show the QR code / URL for your phone. Export `remote: false` from `talk.js` to disable it.
 
-For custom shells, pass `remote: true` to `startTalk`; pass `remote: { Peer }` when your app bundles PeerJS itself:
+Remote commands are navigation intents only: previous, next, or go to slide. The display stays authoritative, so keyboard, touch, URL hash navigation, and remote control all stay in the same slide state.
 
-```js
-startTalk(document.body, slides, {
-  remote: true
-})
-```
+## Optional `talk.js`
 
-The Options button appears at boot and fades after about 5 seconds; press `o` to reopen it. Remote hosting does not start until you click **Enable remote control** in Options for that browser session. The deck then creates a PeerJS host, generates a one-time `pairKey`, and shows a QR code and URL. The URL uses query parameters (`ps-remote=<peer id>&ps-pair=<pairKey>` by default), leaving the hash for normal slide deep links.
-
-The first controller opened from that URL stores a generated `clientId` in its `localStorage` and sends `{ type: 'hello', pairKey, clientId }`. If the pair key matches and the deck is not already locked, the deck stores that `clientId` in `sessionStorage` as the winning controller. The default lock key is based on the stable deck URL (`origin + pathname`, query/hash stripped), so it survives display reloads even when PeerJS assigns a new peer id; override it with `remote.controllerStorageKey`. After that, the deck accepts only the same `clientId`; other controllers receive `{ type: 'locked' }` and are closed. A reconnecting controller replaces its old connection.
-
-The display stays authoritative. Remote messages are navigation intents only (`prev`, `next`, `goto`); the deck clamps and validates slide numbers, changes its own state, and sends state back. The controller view is minimal: full-width current-slide preview, full-width next-slide preview, then Prev/Next buttons, each preview scaled to fit a 16:9 viewport rather than cropped. Because it operates on `PowerSlides` navigation state, it works for both data-driven decks and custom `talk.js` slides, and remote commands use the same fast nav path as keyboard/touch — no waiting on per-slide preloading.
-
-## Optional talk.js
-
-`talk.js` is ESM. Export custom renderers when YAML is not enough:
+Most talks can stay entirely in `slides.yaml`. Add `talk.js` when a slide needs real browser code: a typewriter effect, live D3 visualization, WebGL toy, API fetch, or anything else the browser can render.
 
 ```js
 export default {
   renderers: {
-    demo (slide, PS) {
-      return PS.text({
-        title: slide.title || 'Live demo',
-        subtitle: 'Custom renderer from talk.js'
-      })
+    demo (slide) {
+      const el = document.createElement('section')
+      el.innerHTML = `<h1>${slide.title || 'Live demo'}</h1>`
+      return el
     }
   }
 }
 ```
 
-`talk.js` may export these hooks:
+`talk.js` can export `renderers`, `custom`, `renderSlide(slide, PS)`, `slides(slides, PS)`, `bodyStyle`, and `beforeStart(PS, spec)`. Most first decks only need `renderers`.
 
-- `renderers` — map renderer names to `(slide, PS) => slideFunction`. `PS` is the power-slides helper object.
-- `custom` — alias map for renderers.
-- `renderSlide(slide, PS)` — optional catch-all; return a rendered slide to override normal dispatch, or return nothing to continue.
-- `slides(slides, PS)` — transform/theme the parsed slide array before rendering.
-- `bodyStyle` — CSS text applied to `document.body` by the CLI entry.
-- `beforeStart(PS, spec)` — setup hook called by the CLI entry just before `startTalk()`.
+Then reference the renderer from YAML:
 
-Renderer return values can be slide functions, DOM nodes, or strings. The build exposes the package as `power-slides`, so advanced `talk.js` files may also import helpers directly.
-
-## Asset loading
-
-The first slide renders immediately. After that, power-slides starts loading image/video assets referenced by later slides — including remote URLs — so the deck feels smoother without blocking the first paint. Helpers attach `slide.assets` automatically; custom renderers can do the same:
-
-```js
-const slide = (el) => { /* render */ }
-slide.assets = ['https://cdn.example.com/background.png']
-export default { renderers: { custom: () => slide } }
+```yaml
+- custom: demo
+  title: Browser-native slide
 ```
 
-## Imported module usage
+## Reference
 
-```js
-import PowerSlides, { text, image, startTalk } from 'power-slides'
-
-startTalk(document.body, [
-  { title: 'Hello', subtitle: 'Reusable talks' },
-  { image: '/diagram.png', fit: 'contain' }
-])
-```
-
-New talks should use ESM and/or the CLI-generated entry.
-
-## API
-
-### `startTalk(el, slidesOrSpec, [options])`
-
-ESM entry point. Renders a v3 slide array into `el`. The ESM `PowerSlides` object has all data-driven helpers (`text`, `image`, `video`, `columns`, `iframe`, `html`, …) attached.
-
-### `PS.image(url, [backgroundSize])`
-
-Full-bleed image slide. `backgroundSize` defaults to `"cover"`; pass `"contain"` to fit the whole image without cropping. See [`background-size` on MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/background-size).
-
-### `PS.video(url, [options])`
-
-Full-bleed video slide. Defaults: `{ loop: false, muted: false, controls: false, fit: 'contain' }`. `fit` is `'contain'` or `'cover'`. The video resets and plays every time you navigate to the slide.
-
-### `PS.title(text, [style])`
-
-A plain centered title slide. Useful as the foreground of `layeredTitle`:
-
-```js
-PS.title('Hello', { color: 'white', fontSize: '5vw' })
-```
-
-### `PS.layeredTitle(foreground, background, [options])`
-
-Stacks a title on top of another slide (typically an image or video).
-
-- `foreground` — string, DOM element, or slide function (e.g. `PS.title(...)`)
-- `background` — any slide function, usually `PS.image(...)` or `PS.video(...)`
-- `options.brightness` — multiplies background brightness (default `0.6`). Lower = darker = title more readable.
-
-```js
-PS.layeredTitle(
-  'Title Over Image',
-  PS.image('/bg.jpg'),
-  { brightness: 0.5 }
-)
-```
-
-### Navigation
-
-- `PS.nextSlide()` / `PS.prevSlide()` — programmatic.
-- Arrow keys — left/right.
-- Touch — tap the left 20% / right 20% of the screen.
-- URL hash — `#/3` jumps to slide 3, and the hash updates as you navigate.
-- Options — when the built-in options UI is enabled, the visible Options button hides after about 5 seconds; press `o` to reopen it.
-
-## Patterns
-
-**Live demos.** A slide is a function, so plug in anything: a sandboxed iframe, a CodeMirror editor, a WebSocket-driven dashboard. Whatever runs in a browser tab runs on a slide.
-
-**Reactive slides.** Subscribe to `changeSlide` to pause videos, stop timers, or fire analytics when the audience moves on.
+- Full slide shape and advanced API reference lives in `docs/`.
+- `examples/showcase/` contains custom renderers and animated slides.
 
 ## Development
 
@@ -394,7 +271,7 @@ npm run example  # live-reloading minimal starter; starts budo
 npm run build:showcase # builds examples/showcase custom-renderer deck
 ```
 
-PRs welcome. The core runtime stays small while the reusable talk shell keeps talks content-only; remote/options behavior is isolated in `remote.js` so it can move into a future app shell or ESM export cleanly.
+PRs welcome. The core runtime stays small while the reusable talk shell keeps talks content-only; remote/options behavior is isolated in `remote.js` so it can move cleanly into a future app shell.
 
 ## License
 
