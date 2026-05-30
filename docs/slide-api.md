@@ -43,6 +43,34 @@ Available on any slide regardless of content property:
 - `align`
 - `notes` — speaker-note metadata; string or array of strings, not projected on the slide
 
+## Style override properties
+
+Any property whose name ends in `Style` accepts the same two forms in YAML and JavaScript:
+
+- canonical object form with camelCase CSS properties
+- CSS declaration string form, useful when pasting existing CSS
+
+Object form is preferred because it stays structured in YAML:
+
+```yaml
+- title: Main point
+  titleStyle:
+    fontSize: 12pt
+    color: red
+```
+
+CSS strings are also accepted and converted to the same camelCase properties:
+
+```yaml
+- title: Main point
+  titleStyle: "color: red; font-size: 12pt"
+```
+
+Style overrides apply after built-in defaults and shorthand fields such as
+`titleSize`, `subtitleSize`, and `subtitleOpacity`, so the explicit style value
+wins when both are present. This rule is shared by text, columns, iframe phone
+layouts, iframe/device chrome, side-copy fields, and media/image escape hatches.
+
 ## title
 
 Unlocks: `subtitle`, `eyebrow`, `bullets`, `pullquote`.

@@ -199,13 +199,62 @@ function element (tag, attrs, children) {
   Object.keys(attrs).forEach(function (key) {
     const value = attrs[key]
     if (value == null) return
-    if (key === 'style') Object.assign(el.style, value)
+    if (key === 'style') applyStyle(el.style, value)
     else if (key === 'className') el.className = value
     else if (key in el) el[key] = value
     else el.setAttribute(key, value)
   })
   append(el, children)
   return el
+}
+
+function applyStyle (target, style) {
+  const normalized = normalizeStyle(style)
+  Object.keys(normalized).forEach(function (key) {
+    const value = normalized[key]
+    if (value == null) return
+    if (key.indexOf('-') !== -1 && typeof target.setProperty === 'function') {
+      target.setProperty(key, value)
+    } else {
+      target[key] = value
+    }
+  })
+  return target
+}
+
+function mergeStyle () {
+  const merged = {}
+  Array.prototype.forEach.call(arguments, function (style) {
+    Object.assign(merged, normalizeStyle(style))
+  })
+  return merged
+}
+
+function normalizeStyle (style) {
+  if (!style) return {}
+  if (typeof style === 'string') return parseStyleString(style)
+  if (typeof style !== 'object' || Array.isArray(style)) return {}
+  return style
+}
+
+function parseStyleString (style) {
+  const parsed = {}
+  String(style).split(';').forEach(function (declaration) {
+    const index = declaration.indexOf(':')
+    if (index === -1) return
+    const name = declaration.slice(0, index).trim()
+    const value = declaration.slice(index + 1).trim()
+    if (!name || !value) return
+    parsed[stylePropertyName(name)] = value
+  })
+  return parsed
+}
+
+function stylePropertyName (name) {
+  if (name.indexOf('--') === 0) return name
+  return name.replace(/-+([a-zA-Z0-9])/g, function (_, char) {
+    return char.toUpperCase()
+  })
 }
 
 function append (el, children) {
@@ -235,7 +284,7 @@ function slideFromFactory (factory, assets) {
 export function title (text, style) {
   const defaultStyle = { padding: '10%', textAlign: 'center' }
   return slideFromFactory(function () {
-    return element('div', { style: Object.assign({}, defaultStyle, style || {}) }, element('h1', {}, text))
+    return element('div', { style: mergeStyle(defaultStyle, style) }, element('h1', {}, text))
   })
 }
 
@@ -293,13 +342,13 @@ export function layeredTitle (foreground, background, opts) {
 }
 
 function layerStyle (extra) {
-  return Object.assign({
+  return mergeStyle({
     position: 'absolute',
     inset: 0,
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center'
-  }, extra || {})
+  }, extra)
 }
 
 export function text (opts) {
@@ -411,7 +460,7 @@ export function citation (opts) {
       opts.eyebrow && element('div', { style: eyebrowStyle(opts) }, opts.eyebrow),
       element('blockquote', {
         className: 'ps-citation-quote',
-        style: Object.assign({
+        style: mergeStyle({
           margin: 0,
           maxWidth: opts.maxWidth || 'min(18em, 100%)',
           fontSize: opts.quoteSize || opts.size || 'clamp(2.6rem, 5.8vw, 6.6rem)',
@@ -420,11 +469,11 @@ export function citation (opts) {
           letterSpacing: opts.quoteLetterSpacing || '-0.045em',
           whiteSpace: 'pre-line',
           textShadow: '0 3px 14px rgba(0,0,0,0.55)'
-        }, opts.quoteStyle || {})
+        }, opts.quoteStyle)
       }, opts.quote || opts.text || ''),
       attribution && element('figcaption', {
         className: 'ps-citation-attribution',
-        style: Object.assign({
+        style: mergeStyle({
           marginTop: opts.attributionMarginTop || 'clamp(1.2rem, 3vh, 2.4rem)',
           maxWidth: opts.attributionMaxWidth || opts.maxWidth || 'min(42rem, 100%)',
           fontSize: opts.attributionSize || 'clamp(1.1rem, 1.8vw, 1.65rem)',
@@ -433,7 +482,7 @@ export function citation (opts) {
           opacity: opts.attributionOpacity == null ? 0.86 : opts.attributionOpacity,
           whiteSpace: 'pre-line',
           textShadow: '0 2px 10px rgba(0,0,0,0.55)'
-        }, opts.attributionStyle || {})
+        }, opts.attributionStyle)
       }, attribution)
     ]))
     return root
@@ -474,7 +523,7 @@ export function summary (opts) {
     }, [
       element('div', {}, [
         opts.eyebrow && element('div', { style: eyebrowStyle(opts) }, opts.eyebrow),
-        element('h1', { style: { fontSize: '3.4vw', lineHeight: 1.1, margin: 0, whiteSpace: 'pre-line' } }, opts.quote || opts.title || '')
+        element('h1', { style: mergeStyle({ fontSize: '3.4vw', lineHeight: 1.1, margin: 0, whiteSpace: 'pre-line' }, opts.titleStyle) }, opts.quote || opts.title || '')
       ]),
       element('div', { style: cardStyle() }, [
         element('div', { style: { color: opts.accent || '#ffcc6a', fontSize: '1.6vw', marginBottom: '2vh' } }, opts.card.title || ''),
@@ -566,12 +615,12 @@ function iframeRootStyle (opts, phoneFramed) {
 }
 
 function iframeStyle (opts) {
-  return Object.assign({
+  return mergeStyle({
     width: '100%',
     height: '100%',
     border: 0,
     background: opts.background || '#000'
-  }, opts.iframeStyle || {})
+  }, opts.iframeStyle)
 }
 
 function iframeChrome (frame, opts, phoneLayout) {
@@ -589,7 +638,7 @@ function usesPhoneFrame (opts) {
 function iphoneFrame (frame, opts) {
   return element('div', {
     className: 'ps-iframe-device ps-iframe-device-iphone',
-    style: Object.assign({
+    style: mergeStyle({
       position: 'relative',
       width: opts.deviceWidth || opts.frameWidth || 'min(42vh, 34vw, 430px)',
       aspectRatio: opts.deviceAspectRatio || '390 / 844',
@@ -600,7 +649,7 @@ function iphoneFrame (frame, opts) {
       background: opts.deviceBackground || 'linear-gradient(145deg, #3a3d45, #050506 58%, #24272d)',
       boxShadow: opts.deviceShadow || '0 2.5vh 7vh rgba(0,0,0,0.55), inset 0 0 0.35vh rgba(255,255,255,0.2)',
       overflow: 'hidden'
-    }, opts.deviceStyle || {})
+    }, opts.deviceStyle)
   }, element('div', {
     className: 'ps-iframe-device-screen',
     style: {
@@ -634,7 +683,7 @@ function phoneSideLayout (device, opts, layout) {
 
   return element('div', {
     className: 'ps-iframe-phone-layout ps-iframe-' + layout,
-    style: Object.assign({
+    style: mergeStyle({
       width: opts.layoutWidth || 'min(1160px, 92vw)',
       maxWidth: opts.layoutMaxWidth || '100%',
       height: '100%',
@@ -645,7 +694,7 @@ function phoneSideLayout (device, opts, layout) {
       alignItems: 'center',
       justifyContent: 'center',
       padding: opts.layoutPadding === undefined ? '6vh 5vw' : opts.layoutPadding
-    }, opts.layoutStyle || {})
+    }, opts.layoutStyle)
   }, phoneFirst ? [device, side] : [side, device])
 }
 
@@ -656,11 +705,11 @@ function iframeSideCopy (side, opts) {
 
   return element('div', {
     className: 'ps-iframe-side-copy',
-    style: Object.assign({
+    style: mergeStyle({
       color: side.color || opts.color || '#fff',
       fontFamily: side.font || opts.font || defaultFont(),
       maxWidth: side.maxWidth || '34rem'
-    }, side.style || {})
+    }, side.style)
   }, [
     side.eyebrow && element('div', { className: 'ps-iframe-side-eyebrow', style: iframeSideEyebrowStyle(side) }, side.eyebrow),
     side.title && element('h1', { className: 'ps-iframe-side-title', style: iframeSideTitleStyle(side) }, side.title),
@@ -676,7 +725,7 @@ function normalizeCopyList (value) {
 }
 
 function iframeSideEyebrowStyle (side) {
-  return {
+  return mergeStyle({
     color: side.eyebrowColor || side.accent || 'inherit',
     fontSize: side.eyebrowSize || 'clamp(0.72rem, 1vw, 0.95rem)',
     fontWeight: side.eyebrowWeight || 800,
@@ -684,11 +733,11 @@ function iframeSideEyebrowStyle (side) {
     textTransform: 'uppercase',
     opacity: side.eyebrowOpacity == null ? 0.88 : side.eyebrowOpacity,
     marginBottom: '1rem'
-  }
+  }, side.eyebrowStyle)
 }
 
 function iframeSideTitleStyle (side) {
-  return {
+  return mergeStyle({
     color: side.titleColor || 'inherit',
     fontSize: side.titleSize || 'clamp(2.4rem, 5vw, 4.8rem)',
     fontWeight: side.titleWeight || 900,
@@ -696,11 +745,11 @@ function iframeSideTitleStyle (side) {
     letterSpacing: side.titleLetterSpacing || '-0.055em',
     margin: '0 0 1rem',
     whiteSpace: 'pre-line'
-  }
+  }, side.titleStyle)
 }
 
 function iframeSideSubtitleStyle (side) {
-  return {
+  return mergeStyle({
     color: side.subtitleColor || 'inherit',
     fontSize: side.subtitleSize || 'clamp(1.1rem, 1.7vw, 1.55rem)',
     fontWeight: side.subtitleWeight || 600,
@@ -708,29 +757,29 @@ function iframeSideSubtitleStyle (side) {
     opacity: side.subtitleOpacity == null ? 0.82 : side.subtitleOpacity,
     margin: '0 0 1.3rem',
     whiteSpace: 'pre-line'
-  }
+  }, side.subtitleStyle)
 }
 
 function iframeSideBodyStyle (side) {
-  return {
+  return mergeStyle({
     color: side.bodyColor || 'inherit',
     fontSize: side.bodySize || 'clamp(1rem, 1.35vw, 1.28rem)',
     lineHeight: 1.5,
     opacity: side.bodyOpacity == null ? 0.76 : side.bodyOpacity,
     margin: '0 0 1rem',
     whiteSpace: 'pre-line'
-  }
+  }, side.bodyStyle)
 }
 
 function iframeSideBulletsStyle (side) {
-  return {
+  return mergeStyle({
     color: side.bulletColor || 'inherit',
     fontSize: side.bulletSize || 'clamp(1rem, 1.25vw, 1.18rem)',
     lineHeight: 1.42,
     opacity: side.bulletOpacity == null ? 0.8 : side.bulletOpacity,
     margin: '1.2rem 0 0 1.15em',
     padding: 0
-  }
+  }, side.bulletsStyle)
 }
 
 function iframeNavigationControls (opts) {
@@ -852,7 +901,7 @@ function defaultFont () {
 }
 
 function rootStyle (opts) {
-  return {
+  return mergeStyle({
     position: 'relative',
     width: '100vw',
     height: '100vh',
@@ -860,7 +909,7 @@ function rootStyle (opts) {
     background: opts.backgroundColor || '#000',
     fontFamily: opts.font || defaultFont(),
     color: opts.color || '#fff'
-  }
+  }, opts.rootStyle)
 }
 
 function backgroundLayer (url, opacity) {
@@ -881,36 +930,36 @@ function scrim (brightness) {
 }
 
 function eyebrowStyle (opts) {
-  return {
+  return mergeStyle({
     fontSize: opts.eyebrowSize || '1.1vw',
     letterSpacing: '0.22em',
     textTransform: 'uppercase',
     opacity: 0.85,
     marginBottom: '1.1em',
     textShadow: '0 2px 8px rgba(0,0,0,0.6)'
-  }
+  }, opts.eyebrowStyle)
 }
 
 function titleStyle (opts) {
-  return {
+  return mergeStyle({
     fontSize: opts.titleSize || '4.8vw',
     lineHeight: 1.02,
     margin: 0,
     maxWidth: opts.maxWidth || '18em',
     whiteSpace: 'pre-line',
     textShadow: '0 3px 14px rgba(0,0,0,0.55)'
-  }
+  }, opts.titleStyle)
 }
 
 function subtitleStyle (opts) {
-  return {
+  return mergeStyle({
     fontSize: opts.subtitleSize || '1.8vw',
     opacity: opts.subtitleOpacity == null ? 0.88 : opts.subtitleOpacity,
     marginTop: '0.85em',
     maxWidth: opts.subtitleMaxWidth || '22em',
     whiteSpace: 'pre-line',
     textShadow: '0 2px 10px rgba(0,0,0,0.55)'
-  }
+  }, opts.subtitleStyle)
 }
 
 function citationAttribution (opts) {
@@ -1034,7 +1083,7 @@ function columnIframe (opts) {
     sandbox: opts.sandbox,
     style: iframeStyle(Object.assign({}, opts, {
       background: iframeBackground,
-      iframeStyle: Object.assign({ borderRadius: opts.iframeRadius || 0 }, opts.iframeStyle || {})
+      iframeStyle: mergeStyle({ borderRadius: opts.iframeRadius || 0 }, opts.iframeStyle)
     }))
   })
 
@@ -1046,7 +1095,7 @@ function columnIframe (opts) {
 
   return element('div', {
     className: 'ps-columns-iframe-shell',
-    style: Object.assign({
+    style: mergeStyle({
       position: 'relative',
       width: '100%',
       height: '100%',
@@ -1055,7 +1104,7 @@ function columnIframe (opts) {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center'
-    }, opts.iframeShellStyle || {})
+    }, opts.iframeShellStyle)
   }, [
     chrome,
     iframeNavigationControls(opts)
@@ -1087,7 +1136,7 @@ function hasColumnCopy (column) {
 }
 
 function columnsColumnStyle (opts) {
-  return Object.assign({
+  return mergeStyle({
     boxSizing: 'border-box',
     minWidth: 0,
     minHeight: 0,
@@ -1098,59 +1147,59 @@ function columnsColumnStyle (opts) {
     justifyContent: opts.justifyContent || opts.columnJustify || 'center',
     alignItems: opts.alignItemsColumn || opts.columnAlign || 'stretch',
     gap: opts.columnGap || 'clamp(0.8rem, 1.6vw, 1.6rem)'
-  }, opts.columnStyle || {})
+  }, opts.columnStyle)
 }
 
 function columnsHeadingStyle (opts) {
-  return Object.assign({
+  return mergeStyle({
     fontSize: opts.titleSize || opts.size || 'clamp(2.2rem, 4.6vw, 5.2rem)',
     lineHeight: opts.lineHeight || 1.05,
     margin: 0,
     whiteSpace: 'pre-line'
-  }, opts.titleStyle || {})
+  }, opts.titleStyle)
 }
 
 function columnsQuoteStyle (opts) {
-  return Object.assign({
+  return mergeStyle({
     fontSize: opts.quoteSize || opts.size || 'clamp(2.2rem, 4.6vw, 5.2rem)',
     lineHeight: opts.lineHeight || 1.08,
     fontWeight: opts.quoteWeight || 800,
     letterSpacing: opts.quoteLetterSpacing || '-0.035em',
     margin: 0,
     whiteSpace: 'pre-line'
-  }, opts.quoteStyle || {})
+  }, opts.quoteStyle)
 }
 
 function columnsTextStyle (opts) {
-  return Object.assign({
+  return mergeStyle({
     fontSize: opts.textSize || opts.size || 'clamp(1.3rem, 2.2vw, 2.2rem)',
     lineHeight: opts.textLineHeight || 1.28,
     margin: opts.textMargin || '0.45em 0 0',
     whiteSpace: 'pre-line'
-  }, opts.textStyle || {})
+  }, opts.textStyle)
 }
 
 function columnsPullStyle (opts) {
-  return Object.assign({
+  return mergeStyle({
     fontSize: opts.pullSize || opts.textSize || 'clamp(1.3rem, 2.2vw, 2.2rem)',
     lineHeight: opts.pullLineHeight || 1.25,
     margin: opts.pullMargin || '0.8em 0 0',
     fontWeight: opts.pullWeight || 800,
     whiteSpace: 'pre-line'
-  }, opts.pullStyle || {})
+  }, opts.pullStyle)
 }
 
 function columnsBulletsStyle (opts) {
-  return Object.assign({
+  return mergeStyle({
     fontSize: opts.bulletSize || opts.textSize || 'clamp(1.25rem, 2vw, 2rem)',
     lineHeight: opts.bulletLineHeight || 1.35,
     margin: opts.bulletMargin || '0.7em 0 0 1.2em',
     padding: 0
-  }, opts.bulletsStyle || {})
+  }, opts.bulletsStyle)
 }
 
 function columnsCopyStyle (opts, hasImage) {
-  return Object.assign({
+  return mergeStyle({
     boxSizing: 'border-box',
     minWidth: 0,
     minHeight: 0,
@@ -1158,11 +1207,11 @@ function columnsCopyStyle (opts, hasImage) {
     justifySelf: opts.copyJustify || (hasImage ? 'end' : 'center'),
     alignSelf: opts.copyAlignSelf || 'center',
     textAlign: opts.copyAlign || opts.align || (hasImage ? 'left' : 'center')
-  }, opts.copyStyle || {})
+  }, opts.copyStyle)
 }
 
 function columnsMediaStyle (opts) {
-  return Object.assign({
+  return mergeStyle({
     boxSizing: 'border-box',
     minWidth: 0,
     minHeight: 0,
@@ -1173,11 +1222,11 @@ function columnsMediaStyle (opts) {
     justifyContent: opts.imageJustify || 'center',
     justifySelf: opts.imageJustifySelf || 'stretch',
     alignSelf: opts.imageAlignSelf || 'center'
-  }, opts.mediaStyle || {})
+  }, opts.mediaStyle)
 }
 
 function imageContainStyle (opts) {
-  return Object.assign({
+  return mergeStyle({
     display: 'block',
     width: 'auto',
     height: 'auto',
@@ -1186,7 +1235,7 @@ function imageContainStyle (opts) {
     objectFit: opts.fit || 'contain',
     borderRadius: opts.radius || '0.6vw',
     boxShadow: opts.shadow === false ? '' : '0 1vw 3vw rgba(0,0,0,0.6)'
-  }, opts.imageStyle || {})
+  }, opts.imageStyle)
 }
 
 function cardStyle () {
