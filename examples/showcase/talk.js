@@ -26,8 +26,8 @@ const theme = {
     phoneWidth: 'min(54vh, 30vw, 430px)'
   },
   copyWidth: 'min(62rem, 72vw)',
-  titleSize: 'clamp(3.1rem, 6vw, 6.4rem)',
-  subtitleSize: 'clamp(1.15rem, 1.55vw, 1.65rem)',
+  titleFontSize: 'clamp(3.1rem, 6vw, 6.4rem)',
+  subtitleFontSize: 'clamp(1.15rem, 1.55vw, 1.65rem)',
   bodySize: 'clamp(1rem, 1.18vw, 1.25rem)',
   eyebrowSize: 'clamp(0.78rem, 0.9vw, 0.98rem)',
   cardRadius: 'clamp(1rem, 1.6vw, 1.35rem)',
@@ -64,7 +64,9 @@ function themedSlides (slides) {
 function themeSlide (slide, index) {
   if (!slide || typeof slide !== 'object' || Array.isArray(slide)) return slide
 
-  if ((slide.type || 'overlay') === 'overlay') {
+  const slideType = slide.type || inferShowcaseSlideType(slide)
+
+  if (slideType === 'text' || slideType === 'overlay') {
     return Object.assign({
       align: 'left',
       font: theme.font,
@@ -72,26 +74,25 @@ function themeSlide (slide, index) {
       backgroundColor: palette.void,
       padding: theme.padding,
       maxWidth: theme.copyWidth,
-      titleSize: theme.titleSize,
-      subtitleSize: theme.subtitleSize,
+      titleStyle: { fontSize: theme.titleFontSize },
+      subtitleStyle: { fontSize: theme.subtitleFontSize },
       subtitleMaxWidth: '36em',
       eyebrowSize: theme.eyebrowSize,
       brightness: index === 0 ? 0.58 : 0.5
     }, slide)
   }
 
-  if (slide.type === 'quote') {
+  if (slideType === 'columns') {
     return Object.assign({
       font: theme.font,
       color: palette.white,
       backgroundColor: palette.void,
-      eyebrow: 'Remote image',
       size: 'clamp(2.4rem, 4.15vw, 4.7rem)',
       brightness: 0.58
     }, slide)
   }
 
-  if (slide.type === 'iframe') {
+  if (slideType === 'iframe') {
     return Object.assign({
       font: theme.font,
       color: palette.white,
@@ -108,36 +109,17 @@ function themeSlide (slide, index) {
         justifySelf: 'center'
       },
       deviceShadow: '0 2rem 5rem rgba(0, 0, 0, 0.46), inset 0 0 0.35vh rgba(255, 255, 255, 0.2)'
-    }, slide, {
-      side: themedSide(slide.side)
-    })
+    }, slide)
   }
 
   return slide
 }
 
-function themedSide (side) {
-  const copy = side || {}
-  return Object.assign({
-    color: palette.white,
-    font: theme.font,
-    accent: palette.yellow,
-    maxWidth: theme.columns.copyMaxWidth,
-    eyebrowSize: theme.eyebrowSize,
-    titleSize: 'clamp(2.8rem, 4.8vw, 5.2rem)',
-    subtitleSize: theme.subtitleSize,
-    subtitleColor: palette.muted,
-    subtitleOpacity: 1,
-    bodySize: theme.bodySize,
-    bulletSize: theme.bodySize,
-    bulletColor: palette.muted,
-    bulletOpacity: 1,
-    bulletGap: '0.75em'
-  }, copy, {
-    style: Object.assign({
-      padding: 'clamp(1.2rem, 2vw, 2rem) 0'
-    }, copy.style || {})
-  })
+function inferShowcaseSlideType (slide) {
+  if (slide.renderer || slide.name || slide.kind) return 'text'
+  if (Array.isArray(slide.columns)) return 'columns'
+  if (slide.iframe || slide.srcdoc) return 'iframe'
+  return 'text'
 }
 
 function glitchTerminal (slide) {
@@ -529,7 +511,7 @@ function end (slide) {
         padding-left: 1rem;
         border-left: 0.22rem solid ${palette.yellow};
         color: ${palette.white};
-        font-size: ${theme.subtitleSize};
+        font-size: ${theme.subtitleFontSize};
         line-height: 1.35;
       }
     `)
@@ -581,7 +563,7 @@ function sharedCss () {
       margin: 0;
       max-width: ${theme.copyWidth};
       color: ${palette.white};
-      font-size: ${theme.titleSize};
+      font-size: ${theme.titleFontSize};
       font-weight: 900;
       line-height: 0.98;
       letter-spacing: -0.06em;
@@ -591,7 +573,7 @@ function sharedCss () {
       max-width: 38rem;
       margin: 1.15rem 0 0;
       color: ${palette.muted};
-      font-size: ${theme.subtitleSize};
+      font-size: ${theme.subtitleFontSize};
       font-weight: 650;
       line-height: 1.38;
       text-wrap: pretty;

@@ -1,11 +1,11 @@
 {
   "name": "power-slides",
-  "version": "2.3.0",
+  "version": "3.0.0",
   "description": "ESM-first reusable talk kit and tiny slideshow runtime for content-only browser talks.",
   "main": "index.js",
   "scripts": {
-    "example": "node bin/power-slides.js dev example",
-    "build": "node bin/power-slides.js build example",
+    "example": "node bin/power-slides.js dev examples/starter",
+    "build": "node bin/power-slides.js build examples/starter",
     "test": "standard && node --test && node test/cli-smoke.js",
     "showcase": "node bin/power-slides.js dev examples/showcase",
     "build:showcase": "node bin/power-slides.js build examples/showcase"
@@ -35,7 +35,7 @@
     "standard": "^17.1.2"
   },
   "directories": {
-    "example": "example"
+    "example": "examples/starter"
   },
   "repository": {
     "type": "git",
@@ -52,7 +52,6 @@
       "es2021"
     ],
     "ignore": [
-      "example/public/power-slides.*.js",
       "examples/**/public/power-slides.*.js"
     ]
   },
@@ -73,16 +72,17 @@
     "index.mjs",
     "remote.js",
     "bin",
-    "example/slides.yaml",
-    "example/talk.js",
-    "example/assets",
-    "example/public/sample.svg",
+    "examples/starter/slides.yaml",
+    "examples/starter/talk.js",
+    "examples/starter/assets",
+    "examples/starter/public/sample.svg",
+    "examples/starter/public/fractal-loop.mp4",
     "examples/showcase/slides.yaml",
     "examples/showcase/talk.js",
     "examples/showcase/assets",
     "examples/showcase/public/fist-bump.gif",
     "examples/showcase/public/multipass.gif",
-    "examples/showcase/public/spin.mp4",
+    "examples/showcase/public/fractal-loop.mp4",
     "README.md"
   ]
 }

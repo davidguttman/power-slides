@@ -4,6 +4,7 @@ const xtend = require('xtend')
 const createRemote = require('./remote')
 
 let started
+const slideNotesKey = Symbol.for('power-slides.notes')
 
 const PowerSlides = (module.exports = {
   title: titleSlide,
@@ -16,18 +17,12 @@ const PowerSlides = (module.exports = {
     return this.remoteState
   },
 
-  start: function (target, slideNotes, isPresenter, opts) {
+  start: function (target, slideNotes, opts) {
     if (started) return
     started = true
 
-    if (isPresenter && typeof isPresenter === 'object') {
-      opts = isPresenter
-      isPresenter = opts.isPresenter
-    }
+    opts = (opts && typeof opts === 'object') ? opts : {}
 
-    opts = opts || {}
-
-    this.isPresenter = isPresenter
     this.target = target
     this.opts = opts
 
@@ -35,10 +30,10 @@ const PowerSlides = (module.exports = {
     const notes = (this.notes = [])
 
     slideNotes.forEach(function (slideNote, i) {
-      if (!Array.isArray(slideNote)) return (slides[i] = slideNote)
+      slides[i] = slideNote
 
-      slides[i] = slideNote[0]
-      notes[i] = slideNote.slice(1)
+      const slideNotes = getSlideNotes(slideNote)
+      if (slideNotes) notes[i] = slideNotes
     })
 
     this.container = this.createContainer()
@@ -46,9 +41,6 @@ const PowerSlides = (module.exports = {
 
     this.elSlide = this.createSlide()
     this.container.appendChild(this.elSlide)
-
-    this.elNote = this.createNotes()
-    this.container.appendChild(this.elNote)
 
     window.addEventListener('hashchange', this.onHashChange.bind(this))
     window.addEventListener('keyup', this.onKeyup.bind(this))
@@ -86,16 +78,6 @@ const PowerSlides = (module.exports = {
 
   changeSlide: function (n) {
     this.emit('changeSlide', n)
-
-    const note = this.notes[n - 1]
-    const elNote = this.elNote
-    elNote.innerHTML = ''
-
-    if (note && note[0]) {
-      note.forEach(function (noteItem) {
-        elNote.appendChild(h('p', noteItem))
-      })
-    }
 
     const slide = this.slides[n - 1]
     if (slide) {
@@ -155,8 +137,6 @@ const PowerSlides = (module.exports = {
       'align-items': 'center'
     }
 
-    if (this.isPresenter) style.height = '50%'
-
     return h('.ps-slide', { style })
   },
 
@@ -166,21 +146,15 @@ const PowerSlides = (module.exports = {
     }
 
     if (this.remoteState && this.remoteState.openOptions) return this.remoteState.openOptions()
-  },
-
-  createNotes: function () {
-    const style = {
-      width: '100%',
-      height: '50%'
-    }
-
-    if (!this.isPresenter) style.display = 'none'
-
-    return h('.ps-notes', { style }, 'notes')
   }
 })
 
 Emitter.mixin(PowerSlides)
+
+function getSlideNotes (slide) {
+  if (!slide || (typeof slide !== 'function' && typeof slide !== 'object')) return undefined
+  return slide[slideNotesKey]
+}
 
 function layeredTitleSlide (fgContent, bgSlide, opts) {
   opts = opts || { brightness: 0.6 }

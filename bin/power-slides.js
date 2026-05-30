@@ -193,7 +193,7 @@ function prepareEntry (talkDir, opts) {
   writeFileChanged(slidesDataPath, serializeSpec(spec))
 
   const imports = [
-    "import PowerSlides from 'power-slides'",
+    "import PowerSlides, { applyStyle, mergeStyle } from 'power-slides'",
     "import spec from './slides.json'"
   ]
   const talkImport = fs.existsSync(talkPath)
@@ -203,11 +203,16 @@ function prepareEntry (talkDir, opts) {
 
 const talk = ${talkImport ? 'talkModule' : '{}'}
 
-window.document.body.style.cssText = (talk && talk.bodyStyle) || \`
-  margin: 0;
-  background: #000;
-  overflow: hidden;
-\`
+const deckStyle = spec && !Array.isArray(spec) && spec.style
+
+// Body style precedence: keep the hard runtime baseline, then apply
+// slides.yaml top-level style as the normal deck theming path, then let
+// talk.js bodyStyle win as the JS escape hatch for existing decks.
+applyStyle(window.document.body.style, mergeStyle({
+  margin: 0,
+  background: '#000',
+  overflow: 'hidden'
+}, deckStyle, talk && talk.bodyStyle))
 
 if (talk && typeof talk.beforeStart === 'function') talk.beforeStart(PowerSlides, spec)
 
@@ -310,10 +315,15 @@ function resolveSlidesPath (talkDir, explicitPath) {
 }
 
 function titleFromSpec (spec) {
+  if (spec && !Array.isArray(spec) && typeof spec === 'object' && spec.title) return spec.title
   const slides = Array.isArray(spec) ? spec : (spec && spec.slides) || []
-  const first = slides[0]
-  if (first && typeof first === 'object') return first.title || first.text || first.quote || 'power-slides talk'
-  if (typeof first === 'string') return first
+  for (const slide of slides) {
+    if (typeof slide === 'string' && slide) return slide
+    if (slide && typeof slide === 'object') {
+      if (slide.title) return slide.title
+      if (slide.text) return slide.text
+    }
+  }
   return 'power-slides talk'
 }
 
@@ -327,7 +337,7 @@ function writeNew (file, content) {
 }
 
 function copyExampleStarter (target) {
-  const exampleRoot = path.join(packageRoot, 'example')
+  const exampleRoot = path.join(packageRoot, 'examples', 'starter')
   copyTreeNew(exampleRoot, target, exampleRoot)
 }
 
@@ -405,71 +415,71 @@ function escapeHtml (value) {
 function sampleReadme () {
   return `# Talk
 
-This is a minimal power-slides talk starter. The content stays in \`slides.yaml\`, optional custom behavior stays in the commented \`talk.js\` stub, and the local \`package.json\` lets npm-compatible runners install and run the talk.
+This is a minimal power-slides talk starter. Write deck content in \`slides.yaml\`, custom slide code in \`talk.js\`, and put images, video, and other static files in \`public/\`.
 
 ## Files
 
-- \`package.json\` installs the published \`power-slides\` package as a dev dependency and exposes runner-friendly npm scripts.
-- \`slides.yaml\` contains the five-slide starter: dimmed background title, quote plus image over the same background, media image, iPhone iframe, and closing summary.
-- \`talk.js\` is a commented optional ESM stub for theming, custom renderers, and escape hatches.
-- \`public/\` is served at the web root for media such as the bundled \`sample.svg\` image.
-- \`assets/\` is for source assets you do not serve directly.
+- \`slides.yaml\` — your deck content
+- \`talk.js\` — optional browser code for custom slides
+- \`public/\` — media and static files served by the deck
 
-The starter is intentionally YAML-only. It demonstrates the reusable content primitives used by real talks: \`background\` plus \`brightness\` for readable overlay/summary slides, \`quote\` with both \`image\` and \`background\`, a full media image, and a phone-framed iframe with side copy.
-
-Install once, then run with npm scripts:
+## Run and build
 
 \`\`\`bash
-npm install
-npm run dev
-npm run build
+npx power-slides dev .
+npx power-slides build .
 \`\`\`
 
-The scripts call the \`powerslides\` bin alias:
+Deploy the \`public/\` folder to any static host.
 
-\`\`\`json
-{
-  "scripts": {
-    "dev": "powerslides dev .",
-    "build": "powerslides build .",
-    "start": "npm run dev"
-  }
-}
+## Edit slides.yaml
+
+Write one slide per YAML item. \`slides.yaml\` can be a bare array of slides. The starter also shows text, image, video, columns, iframe, html, and custom slides.
+
+Each slide can have one of the following:
+
+- \`title\` — words on screen
+- \`image\` — a full-slide image
+- \`video\` — a full-slide video
+- \`iframe\` — a web page embed
+- \`html\` — trusted inline markup
+- \`custom\` — a named renderer from \`talk.js\`
+
+To combine types, use \`columns\`, such as iframe-plus-copy or image-plus-title.
+
+For the full slide schema and \`talk.js\` API, see the package README and \`docs/slide-api.md\`.
+
+## Remote control
+
+Run or build the deck, press \`o\` to open Options, click **Enable remote control**, then scan the QR code or open the shown URL on your phone.
+
+The phone remote navigates the deck.
+
+## Theming and styling
+
+Use a deck object when a talk needs a browser title or deck-wide CSS defaults. \`title\` sets the HTML document title, \`style\` applies CSS to the deck, and \`slides\` holds the same slide list.
+
+\`\`\`yaml
+title: My Talk
+style:
+  fontFamily: Inter, system-ui, sans-serif
+  background: '#061018'
+  color: white
+  "--accent": '#5ffbf1'
+slides:
+  - title: Main point
+    subtitle: Optional subtitle
 \`\`\`
 
-## Options and remote control
+## Optional talk.js
 
-The generated dev/build shell enables the power-slides Options overlay by default. Press \`o\` to reopen Options after the button fades. Click **Enable remote control** to start PeerJS, then scan the QR code or open the shown URL on your phone/controller.
-
-To disable the shell remote UI, export \`remote: false\` from \`talk.js\` or set top-level \`remote: false\` in \`slides.yaml\`/JSON. To override PeerJS/runtime options, use \`remote: { ... }\`.
-
-## Authoring schema quick reference
-
-The talk file is a YAML object with a \`slides\` array. If a slide omits \`type\`, it renders as \`overlay\`. Every slide may include \`notes\` or \`note\` for presenter mode. \`renderer\`, \`name\`, or \`kind\` selects a \`talk.js\` renderer before built-ins.
-
-Built-in slide types:
-
-- \`overlay\` — normal copy slide. Fields: \`eyebrow\`, \`title\`/\`text\`, \`subtitle\`, \`background\`/\`image\`/\`src\`, \`brightness\`, \`align\`, \`font\`, \`color\`, \`backgroundColor\`, \`padding\`, \`maxWidth\`, \`titleSize\`, \`subtitleSize\`, \`subtitleOpacity\`, \`subtitleMaxWidth\`, \`eyebrowSize\`, \`backgroundSize\`, \`backgroundPosition\`.
-- \`title\` — simple centered title. Fields: \`title\`/\`text\`/\`quote\`, \`style\`.
-- \`image\` — full-slide image. Fields: \`src\`/\`img\`/\`image\`/\`background\`, \`fit\`/\`size\` (\`cover\` or \`contain\`).
-- \`video\` — full-slide video. Fields: \`src\`/\`video\`, \`controls\`, \`muted\`, \`loop\`, \`autoplay\`, \`preload\`, \`poster\`, \`size\`.
-- \`quote\` — quote/text plus optional image column. Fields: \`quote\`/\`text\`, \`eyebrow\`, \`image\`/\`img\`/\`src\`, \`background\`, \`brightness\`, \`font\`, \`color\`, \`size\`, layout knobs \`columns\`/\`gridTemplateColumns\`, \`rows\`/\`gridTemplateRows\`, \`gap\`, \`padding\`, \`alignItems\`, \`justifyItems\`, copy knobs \`align\`/\`copyAlign\`, \`copyJustify\`, \`copyAlignSelf\`, \`copyMaxWidth\`, \`copyStyle\`, and image knobs \`fit\`, \`maxHeight\`/\`imageMaxHeight\`, \`maxWidth\`/\`imageMaxWidth\`, \`radius\`, \`shadow\`, \`imageAlign\`, \`imageJustify\`, \`imageAlignSelf\`, \`imageJustifySelf\`, \`mediaStyle\`, \`imageStyle\`.
-- \`chart\` — quote-style chart/screenshot slide. Same fields as \`quote\`; image aliases become the chart image and quote layout overrides still apply.
-- \`summary\` — recap with right-side card. Fields: \`eyebrow\`, \`title\`/\`quote\`, \`background\`, \`brightness\`, \`font\`, \`color\`, \`accent\`, \`card.title\`, \`card.bullets\`, \`card.pull\`.
-- \`iframe\` — external URL or \`srcdoc\`. Fields: \`src\`/\`url\`, \`srcdoc\`, \`title\`, \`allow\`, \`allowFullscreen\`, \`loading\`, \`referrerPolicy\`, \`sandbox\`, \`navigationControls\`, \`forwardKeys\`, \`background\`, \`iframeStyle\`, \`stagePadding\`/\`rootPadding\`. Phone frame: \`device: iphone\` or \`frame: phone\`, plus \`deviceWidth\`/\`frameWidth\`, \`deviceAspectRatio\`, \`devicePadding\`, \`deviceBorder\`, \`deviceRadius\`, \`deviceBackground\`, \`deviceShadow\`, \`deviceStyle\`, \`screenRadius\`, \`screenBackground\`. Side-copy layout: \`layout\`/\`phoneLayout\` (\`phone-right\` or \`phone-left\`), \`layoutWidth\`, \`layoutMaxWidth\`, \`layoutGap\`, \`layoutPadding\`, \`layoutStyle\`, and \`side\` with \`eyebrow\`, \`title\`, \`subtitle\`, \`body\`/\`text\`, \`bullets\`, \`position\`/\`side\`, \`color\`, \`font\`, \`accent\`, \`maxWidth\`, \`style\`, plus \`eyebrowColor\`, \`eyebrowSize\`, \`titleColor\`, \`titleSize\`, \`subtitleColor\`, \`subtitleSize\`, \`bodyColor\`, \`bodySize\`, \`bulletColor\`, \`bulletSize\`, \`bulletGap\` and matching weight/opacity/letter-spacing knobs. Arrow styling: \`navControlInset\`, \`navControlSize\`, \`navControlOpacity\`.
-- \`html\` — trusted raw markup. Fields: \`html\`/\`markup\`.
-- \`custom\` — render with \`talk.js\`. Fields: \`name\`/\`kind\`/\`renderer\`; all other fields pass through.
-
-## Custom renderers in talk.js
-
-\`talk.js\` exports an object. Use \`renderers\` for named custom slides, \`slides(slides, PS)\` to theme/transform all parsed slides, \`bodyStyle\` for page CSS, and \`beforeStart(PS, spec)\` for setup.
+Use \`talk.js\` for slides that need browser code.
 
 \`\`\`js
 export default {
-  bodyStyle: 'margin:0;background:#000;color:white;overflow:hidden',
   renderers: {
     demo (slide, PS) {
-      return PS.overlay({
+      return PS.text({
         title: slide.title || 'Demo',
         subtitle: 'Rendered by talk.js'
       })
@@ -478,6 +488,26 @@ export default {
 }
 \`\`\`
 
-See the package README for the longer reference. For custom renderers and animated slides, look at \`examples/showcase/\` in the power-slides package.
+Then reference the renderer from YAML:
+
+\`\`\`yaml
+- custom: demo
+  title: Browser-native slide
+\`\`\`
+
+For more custom-renderer examples, see \`examples/showcase/\` in the power-slides package.
+
+## Advanced: npm runners
+
+The generated \`package.json\` is there for hosts, CI, or runners that expect npm scripts:
+
+\`\`\`bash
+npm install
+npm run dev
+npm run build
+\`\`\`
+
+Use those scripts for hosts, CI, or deploy flows that run npm commands.
+
 `
 }

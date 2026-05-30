@@ -3,6 +3,7 @@ import createRemote from './remote.js'
 let started = false
 
 const listeners = Object.create(null)
+const slideNotesKey = Symbol.for('power-slides.notes')
 
 const PowerSlides = {
   title,
@@ -14,8 +15,11 @@ const PowerSlides = {
     this.remoteState = createRemote(this, opts)
     return this.remoteState
   },
+  text,
   overlay,
+  columns,
   quote,
+  citation,
   chart,
   summary,
   iframe,
@@ -23,23 +27,18 @@ const PowerSlides = {
   html,
   createTalk,
   renderSlideObject,
+  inferSlideType,
   startTalk,
   collectAssets,
   preloadAssets,
   preloadSlideAssets,
 
-  start: function (target, slideNotes, isPresenter, opts) {
+  start: function (target, slideNotes, opts) {
     if (started) return this
     started = true
 
-    if (isPresenter && typeof isPresenter === 'object') {
-      opts = isPresenter
-      isPresenter = opts.isPresenter
-    }
+    opts = (opts && typeof opts === 'object') ? opts : {}
 
-    opts = opts || {}
-
-    this.isPresenter = isPresenter
     this.target = target
     this.opts = opts
 
@@ -47,10 +46,10 @@ const PowerSlides = {
     const notes = (this.notes = [])
 
     slideNotes.forEach(function (slideNote, i) {
-      if (!Array.isArray(slideNote)) return (slides[i] = slideNote)
+      slides[i] = slideNote
 
-      slides[i] = slideNote[0]
-      notes[i] = slideNote.slice(1)
+      const slideNotes = getSlideNotes(slideNote)
+      if (slideNotes) notes[i] = slideNotes
     })
 
     this.container = this.createContainer()
@@ -58,9 +57,6 @@ const PowerSlides = {
 
     this.elSlide = this.createSlide()
     this.container.appendChild(this.elSlide)
-
-    this.elNote = this.createNotes()
-    this.container.appendChild(this.elNote)
 
     window.addEventListener('hashchange', this.onHashChange.bind(this))
     window.addEventListener('keyup', this.onKeyup.bind(this))
@@ -119,16 +115,6 @@ const PowerSlides = {
   changeSlide: function (n) {
     this.emit('changeSlide', n)
 
-    const note = this.notes[n - 1]
-    const elNote = this.elNote
-    elNote.innerHTML = ''
-
-    if (note && note[0]) {
-      note.forEach(function (noteItem) {
-        elNote.appendChild(element('p', {}, noteItem))
-      })
-    }
-
     const slide = this.slides[n - 1]
     if (slide) renderSlide(slide, this.elSlide)
   },
@@ -183,8 +169,6 @@ const PowerSlides = {
       alignItems: 'center'
     }
 
-    if (this.isPresenter) style.height = '50%'
-
     return element('div', { className: 'ps-slide', style })
   },
 
@@ -194,17 +178,6 @@ const PowerSlides = {
     }
 
     if (this.remoteState && this.remoteState.openOptions) return this.remoteState.openOptions()
-  },
-
-  createNotes: function () {
-    const style = {
-      width: '100%',
-      height: '50%'
-    }
-
-    if (!this.isPresenter) style.display = 'none'
-
-    return element('div', { className: 'ps-notes', style }, 'notes')
   }
 }
 
@@ -226,13 +199,62 @@ function element (tag, attrs, children) {
   Object.keys(attrs).forEach(function (key) {
     const value = attrs[key]
     if (value == null) return
-    if (key === 'style') Object.assign(el.style, value)
+    if (key === 'style') applyStyle(el.style, value)
     else if (key === 'className') el.className = value
     else if (key in el) el[key] = value
     else el.setAttribute(key, value)
   })
   append(el, children)
   return el
+}
+
+export function applyStyle (target, style) {
+  const normalized = normalizeStyle(style)
+  Object.keys(normalized).forEach(function (key) {
+    const value = normalized[key]
+    if (value == null) return
+    if (key.indexOf('-') !== -1 && typeof target.setProperty === 'function') {
+      target.setProperty(key, value)
+    } else {
+      target[key] = value
+    }
+  })
+  return target
+}
+
+export function mergeStyle () {
+  const merged = {}
+  Array.prototype.forEach.call(arguments, function (style) {
+    Object.assign(merged, normalizeStyle(style))
+  })
+  return merged
+}
+
+function normalizeStyle (style) {
+  if (!style) return {}
+  if (typeof style === 'string') return parseStyleString(style)
+  if (typeof style !== 'object' || Array.isArray(style)) return {}
+  return style
+}
+
+function parseStyleString (style) {
+  const parsed = {}
+  String(style).split(';').forEach(function (declaration) {
+    const index = declaration.indexOf(':')
+    if (index === -1) return
+    const name = declaration.slice(0, index).trim()
+    const value = declaration.slice(index + 1).trim()
+    if (!name || !value) return
+    parsed[stylePropertyName(name)] = value
+  })
+  return parsed
+}
+
+function stylePropertyName (name) {
+  if (name.indexOf('--') === 0) return name
+  return name.replace(/-+([a-zA-Z0-9])/g, function (_, char) {
+    return char.toUpperCase()
+  })
 }
 
 function append (el, children) {
@@ -262,7 +284,7 @@ function slideFromFactory (factory, assets) {
 export function title (text, style) {
   const defaultStyle = { padding: '10%', textAlign: 'center' }
   return slideFromFactory(function () {
-    return element('div', { style: Object.assign({}, defaultStyle, style || {}) }, element('h1', {}, text))
+    return element('div', { style: mergeStyle(defaultStyle, style) }, element('h1', {}, text))
   })
 }
 
@@ -284,7 +306,7 @@ export function image (url, opts) {
 }
 
 export function video (url, opts) {
-  opts = Object.assign({ loop: false, muted: false, controls: false, size: 'contain' }, opts || {})
+  opts = Object.assign({ loop: false, muted: false, controls: false, fit: 'contain' }, opts || {})
   return slideFromFactory(function () {
     return element('video', {
       src: url,
@@ -297,7 +319,7 @@ export function video (url, opts) {
       style: {
         width: '100%',
         height: '100%',
-        objectFit: opts.size,
+        objectFit: opts.fit || opts.size,
         background: '#000'
       }
     })
@@ -320,18 +342,22 @@ export function layeredTitle (foreground, background, opts) {
 }
 
 function layerStyle (extra) {
-  return Object.assign({
+  return mergeStyle({
     position: 'absolute',
     inset: 0,
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center'
-  }, extra || {})
+  }, extra)
+}
+
+export function text (opts) {
+  return overlay(opts)
 }
 
 export function overlay (opts) {
   opts = Object.assign({ brightness: 0.45, align: 'center', font: defaultFont(), color: '#fff' }, opts || {})
-  const bg = opts.background || opts.image || opts.src
+  const bg = opts.background
   return slideFromFactory(function () {
     const root = element('div', { style: rootStyle(opts) })
     if (bg) {
@@ -360,23 +386,24 @@ export function overlay (opts) {
       }
     }, [
       opts.eyebrow && element('div', { style: eyebrowStyle(opts) }, opts.eyebrow),
-      element('h1', { style: titleStyle(opts) }, opts.title || opts.text || ''),
+      element('h1', { style: titleStyle(opts) }, opts.title || opts.text || opts.quote || ''),
       opts.subtitle && element('div', { style: subtitleStyle(opts) }, opts.subtitle)
     ]))
     return root
   }, [bg])
 }
 
-export function quote (opts) {
+export function columns (opts) {
   opts = Object.assign({ font: defaultFont(), color: '#fff', brightness: 0.55 }, opts || {})
   const bg = opts.background
-  const img = opts.src || opts.img || opts.image
+  const columnItems = normalizeColumns(opts)
   return slideFromFactory(function () {
     const root = element('div', { style: rootStyle(opts) })
     if (bg) root.appendChild(backgroundLayer(bg, 0.35))
     if (bg) root.appendChild(scrim(opts.brightness))
+    const stacked = shouldStackColumns(opts, columnItems.length)
     root.appendChild(element('div', {
-      className: 'ps-quote-layout',
+      className: 'ps-columns-layout',
       style: {
         position: 'relative',
         zIndex: 1,
@@ -385,27 +412,93 @@ export function quote (opts) {
         boxSizing: 'border-box',
         minWidth: 0,
         display: 'grid',
-        gridTemplateColumns: opts.columns || opts.gridTemplateColumns || (img ? 'minmax(0, 0.82fr) minmax(0, 1.18fr)' : 'minmax(0, 1fr)'),
-        gridTemplateRows: opts.rows || opts.gridTemplateRows || 'minmax(0, 1fr)',
-        gap: opts.gap || (img ? 'clamp(1.5rem, 3vw, 3.25rem)' : 0),
+        gridTemplateColumns: stacked ? 'minmax(0, 1fr)' : (opts.gridTemplateColumns || defaultColumnsTemplate(columnItems.length)),
+        gridTemplateRows: stacked ? defaultRowsTemplate(columnItems.length) : (opts.rows || opts.gridTemplateRows || 'minmax(0, 1fr)'),
+        gap: opts.gap || 'clamp(1.5rem, 3vw, 3.25rem)',
         alignItems: opts.alignItems || 'center',
         justifyItems: opts.justifyItems || 'stretch',
         padding: opts.padding || 'clamp(2rem, 5vh, 4.5rem) clamp(2rem, 5vw, 5rem)'
       }
+    }, columnItems.map(function (column, index) {
+      return renderColumn(column, opts, index)
+    })))
+    return root
+  }, [bg].concat(collectAssets(columnItems)))
+}
+
+export function quote (opts) {
+  return citation(opts)
+}
+
+export function citation (opts) {
+  opts = Object.assign({ font: defaultFont(), color: '#fff', brightness: 0.56, align: 'center' }, opts || {})
+  const bg = opts.background
+  const attribution = citationAttribution(opts)
+  return slideFromFactory(function () {
+    const root = element('div', { className: 'ps-citation-slide', style: rootStyle(opts) })
+    if (bg) root.appendChild(backgroundLayer(bg, 0.35))
+    if (bg) root.appendChild(scrim(opts.brightness))
+    root.appendChild(element('figure', {
+      className: 'ps-citation-content',
+      style: {
+        position: 'relative',
+        zIndex: 1,
+        boxSizing: 'border-box',
+        width: '100%',
+        height: '100%',
+        margin: 0,
+        padding: opts.padding || 'clamp(2.5rem, 8vh, 7rem) clamp(2rem, 9vw, 8rem)',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: opts.align === 'left' ? 'flex-start' : 'center',
+        textAlign: opts.align,
+        fontFamily: opts.font,
+        color: opts.color
+      }
     }, [
-      element('div', { className: 'ps-quote-copy', style: quoteCopyStyle(opts, Boolean(img)) }, [
-        opts.eyebrow && element('div', { style: eyebrowStyle(opts) }, opts.eyebrow),
-        element('h1', { style: { fontSize: opts.size || '3.6vw', lineHeight: 1.08, margin: 0, whiteSpace: 'pre-line' } }, opts.quote || opts.text || '')
-      ]),
-      img && element('div', { className: 'ps-quote-media', style: quoteMediaStyle(opts) }, element('img', { src: img, style: imageContainStyle(opts) }))
+      opts.eyebrow && element('div', { style: eyebrowStyle(opts) }, opts.eyebrow),
+      element('blockquote', {
+        className: 'ps-citation-quote',
+        style: mergeStyle({
+          margin: 0,
+          maxWidth: opts.maxWidth || 'min(18em, 100%)',
+          fontSize: opts.quoteSize || opts.size || 'clamp(2.6rem, 5.8vw, 6.6rem)',
+          lineHeight: opts.lineHeight || 1.05,
+          fontWeight: opts.quoteWeight || 800,
+          letterSpacing: opts.quoteLetterSpacing || '-0.045em',
+          whiteSpace: 'pre-line',
+          textShadow: '0 3px 14px rgba(0,0,0,0.55)'
+        }, opts.quoteStyle)
+      }, opts.quote || opts.text || ''),
+      attribution && element('figcaption', {
+        className: 'ps-citation-attribution',
+        style: mergeStyle({
+          marginTop: opts.attributionMarginTop || 'clamp(1.2rem, 3vh, 2.4rem)',
+          maxWidth: opts.attributionMaxWidth || opts.maxWidth || 'min(42rem, 100%)',
+          fontSize: opts.attributionSize || 'clamp(1.1rem, 1.8vw, 1.65rem)',
+          lineHeight: 1.35,
+          fontWeight: opts.attributionWeight || 700,
+          opacity: opts.attributionOpacity == null ? 0.86 : opts.attributionOpacity,
+          whiteSpace: 'pre-line',
+          textShadow: '0 2px 10px rgba(0,0,0,0.55)'
+        }, opts.attributionStyle)
+      }, attribution)
     ]))
     return root
-  }, [bg, img])
+  }, [bg])
 }
 
 export function chart (opts) {
   opts = opts || {}
-  return quote(Object.assign({ size: '3.2vw' }, opts, { img: opts.src || opts.img || opts.image }))
+  const chartImage = opts.image
+  const chartColumns = Array.isArray(opts.columns)
+    ? opts.columns
+    : [
+        { quote: opts.quote || opts.title || '', eyebrow: opts.eyebrow, text: opts.text, bullets: opts.bullets },
+        chartImage && { image: chartImage, fit: opts.fit }
+      ].filter(Boolean)
+  return columns(Object.assign({ size: '3.2vw' }, opts, { columns: chartColumns }))
 }
 
 export function summary (opts) {
@@ -430,7 +523,7 @@ export function summary (opts) {
     }, [
       element('div', {}, [
         opts.eyebrow && element('div', { style: eyebrowStyle(opts) }, opts.eyebrow),
-        element('h1', { style: { fontSize: '3.4vw', lineHeight: 1.1, margin: 0, whiteSpace: 'pre-line' } }, opts.quote || opts.title || '')
+        element('h1', { style: mergeStyle({ fontSize: '3.4vw', lineHeight: 1.1, margin: 0, whiteSpace: 'pre-line' }, opts.titleStyle) }, opts.quote || opts.title || '')
       ]),
       element('div', { style: cardStyle() }, [
         element('div', { style: { color: opts.accent || '#ffcc6a', fontSize: '1.6vw', marginBottom: '2vh' } }, opts.card.title || ''),
@@ -442,21 +535,21 @@ export function summary (opts) {
   }, [bg])
 }
 
-export function iframe (src, opts) {
+export function iframe (url, opts) {
   opts = Object.assign({
-    title: 'Embedded slide',
+    iframeTitle: 'Embedded slide',
     navigationControls: true,
     forwardKeys: true
   }, opts || {})
-  const iframeSrc = src || opts.src || opts.url
+  const iframeUrl = url || opts.iframe || opts.url
 
   return slideFromFactory(function (target) {
     const phoneFramed = usesPhoneFrame(opts)
     const phoneLayout = iframePhoneLayout(opts)
     const frame = element('iframe', {
-      src: iframeSrc,
+      src: iframeUrl,
       srcdoc: opts.srcdoc,
-      title: opts.title,
+      title: opts.iframeTitle || opts.title,
       allow: opts.allow || 'fullscreen; autoplay; clipboard-read; clipboard-write',
       allowFullscreen: opts.allowFullscreen !== false,
       loading: opts.loading,
@@ -522,12 +615,12 @@ function iframeRootStyle (opts, phoneFramed) {
 }
 
 function iframeStyle (opts) {
-  return Object.assign({
+  return mergeStyle({
     width: '100%',
     height: '100%',
     border: 0,
     background: opts.background || '#000'
-  }, opts.iframeStyle || {})
+  }, opts.iframeStyle)
 }
 
 function iframeChrome (frame, opts, phoneLayout) {
@@ -545,7 +638,7 @@ function usesPhoneFrame (opts) {
 function iphoneFrame (frame, opts) {
   return element('div', {
     className: 'ps-iframe-device ps-iframe-device-iphone',
-    style: Object.assign({
+    style: mergeStyle({
       position: 'relative',
       width: opts.deviceWidth || opts.frameWidth || 'min(42vh, 34vw, 430px)',
       aspectRatio: opts.deviceAspectRatio || '390 / 844',
@@ -556,7 +649,7 @@ function iphoneFrame (frame, opts) {
       background: opts.deviceBackground || 'linear-gradient(145deg, #3a3d45, #050506 58%, #24272d)',
       boxShadow: opts.deviceShadow || '0 2.5vh 7vh rgba(0,0,0,0.55), inset 0 0 0.35vh rgba(255,255,255,0.2)',
       overflow: 'hidden'
-    }, opts.deviceStyle || {})
+    }, opts.deviceStyle)
   }, element('div', {
     className: 'ps-iframe-device-screen',
     style: {
@@ -590,7 +683,7 @@ function phoneSideLayout (device, opts, layout) {
 
   return element('div', {
     className: 'ps-iframe-phone-layout ps-iframe-' + layout,
-    style: Object.assign({
+    style: mergeStyle({
       width: opts.layoutWidth || 'min(1160px, 92vw)',
       maxWidth: opts.layoutMaxWidth || '100%',
       height: '100%',
@@ -601,7 +694,7 @@ function phoneSideLayout (device, opts, layout) {
       alignItems: 'center',
       justifyContent: 'center',
       padding: opts.layoutPadding === undefined ? '6vh 5vw' : opts.layoutPadding
-    }, opts.layoutStyle || {})
+    }, opts.layoutStyle)
   }, phoneFirst ? [device, side] : [side, device])
 }
 
@@ -612,11 +705,11 @@ function iframeSideCopy (side, opts) {
 
   return element('div', {
     className: 'ps-iframe-side-copy',
-    style: Object.assign({
+    style: mergeStyle({
       color: side.color || opts.color || '#fff',
       fontFamily: side.font || opts.font || defaultFont(),
       maxWidth: side.maxWidth || '34rem'
-    }, side.style || {})
+    }, side.style)
   }, [
     side.eyebrow && element('div', { className: 'ps-iframe-side-eyebrow', style: iframeSideEyebrowStyle(side) }, side.eyebrow),
     side.title && element('h1', { className: 'ps-iframe-side-title', style: iframeSideTitleStyle(side) }, side.title),
@@ -632,7 +725,7 @@ function normalizeCopyList (value) {
 }
 
 function iframeSideEyebrowStyle (side) {
-  return {
+  return mergeStyle({
     color: side.eyebrowColor || side.accent || 'inherit',
     fontSize: side.eyebrowSize || 'clamp(0.72rem, 1vw, 0.95rem)',
     fontWeight: side.eyebrowWeight || 800,
@@ -640,53 +733,53 @@ function iframeSideEyebrowStyle (side) {
     textTransform: 'uppercase',
     opacity: side.eyebrowOpacity == null ? 0.88 : side.eyebrowOpacity,
     marginBottom: '1rem'
-  }
+  }, side.eyebrowStyle)
 }
 
 function iframeSideTitleStyle (side) {
-  return {
+  return mergeStyle({
     color: side.titleColor || 'inherit',
-    fontSize: side.titleSize || 'clamp(2.4rem, 5vw, 4.8rem)',
+    fontSize: 'clamp(2.4rem, 5vw, 4.8rem)',
     fontWeight: side.titleWeight || 900,
     lineHeight: 0.96,
     letterSpacing: side.titleLetterSpacing || '-0.055em',
     margin: '0 0 1rem',
     whiteSpace: 'pre-line'
-  }
+  }, side.titleStyle)
 }
 
 function iframeSideSubtitleStyle (side) {
-  return {
+  return mergeStyle({
     color: side.subtitleColor || 'inherit',
-    fontSize: side.subtitleSize || 'clamp(1.1rem, 1.7vw, 1.55rem)',
+    fontSize: 'clamp(1.1rem, 1.7vw, 1.55rem)',
     fontWeight: side.subtitleWeight || 600,
     lineHeight: 1.35,
-    opacity: side.subtitleOpacity == null ? 0.82 : side.subtitleOpacity,
+    opacity: 0.82,
     margin: '0 0 1.3rem',
     whiteSpace: 'pre-line'
-  }
+  }, side.subtitleStyle)
 }
 
 function iframeSideBodyStyle (side) {
-  return {
+  return mergeStyle({
     color: side.bodyColor || 'inherit',
     fontSize: side.bodySize || 'clamp(1rem, 1.35vw, 1.28rem)',
     lineHeight: 1.5,
     opacity: side.bodyOpacity == null ? 0.76 : side.bodyOpacity,
     margin: '0 0 1rem',
     whiteSpace: 'pre-line'
-  }
+  }, side.bodyStyle)
 }
 
 function iframeSideBulletsStyle (side) {
-  return {
+  return mergeStyle({
     color: side.bulletColor || 'inherit',
     fontSize: side.bulletSize || 'clamp(1rem, 1.25vw, 1.18rem)',
     lineHeight: 1.42,
     opacity: side.bulletOpacity == null ? 0.8 : side.bulletOpacity,
     margin: '1.2rem 0 0 1.15em',
     padding: 0
-  }
+  }, side.bulletsStyle)
 }
 
 function iframeNavigationControls (opts) {
@@ -808,7 +901,7 @@ function defaultFont () {
 }
 
 function rootStyle (opts) {
-  return {
+  return mergeStyle({
     position: 'relative',
     width: '100vw',
     height: '100vh',
@@ -816,7 +909,7 @@ function rootStyle (opts) {
     background: opts.backgroundColor || '#000',
     fontFamily: opts.font || defaultFont(),
     color: opts.color || '#fff'
-  }
+  }, opts.rootStyle)
 }
 
 function backgroundLayer (url, opacity) {
@@ -837,40 +930,276 @@ function scrim (brightness) {
 }
 
 function eyebrowStyle (opts) {
-  return {
+  return mergeStyle({
     fontSize: opts.eyebrowSize || '1.1vw',
     letterSpacing: '0.22em',
     textTransform: 'uppercase',
     opacity: 0.85,
     marginBottom: '1.1em',
     textShadow: '0 2px 8px rgba(0,0,0,0.6)'
-  }
+  }, opts.eyebrowStyle)
 }
 
 function titleStyle (opts) {
-  return {
-    fontSize: opts.titleSize || '4.8vw',
+  return mergeStyle({
+    fontSize: '4.8vw',
     lineHeight: 1.02,
     margin: 0,
     maxWidth: opts.maxWidth || '18em',
     whiteSpace: 'pre-line',
     textShadow: '0 3px 14px rgba(0,0,0,0.55)'
-  }
+  }, opts.titleStyle)
 }
 
 function subtitleStyle (opts) {
-  return {
-    fontSize: opts.subtitleSize || '1.8vw',
-    opacity: opts.subtitleOpacity == null ? 0.88 : opts.subtitleOpacity,
+  return mergeStyle({
+    fontSize: '1.8vw',
+    opacity: 0.88,
     marginTop: '0.85em',
     maxWidth: opts.subtitleMaxWidth || '22em',
     whiteSpace: 'pre-line',
     textShadow: '0 2px 10px rgba(0,0,0,0.55)'
-  }
+  }, opts.subtitleStyle)
 }
 
-function quoteCopyStyle (opts, hasImage) {
-  return Object.assign({
+function citationAttribution (opts) {
+  if (opts.attribution) return opts.attribution
+  const parts = compact([opts.author, opts.cite || opts.source])
+  return parts.join(parts.length > 1 ? ', ' : '')
+}
+
+function normalizeColumns (opts) {
+  if (Array.isArray(opts.columns)) {
+    const columns = opts.columns.map(normalizeColumn).filter(Boolean)
+    return columns.length ? columns : [{}]
+  }
+
+  const columns = []
+  const copyColumn = pickColumnCopy(opts)
+  const mediaColumn = pickColumnMedia(opts)
+  if (copyColumn) columns.push(copyColumn)
+  if (mediaColumn) columns.push(mediaColumn)
+  return columns.length ? columns : [{}]
+}
+
+function normalizeColumn (column) {
+  if (column == null || column === false) return null
+  if (typeof column === 'string' || typeof column === 'number') return { text: String(column) }
+  if (typeof column !== 'object' || Array.isArray(column)) return null
+  return column
+}
+
+function pickColumnCopy (opts) {
+  const copy = {}
+  ;['eyebrow', 'title', 'subtitle', 'text', 'quote', 'body', 'copy', 'pull', 'bullets', 'html', 'markup'].forEach(function (key) {
+    if (hasOwn(opts, key)) copy[key] = opts[key]
+  })
+  return Object.keys(copy).length ? copy : null
+}
+
+function pickColumnMedia (opts) {
+  const img = opts.image
+  const iframeUrl = opts.iframe || opts.srcdoc
+  if (iframeUrl) return { iframe: opts.iframe, srcdoc: opts.srcdoc }
+  if (!img) return null
+  return { image: img }
+}
+
+function defaultColumnsTemplate (count) {
+  count = Math.max(1, count || 1)
+  if (count === 1) return 'minmax(0, 1fr)'
+  return 'repeat(' + count + ', minmax(0, 1fr))'
+}
+
+function defaultRowsTemplate (count) {
+  count = Math.max(1, count || 1)
+  if (count === 1) return 'minmax(0, 1fr)'
+  return 'repeat(' + count + ', minmax(0, 1fr))'
+}
+
+function shouldStackColumns (opts, count) {
+  if (count < 2) return false
+  if (opts.stackColumns === false) return false
+  if (opts.stackColumns === true) return true
+  if (typeof window === 'undefined') return false
+  const width = Number(window.innerWidth) || 0
+  const height = Number(window.innerHeight) || 0
+  if (!width || !height) return false
+  return width < height || width <= 720
+}
+
+function renderColumn (column, opts, index) {
+  const columnOpts = Object.assign({}, opts, column)
+  const img = column.image
+  const iframeUrl = column.iframe || column.srcdoc
+  const nestedColumns = Array.isArray(column.columns)
+  const hasCopy = hasColumnCopy(column)
+  const hasMedia = Boolean(img || iframeUrl || nestedColumns)
+  const className = 'ps-columns-column ps-columns-column-' + (index + 1) + (hasMedia ? ' has-media' : '') + (hasCopy ? ' has-copy' : '')
+  return element('div', { className, style: columnsColumnStyle(columnOpts) }, [
+    renderColumnCopy(column, opts, hasMedia),
+    renderColumnMedia(column, opts)
+  ])
+}
+
+function renderColumnMedia (column, opts) {
+  const columnOpts = Object.assign({}, opts, column)
+  if (Array.isArray(column.columns)) {
+    return element('div', { className: 'ps-columns-media ps-columns-nested-media', style: columnsMediaStyle(columnOpts) }, renderNestedColumnSlide(columnOpts))
+  }
+  if (column.iframe || column.srcdoc) {
+    return element('div', { className: 'ps-columns-media ps-columns-iframe-media', style: columnsMediaStyle(columnOpts) }, columnIframe(columnOpts))
+  }
+  if (column.image) {
+    return element('div', { className: 'ps-columns-media ps-columns-image-media', style: columnsMediaStyle(columnOpts) }, element('img', { src: column.image, style: imageContainStyle(columnOpts) }))
+  }
+  return null
+}
+
+function renderNestedColumnSlide (opts) {
+  const target = element('div', {
+    className: 'ps-columns-nested-slide',
+    style: {
+      width: '100%',
+      height: '100%',
+      minWidth: 0,
+      minHeight: 0
+    }
+  })
+  columns(opts)(target)
+  return target
+}
+
+function columnIframe (opts) {
+  const iframeBackground = opts.iframeBackground || opts.screenBackground || '#000'
+  const frame = element('iframe', {
+    src: opts.iframe,
+    srcdoc: opts.srcdoc,
+    title: opts.iframeTitle || opts.title || 'Embedded column',
+    allow: opts.allow || 'fullscreen; autoplay; clipboard-read; clipboard-write',
+    allowFullscreen: opts.allowFullscreen !== false,
+    loading: opts.loading,
+    referrerPolicy: opts.referrerPolicy,
+    sandbox: opts.sandbox,
+    style: iframeStyle(Object.assign({}, opts, {
+      background: iframeBackground,
+      iframeStyle: mergeStyle({ borderRadius: opts.iframeRadius || 0 }, opts.iframeStyle)
+    }))
+  })
+
+  const chrome = usesPhoneFrame(opts)
+    ? iphoneFrame(frame, Object.assign({ deviceWidth: 'min(46vh, 30vw, 390px)' }, opts, { background: iframeBackground }))
+    : frame
+
+  if (opts.navigationControls === false) return chrome
+
+  return element('div', {
+    className: 'ps-columns-iframe-shell',
+    style: mergeStyle({
+      position: 'relative',
+      width: '100%',
+      height: '100%',
+      minWidth: 0,
+      minHeight: 0,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }, opts.iframeShellStyle)
+  }, [
+    chrome,
+    iframeNavigationControls(opts)
+  ])
+}
+
+function renderColumnCopy (column, opts, hasImage) {
+  const columnOpts = Object.assign({}, opts, column)
+  const html = column.html || column.markup
+  if (html) return element('div', { className: 'ps-columns-copy ps-columns-html', style: columnsCopyStyle(columnOpts, hasImage), innerHTML: html })
+  if (!hasColumnCopy(column)) return null
+  return element('div', { className: 'ps-columns-copy', style: columnsCopyStyle(columnOpts, hasImage) }, [
+    column.eyebrow && element('div', { style: eyebrowStyle(columnOpts) }, column.eyebrow),
+    column.title && element('h2', { style: columnsHeadingStyle(columnOpts) }, column.title),
+    column.quote && element('blockquote', { style: columnsQuoteStyle(columnOpts) }, column.quote),
+    column.subtitle && element('p', { style: columnsTextStyle(columnOpts) }, column.subtitle),
+    column.text && element('p', { style: columnsTextStyle(columnOpts) }, column.text),
+    column.body && element('p', { style: columnsTextStyle(columnOpts) }, column.body),
+    column.copy && element('p', { style: columnsTextStyle(columnOpts) }, column.copy),
+    column.pull && element('p', { style: columnsPullStyle(columnOpts) }, column.pull),
+    Array.isArray(column.bullets) && element('ul', { style: columnsBulletsStyle(columnOpts) }, column.bullets.map(function (bullet) {
+      return element('li', { style: { marginBottom: columnOpts.bulletGap || '0.45em' } }, bullet)
+    }))
+  ])
+}
+
+function hasColumnCopy (column) {
+  return hasAnyOwn(column, ['eyebrow', 'title', 'subtitle', 'text', 'quote', 'body', 'copy', 'pull', 'bullets', 'html', 'markup'])
+}
+
+function columnsColumnStyle (opts) {
+  return mergeStyle({
+    boxSizing: 'border-box',
+    minWidth: 0,
+    minHeight: 0,
+    width: '100%',
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: opts.justifyContent || opts.columnJustify || 'center',
+    alignItems: opts.alignItemsColumn || opts.columnAlign || 'stretch',
+    gap: opts.columnGap || 'clamp(0.8rem, 1.6vw, 1.6rem)'
+  }, opts.columnStyle)
+}
+
+function columnsHeadingStyle (opts) {
+  return mergeStyle({
+    fontSize: opts.size || 'clamp(2.2rem, 4.6vw, 5.2rem)',
+    lineHeight: opts.lineHeight || 1.05,
+    margin: 0,
+    whiteSpace: 'pre-line'
+  }, opts.titleStyle)
+}
+
+function columnsQuoteStyle (opts) {
+  return mergeStyle({
+    fontSize: opts.quoteSize || opts.size || 'clamp(2.2rem, 4.6vw, 5.2rem)',
+    lineHeight: opts.lineHeight || 1.08,
+    fontWeight: opts.quoteWeight || 800,
+    letterSpacing: opts.quoteLetterSpacing || '-0.035em',
+    margin: 0,
+    whiteSpace: 'pre-line'
+  }, opts.quoteStyle)
+}
+
+function columnsTextStyle (opts) {
+  return mergeStyle({
+    fontSize: opts.textSize || opts.size || 'clamp(1.3rem, 2.2vw, 2.2rem)',
+    lineHeight: opts.textLineHeight || 1.28,
+    margin: opts.textMargin || '0.45em 0 0',
+    whiteSpace: 'pre-line'
+  }, opts.textStyle)
+}
+
+function columnsPullStyle (opts) {
+  return mergeStyle({
+    fontSize: opts.pullSize || opts.textSize || 'clamp(1.3rem, 2.2vw, 2.2rem)',
+    lineHeight: opts.pullLineHeight || 1.25,
+    margin: opts.pullMargin || '0.8em 0 0',
+    fontWeight: opts.pullWeight || 800,
+    whiteSpace: 'pre-line'
+  }, opts.pullStyle)
+}
+
+function columnsBulletsStyle (opts) {
+  return mergeStyle({
+    fontSize: opts.bulletSize || opts.textSize || 'clamp(1.25rem, 2vw, 2rem)',
+    lineHeight: opts.bulletLineHeight || 1.35,
+    margin: opts.bulletMargin || '0.7em 0 0 1.2em',
+    padding: 0
+  }, opts.bulletsStyle)
+}
+
+function columnsCopyStyle (opts, hasImage) {
+  return mergeStyle({
     boxSizing: 'border-box',
     minWidth: 0,
     minHeight: 0,
@@ -878,11 +1207,11 @@ function quoteCopyStyle (opts, hasImage) {
     justifySelf: opts.copyJustify || (hasImage ? 'end' : 'center'),
     alignSelf: opts.copyAlignSelf || 'center',
     textAlign: opts.copyAlign || opts.align || (hasImage ? 'left' : 'center')
-  }, opts.copyStyle || {})
+  }, opts.copyStyle)
 }
 
-function quoteMediaStyle (opts) {
-  return Object.assign({
+function columnsMediaStyle (opts) {
+  return mergeStyle({
     boxSizing: 'border-box',
     minWidth: 0,
     minHeight: 0,
@@ -893,11 +1222,11 @@ function quoteMediaStyle (opts) {
     justifyContent: opts.imageJustify || 'center',
     justifySelf: opts.imageJustifySelf || 'stretch',
     alignSelf: opts.imageAlignSelf || 'center'
-  }, opts.mediaStyle || {})
+  }, opts.mediaStyle)
 }
 
 function imageContainStyle (opts) {
-  return Object.assign({
+  return mergeStyle({
     display: 'block',
     width: 'auto',
     height: 'auto',
@@ -906,7 +1235,7 @@ function imageContainStyle (opts) {
     objectFit: opts.fit || 'contain',
     borderRadius: opts.radius || '0.6vw',
     boxShadow: opts.shadow === false ? '' : '0 1vw 3vw rgba(0,0,0,0.6)'
-  }, opts.imageStyle || {})
+  }, opts.imageStyle)
 }
 
 function cardStyle () {
@@ -921,9 +1250,11 @@ function cardStyle () {
 
 export function createTalk (spec, talkModule) {
   const talk = normalizeTalkModule(talkModule)
-  let slides = Array.isArray(spec) ? spec : spec.slides || []
+  const objectSpec = spec && !Array.isArray(spec) && typeof spec === 'object' ? spec : null
+  const deckStyle = objectSpec ? objectSpec.style : null
+  let slides = Array.isArray(spec) ? spec : ((objectSpec && objectSpec.slides) || [])
   if (typeof talk.slides === 'function') slides = talk.slides(slides, PowerSlides)
-  return slides.map(slide => normalizeSlide(slide, talk)).filter(Boolean)
+  return slides.map(slide => normalizeSlide(slide, talk, deckStyle)).filter(Boolean)
 }
 
 function normalizeTalkModule (talkModule) {
@@ -931,22 +1262,47 @@ function normalizeTalkModule (talkModule) {
   return talkModule.default || talkModule
 }
 
-function normalizeSlide (slide, talk) {
+function normalizeSlide (slide, talk, deckStyle) {
   if (slide == null || slide === false) return null
   if (typeof slide === 'function' || typeof slide === 'string' || isDomNode(slide)) return slide
-  if (Array.isArray(slide)) {
-    const rendered = normalizeSlide(slide[0], talk)
-    return [rendered].concat(slide.slice(1))
-  }
+  if (Array.isArray(slide)) return null
 
-  const rendered = renderSlideObject(slide, talk)
-  const notes = slide.notes || slide.note
-  if (!notes) return rendered
-  return [rendered].concat(Array.isArray(notes) ? notes : [notes])
+  const rendered = renderSlideObject(applyDeckStyle(slide, deckStyle), talk)
+  const notes = hasOwn(slide, 'notes') ? slide.notes : (hasOwn(slide, 'note') ? slide.note : undefined)
+  if (notes == null) return rendered
+  return attachSlideNotes(rendered, notes)
+}
+
+function attachSlideNotes (slide, notes) {
+  if (!slide || (typeof slide !== 'function' && typeof slide !== 'object')) return slide
+
+  Object.defineProperty(slide, slideNotesKey, {
+    value: Array.isArray(notes) ? notes : [notes],
+    configurable: true
+  })
+  return slide
+}
+
+function getSlideNotes (slide) {
+  if (!slide || (typeof slide !== 'function' && typeof slide !== 'object')) return undefined
+  return slide[slideNotesKey]
 }
 
 function isDomNode (value) {
   return typeof Node !== 'undefined' && value instanceof Node
+}
+
+function applyDeckStyle (slide, deckStyle) {
+  if (!deckStyle || !slide || typeof slide !== 'object' || Array.isArray(slide) || isDomNode(slide)) return slide
+
+  const themed = Object.assign({}, slide)
+  themed.rootStyle = mergeStyle(deckStyle, slide.rootStyle)
+
+  if (Array.isArray(slide.columns)) {
+    themed.columns = slide.columns.map(column => applyDeckStyle(column, deckStyle))
+  }
+
+  return themed
 }
 
 export function renderSlideObject (slide, talkModule) {
@@ -957,41 +1313,99 @@ export function renderSlideObject (slide, talkModule) {
   }
 
   const renderers = Object.assign({}, talk.renderers || {}, talk.custom || {})
-  const rendererKey = slide.renderer || slide.name || slide.kind || slide.type
-  if (rendererKey && typeof renderers[rendererKey] === 'function') {
-    const rendered = renderers[rendererKey](slide, PowerSlides)
+  const explicitRendererKey = slide.renderer || slide.name || slide.kind || slide.custom
+  if (explicitRendererKey && typeof renderers[explicitRendererKey] === 'function') {
+    const rendered = renderers[explicitRendererKey](slide, PowerSlides)
     if (rendered) return rendered
   }
 
-  switch (slide.type || 'overlay') {
-    case 'title':
-      return title(slide.title || slide.text || slide.quote || '', slide.style)
-    case 'overlay':
-      return overlay(slide)
+  const slideType = explicitRendererKey ? 'text' : inferSlideType(slide)
+  switch (slideType || 'text') {
+    case 'text':
+      return text(slide)
     case 'image':
-      return image(slide.src || slide.img || slide.image || slide.background, slide)
+      return image(slide.image, slide)
     case 'video':
-      return video(slide.src || slide.video, slide)
-    case 'quote':
-      return quote(slide)
-    case 'chart':
-      return chart(slide)
-    case 'summary':
-      return summary(slide)
+      return video(slide.video, slide)
+    case 'columns':
+      return columns(slide)
     case 'iframe':
-      return iframe(slide.src || slide.url, slide)
+      return iframe(slide.iframe, slide)
     case 'html':
-      return html(slide.html || slide.markup || '')
+      return html(slide.html || '')
     case 'custom':
-      return title('Missing custom renderer: ' + (slide.name || slide.kind || 'custom'))
+      return title('Missing custom renderer: ' + (slide.custom || slide.name || slide.kind || 'custom'))
     default:
-      return overlay(slide)
+      return text(slide)
   }
+}
+
+export function inferSlideType (slide) {
+  if (!slide || typeof slide !== 'object') return 'text'
+  if (slide.custom) return 'custom'
+  if (slide.renderer || slide.name || slide.kind) return 'text'
+
+  if (looksLikeColumnsSlide(slide)) return 'columns'
+  if (hasOwn(slide, 'html')) return 'html'
+  if (looksLikeIframeSlide(slide)) return 'iframe'
+  if (looksLikeVideoSlide(slide)) return 'video'
+  if (looksLikeImageOnlySlide(slide)) return 'image'
+  return 'text'
+}
+
+const imageOnlyCopyFields = [
+  'title',
+  'subtitle',
+  'eyebrow',
+  'text',
+  'quote',
+  'body',
+  'copy',
+  'bullets',
+  'card',
+  'html',
+  'markup',
+  'srcdoc'
+]
+
+function looksLikeIframeSlide (slide) {
+  if (hasStringAny(slide, ['iframe'])) return true
+  if (hasOwn(slide, 'srcdoc')) return true
+  return false
+}
+
+function looksLikeVideoSlide (slide) {
+  if (hasOwn(slide, 'video')) return true
+  return false
+}
+
+function looksLikeColumnsSlide (slide) {
+  return Array.isArray(slide.columns)
+}
+
+function looksLikeImageOnlySlide (slide) {
+  return hasStringAny(slide, ['image']) && !hasAnyOwn(slide, imageOnlyCopyFields)
+}
+
+function mediaString (slide, keys) {
+  return keys.map(key => slide[key]).filter(value => typeof value === 'string' && value)
+}
+
+function hasStringAny (slide, keys) {
+  return mediaString(slide, keys).length > 0
+}
+
+function hasAnyOwn (obj, keys) {
+  return keys.some(key => hasOwn(obj, key))
+}
+
+function hasOwn (obj, key) {
+  return Object.prototype.hasOwnProperty.call(obj, key)
 }
 
 export function startTalk (target, spec, opts) {
   opts = opts || {}
-  const slides = Array.isArray(spec) && (typeof spec[0] === 'function' || Array.isArray(spec[0]) || typeof spec[0] === 'string')
+  const slides = Array.isArray(spec) && (typeof spec[0] === 'function' || typeof spec[0] === 'string')
     ? spec
     : createTalk(spec, opts.talk)
   const deck = PowerSlides.start(target, slides, opts)
@@ -1024,7 +1438,7 @@ function walkAssets (value, found) {
 
   Object.keys(value).forEach(function (key) {
     const child = value[key]
-    if (/^(src|url|image|img|background|poster|video|qr|chart)$/i.test(key) && typeof child === 'string') found.push(child)
+    if (/^(iframe|url|image|background|poster|video|qr|chart)$/i.test(key) && typeof child === 'string') found.push(child)
     walkAssets(child, found)
   })
 }
