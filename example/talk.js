@@ -4,7 +4,8 @@
 // the pieces you need when YAML/built-in slide types are no longer enough.
 
 export default {
-  // bodyStyle is CSS text applied to document.body before the deck starts.
+  // bodyStyle is an advanced JS escape hatch applied after slides.yaml top-level style.
+  // It accepts CSS text or an object. Most decks should use slides.yaml style instead.
   // bodyStyle: 'margin:0;background:#000;color:white;overflow:hidden',
 
   // slides(slides, PS) can theme or transform the parsed slide array.

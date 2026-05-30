@@ -193,7 +193,7 @@ function prepareEntry (talkDir, opts) {
   writeFileChanged(slidesDataPath, serializeSpec(spec))
 
   const imports = [
-    "import PowerSlides from 'power-slides'",
+    "import PowerSlides, { applyStyle, mergeStyle } from 'power-slides'",
     "import spec from './slides.json'"
   ]
   const talkImport = fs.existsSync(talkPath)
@@ -203,11 +203,16 @@ function prepareEntry (talkDir, opts) {
 
 const talk = ${talkImport ? 'talkModule' : '{}'}
 
-window.document.body.style.cssText = (talk && talk.bodyStyle) || \`
-  margin: 0;
-  background: #000;
-  overflow: hidden;
-\`
+const deckStyle = spec && !Array.isArray(spec) && spec.style
+
+// Body style precedence: keep the hard runtime baseline, then apply
+// slides.yaml top-level style as the normal deck theming path, then let
+// talk.js bodyStyle win as the JS escape hatch for existing decks.
+applyStyle(window.document.body.style, mergeStyle({
+  margin: 0,
+  background: '#000',
+  overflow: 'hidden'
+}, deckStyle, talk && talk.bodyStyle))
 
 if (talk && typeof talk.beforeStart === 'function') talk.beforeStart(PowerSlides, spec)
 
@@ -310,10 +315,15 @@ function resolveSlidesPath (talkDir, explicitPath) {
 }
 
 function titleFromSpec (spec) {
+  if (spec && !Array.isArray(spec) && typeof spec === 'object' && spec.title) return spec.title
   const slides = Array.isArray(spec) ? spec : (spec && spec.slides) || []
-  const first = slides[0]
-  if (first && typeof first === 'object') return first.title || first.text || 'power-slides talk'
-  if (typeof first === 'string') return first
+  for (const slide of slides) {
+    if (typeof slide === 'string' && slide) return slide
+    if (slide && typeof slide === 'object') {
+      if (slide.title) return slide.title
+      if (slide.text) return slide.text
+    }
+  }
   return 'power-slides talk'
 }
 
@@ -424,7 +434,7 @@ Deploy the \`public/\` folder to any static host.
 
 ## Edit slides.yaml
 
-\`slides.yaml\` is a YAML array of slide objects. Each item is one slide. The starter also shows text, image, video, columns, iframe, html, and custom slides.
+\`slides.yaml\` can be a deck object with \`title\`, \`style\`, and \`slides\`. Put deck-wide CSS defaults in \`style\`; each item in \`slides\` is one slide. The old bare array form still works. The starter also shows text, image, video, columns, iframe, html, and custom slides.
 
 Each slide can have one of the following:
 

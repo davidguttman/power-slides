@@ -143,8 +143,9 @@ for (const concept of canonicalShapeNames) {
 for (const oldType of ['overlay', 'quote', 'chart', 'summary', 'citation']) {
   assert(!packageReadme.includes('#### `' + oldType + '`'), 'package README does not present ' + oldType + ' as a public slide concept')
 }
-assert(packageReadme.includes('`slides.yaml` is a YAML array of slide objects'), 'package README documents YAML-array slide specs')
-assert(packageReadme.includes('Each item is one slide'), 'package README explains one slide per YAML item')
+assert(packageReadme.includes('`slides.yaml` can be a deck object with `title`, `style`, and `slides`'), 'package README documents object-form slide specs')
+assert(packageReadme.includes('The old bare array form still works'), 'package README documents backward-compatible bare array specs')
+assert(packageReadme.includes('each item in `slides` is one slide'), 'package README explains one slide per YAML item')
 assert(packageReadme.includes('docs/slide-api.md'), 'package README points full slide/talk API reference to docs')
 assert(packageReadme.includes('For more `talk.js` hooks, see `docs/slide-api.md`'), 'package README keeps talk.js hook details behind docs link')
 for (const earlyDocNoise of ['Slide concept reference', 'Every slide object has exactly one content property', 'slides(slides, PS)', 'beforeStart(PS, spec)', 'bundled PeerJS runtime', 'remote: false']) {
@@ -184,7 +185,7 @@ for (const oldType of ['overlay', 'quote', 'chart', 'summary', 'citation']) {
 assert(initializedReadme.includes('## Optional talk.js'), 'generated talk README documents optional talk.js path')
 assert(initializedReadme.includes('npx power-slides dev .') && initializedReadme.includes('npx power-slides build .'), 'generated talk README foregrounds npx run/build flow')
 assert(initializedReadme.includes('## Remote control') && initializedReadme.includes('press `o`') && initializedReadme.includes('Enable remote control'), 'generated talk README documents user-facing remote controls')
-assert(initializedReadme.includes('YAML array of slide objects') && initializedReadme.includes('Each item is one slide') && initializedReadme.includes('docs/slide-api.md'), 'generated talk README points detailed schema/API to docs')
+assert(initializedReadme.includes('deck object with `title`, `style`, and `slides`') && initializedReadme.includes('old bare array form still works') && initializedReadme.includes('each item in `slides` is one slide') && initializedReadme.includes('docs/slide-api.md'), 'generated talk README points detailed schema/API to docs')
 for (const earlyDocNoise of ['Every slide object has exactly one content property', 'slides(slides, PS)', 'beforeStart(PS, spec)', 'bodyStyle', 'PeerJS', 'remote: false', 'runtime options']) {
   assert(!initializedReadme.includes(earlyDocNoise), 'generated talk README omits noisy detail: ' + earlyDocNoise)
 }
@@ -238,7 +239,12 @@ for (const media of ['sample.svg', 'fractal-loop.mp4']) {
 const initializedSpec = yaml.load(fs.readFileSync(path.join(talk, 'slides.yaml'), 'utf8'))
 const exampleSpec = yaml.load(exampleSlidesSource)
 assert.deepStrictEqual(initializedSpec, exampleSpec, 'init slides parse identically to packaged example')
-assert(Array.isArray(initializedSpec), 'init example is a bare slide array')
+assert(!Array.isArray(initializedSpec) && initializedSpec && typeof initializedSpec === 'object', 'init example is an object-form deck spec')
+assert.strictEqual(initializedSpec.title, 'Power Slides Starter', 'starter deck has top-level title metadata')
+assert.strictEqual(initializedSpec.style.fontFamily, 'Inter, system-ui, sans-serif', 'starter deck has top-level fontFamily style')
+assert.strictEqual(initializedSpec.style.background, '#061018', 'starter deck has top-level background style')
+assert.strictEqual(initializedSpec.style.color, 'white', 'starter deck has top-level color style')
+assert.strictEqual(initializedSpec.style['--accent'], '#5ffbf1', 'starter deck demonstrates quoted CSS custom property style')
 const initializedSlides = slideArray(initializedSpec)
 assert.strictEqual(initializedSlides.length, 7, 'init starter has the seven canonical shapes')
 assert.strictEqual(initializedSlides[0].title, 'Main point', 'starter first slide is title/default text')
@@ -268,7 +274,7 @@ assert.strictEqual(fs.readFileSync(path.join(nonEmpty, 'package.json'), 'utf8'),
 assert.strictEqual(fs.readFileSync(path.join(nonEmpty, 'keep.txt'), 'utf8'), 'keep', 'init --force preserves unrelated existing files')
 assert(fs.existsSync(path.join(nonEmpty, 'talk.js')), 'init --force fills missing example files')
 
-assert(Array.isArray(exampleSpec), 'example is a bare slide array')
+assert(!Array.isArray(exampleSpec) && exampleSpec && typeof exampleSpec === 'object', 'example is an object-form deck spec')
 assert.deepStrictEqual(exampleSpec, initializedSpec, 'example and initialized spec remain identical')
 
 fs.writeFileSync(path.join(talk, 'talk.js'), [
@@ -294,17 +300,20 @@ assert(match, 'build writes cache-busted script URL')
 assert(fs.existsSync(path.join(publicDir, match[0])), 'build writes bundle')
 assert(!html.includes('entry.js'), 'build HTML points at production bundle')
 
-assert(html.includes('<title>Main point</title>'), 'build infers HTML title from first YAML slide')
+assert(html.includes('<title>Power Slides Starter</title>'), 'build uses top-level YAML title for HTML title')
 assert(html.includes('<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">'), 'build HTML locks mobile viewport zoom')
 const generatedEntry = fs.readFileSync(path.join(talk, '.power-slides', 'entry.js'), 'utf8')
 const generatedSlides = JSON.parse(fs.readFileSync(path.join(talk, '.power-slides', 'slides.json'), 'utf8'))
 assert(generatedEntry.includes("import spec from './slides.json'"), 'generated entry imports generated slide data')
+assert(generatedEntry.includes('applyStyle(window.document.body.style') && generatedEntry.includes('deckStyle'), 'generated entry applies top-level deck style to document.body')
+assert(generatedEntry.includes('talk.js bodyStyle win'), 'generated entry documents body style precedence')
 assert(generatedEntry.includes('remoteOptions') && generatedEntry.includes('remote: remoteOptions'), 'generated entry enables remote/options shell by default')
 assert(html.includes('<script src="./peerjs.min.js"></script>') && html.indexOf('peerjs.min.js') < html.indexOf(match[0]), 'build HTML loads bundled PeerJS before the deck bundle')
 assert(fs.existsSync(path.join(publicDir, 'peerjs.min.js')), 'build copies bundled PeerJS into public output')
 assert(!generatedEntry.includes('Main point'), 'generated entry does not bake slide title content')
 assert(!generatedEntry.includes('Optional subtitle'), 'generated entry does not bake slide subtitle content')
 assert.deepStrictEqual(generatedSlides, initializedSpec, 'generated slides.json matches parsed YAML spec')
+assert.strictEqual(generatedSlides.style['--accent'], '#5ffbf1', 'generated slides.json preserves top-level CSS custom property key')
 
 const devWatchTalk = path.join(tmp, 'dev-watch-talk')
 runCliWithBlockedBuildDeps(['init', devWatchTalk])
@@ -411,7 +420,7 @@ fs.writeFileSync(path.join(priority, 'slides.yml'), yaml.dump([{ title: 'YML tit
 fs.writeFileSync(path.join(priority, 'slides.json'), JSON.stringify([{ title: 'JSON title' }], null, 2))
 execFileSync(process.execPath, [cli, 'build', priority], { stdio: 'pipe' })
 const priorityHtml = fs.readFileSync(path.join(priority, 'public', 'index.html'), 'utf8')
-assert(priorityHtml.includes('<title>Main point</title>'), 'default build prefers slides.yaml over slides.yml and slides.json')
+assert(priorityHtml.includes('<title>Power Slides Starter</title>'), 'default build prefers slides.yaml over slides.yml and slides.json')
 execFileSync(process.execPath, [cli, 'build', priority, '--slides', 'slides.json'], { stdio: 'pipe' })
 const explicitHtml = fs.readFileSync(path.join(priority, 'public', 'index.html'), 'utf8')
 assert(explicitHtml.includes('<title>JSON title</title>'), 'explicit --slides can select JSON spec')
@@ -432,6 +441,31 @@ fs.writeFileSync(path.join(jsonOnly, 'slides.json'), JSON.stringify([{ title: 'U
 execFileSync(process.execPath, [cli, 'build', jsonOnly], { stdio: 'pipe' })
 const jsonOnlyHtml = fs.readFileSync(path.join(jsonOnly, 'public', 'index.html'), 'utf8')
 assert(jsonOnlyHtml.includes('<title>Unambiguous JSON title</title>'), 'unambiguous slides.json still builds by default')
+
+const objectNoTitle = path.join(tmp, 'object-no-title')
+fs.mkdirSync(objectNoTitle)
+fs.mkdirSync(path.join(objectNoTitle, 'public'))
+fs.writeFileSync(path.join(objectNoTitle, 'slides.yaml'), yaml.dump({
+  style: {
+    fontFamily: 'Inter, sans-serif',
+    background: '#222',
+    color: 'white',
+    '--accent': '#5ffbf1'
+  },
+  slides: [{ image: '/diagram.png' }, { title: 'Fallback Object Title' }]
+}, { lineWidth: -1, noRefs: true }))
+execFileSync(process.execPath, [cli, 'build', objectNoTitle], { stdio: 'pipe' })
+const objectNoTitleHtml = fs.readFileSync(path.join(objectNoTitle, 'public', 'index.html'), 'utf8')
+const objectNoTitleSpec = JSON.parse(fs.readFileSync(path.join(objectNoTitle, '.power-slides', 'slides.json'), 'utf8'))
+assert(objectNoTitleHtml.includes('<title>Fallback Object Title</title>'), 'object spec without title falls back to first title found on any slide')
+assert.strictEqual(objectNoTitleSpec.style['--accent'], '#5ffbf1', 'object spec preserves quoted CSS custom property key')
+
+const stringTitleFallback = path.join(tmp, 'string-title-fallback')
+fs.mkdirSync(stringTitleFallback)
+fs.writeFileSync(path.join(stringTitleFallback, 'slides.yaml'), yaml.dump([{ image: '/intro.png' }, 'String Fallback Title'], { lineWidth: -1, noRefs: true }))
+execFileSync(process.execPath, [cli, 'build', stringTitleFallback], { stdio: 'pipe' })
+const stringTitleFallbackHtml = fs.readFileSync(path.join(stringTitleFallback, 'public', 'index.html'), 'utf8')
+assert(stringTitleFallbackHtml.includes('<title>String Fallback Title</title>'), 'array spec falls back to first string slide when earlier slides lack title/text')
 
 import(path.join(root, 'index.mjs')).then(async mod => {
   const assets = mod.collectAssets([

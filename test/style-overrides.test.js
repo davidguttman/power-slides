@@ -181,6 +181,50 @@ test('legacy iframe side title and subtitle knobs are ignored', async function (
   })
 })
 
+test('top-level deck style applies to slide roots and preserves CSS custom properties', async function () {
+  const mod = await loadPowerSlides()
+  withFakeBrowser(function () {
+    const target = new FakeElement('section')
+    const slides = mod.createTalk({
+      title: 'Styled deck',
+      style: {
+        fontFamily: 'Inter, sans-serif',
+        background: '#222',
+        color: 'white',
+        '--accent': '#5ffbf1'
+      },
+      slides: [{ title: 'Styled title' }]
+    })
+
+    slides[0](target)
+    const root = target.children[0]
+
+    assert.equal(root.style.fontFamily, 'Inter, sans-serif', 'top-level fontFamily applies to the slide root')
+    assert.equal(root.style.background, '#222', 'top-level background applies to the slide root')
+    assert.equal(root.style.color, 'white', 'top-level color applies to the slide root')
+    assert.equal(root.style['--accent'], '#5ffbf1', 'quoted CSS custom property applies through setProperty')
+  })
+})
+
+test('top-level deck style accepts CSS strings and slide rootStyle wins per slide', async function () {
+  const mod = await loadPowerSlides()
+  withFakeBrowser(function () {
+    const target = new FakeElement('section')
+    const slides = mod.createTalk({
+      style: 'font-family: Inter, sans-serif; background: #222; color: white; --accent: #5ffbf1',
+      slides: [{ title: 'Styled title', rootStyle: { color: 'yellow' } }]
+    })
+
+    slides[0](target)
+    const root = target.children[0]
+
+    assert.equal(root.style.fontFamily, 'Inter, sans-serif', 'CSS string font-family applies to the slide root')
+    assert.equal(root.style.background, '#222', 'CSS string background applies to the slide root')
+    assert.equal(root.style.color, 'yellow', 'per-slide rootStyle overrides top-level deck style')
+    assert.equal(root.style['--accent'], '#5ffbf1', 'CSS string custom property applies to the slide root')
+  })
+})
+
 function withFakeBrowser (fn) {
   const previousDocument = global.document
   const previousWindow = global.window

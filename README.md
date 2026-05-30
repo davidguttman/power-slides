@@ -3,14 +3,21 @@
 Create browser-native slideshows from a small `slides.yaml` file, then use your phone as a remote control.
 
 ```yaml
-- title: Hello, world
-  subtitle: A talk that's just a file
-  background: /hero.png
+title: Hello, world
+style:
+  fontFamily: Inter, system-ui, sans-serif
+  background: '#111827'
+  color: white
+  "--accent": '#5ffbf1'
+slides:
+  - title: Hello, world
+    subtitle: A talk that's just a file
+    background: /hero.png
 
-- image: /diagram.png
+  - image: /diagram.png
 
-- title: A slide can still be anything the browser can render.
-  subtitle: power-slides
+  - title: A slide can still be anything the browser can render.
+    subtitle: power-slides
 ```
 
 Start a deck with the CLI, edit the YAML, and deploy the built `public/` folder anywhere static files can live.
@@ -42,33 +49,40 @@ Deploy the `public/` folder to any static host.
 
 ## Edit `slides.yaml`
 
-`slides.yaml` is a YAML array of slide objects. Each item is one slide.
+`slides.yaml` can be a deck object with `title`, `style`, and `slides`. Put deck-wide CSS defaults in `style`; each item in `slides` is one slide. The old bare array form still works for simple decks.
 
 ```yaml
-- title: Main point
-  subtitle: Optional subtitle
-  background: /sample.svg
-  brightness: 0.45
-  align: center
+title: My Talk
+style:
+  fontFamily: Inter, system-ui, sans-serif
+  background: '#061018'
+  color: white
+  "--accent": '#5ffbf1'
+slides:
+  - title: Main point
+    subtitle: Optional subtitle
+    background: /sample.svg
+    brightness: 0.45
+    align: center
 
-- image: /sample.svg
-  fit: contain
+  - image: /sample.svg
+    fit: contain
 
-- video: /fractal-loop.mp4
-  controls: true
-  muted: true
-  loop: true
-  fit: contain
+  - video: /fractal-loop.mp4
+    controls: true
+    muted: true
+    loop: true
+    fit: contain
 
-- background: /sample.svg
-  brightness: 0.55
-  columns:
-    - iframe: https://david.app
-      device: iphone
-    - title: Demo in context
-      bullets:
-        - Cross-origin page stays untouched
-        - Parent arrows remain available
+  - background: /sample.svg
+    brightness: 0.55
+    columns:
+      - iframe: https://david.app
+        device: iphone
+      - title: Demo in context
+        bullets:
+          - Cross-origin page stays untouched
+          - Parent arrows remain available
 ```
 
 ## Slide shapes at a glance

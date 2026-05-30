@@ -1,11 +1,32 @@
 # power-slides slide API
 
-A slide spec is a bare YAML array of slides. There are no top-level fields.
+A slide spec can be a deck object with optional top-level metadata and CSS defaults:
+
+```yaml
+title: My Talk
+style:
+  fontFamily: Inter, system-ui, sans-serif
+  background: '#222'
+  color: white
+  "--accent": '#5ffbf1'
+slides:
+  - title: Main point
+  - image: /diagram.png
+```
+
+The bare array form still works unchanged:
 
 ```yaml
 - title: Main point
 - image: /diagram.png
 ```
+
+Top-level `title` becomes the generated HTML document title. When it is absent,
+the CLI falls back to the first string slide or first slide `title`/`text` it finds.
+Top-level `style` is normal CSS as an object or CSS string, including custom
+properties. The generated CLI entry applies body style in this order: runtime
+baseline (`margin: 0`, black background, hidden overflow), then `slides.yaml`
+`style`, then `talk.js` `bodyStyle` for existing advanced JS overrides.
 
 A slide is a set of **properties**. One exclusive content property decides what
 the slide is; other properties are unlocked by (and only meaningful alongside)

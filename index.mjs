@@ -208,7 +208,7 @@ function element (tag, attrs, children) {
   return el
 }
 
-function applyStyle (target, style) {
+export function applyStyle (target, style) {
   const normalized = normalizeStyle(style)
   Object.keys(normalized).forEach(function (key) {
     const value = normalized[key]
@@ -222,7 +222,7 @@ function applyStyle (target, style) {
   return target
 }
 
-function mergeStyle () {
+export function mergeStyle () {
   const merged = {}
   Array.prototype.forEach.call(arguments, function (style) {
     Object.assign(merged, normalizeStyle(style))
@@ -1250,9 +1250,11 @@ function cardStyle () {
 
 export function createTalk (spec, talkModule) {
   const talk = normalizeTalkModule(talkModule)
-  let slides = Array.isArray(spec) ? spec : spec.slides || []
+  const objectSpec = spec && !Array.isArray(spec) && typeof spec === 'object' ? spec : null
+  const deckStyle = objectSpec ? objectSpec.style : null
+  let slides = Array.isArray(spec) ? spec : ((objectSpec && objectSpec.slides) || [])
   if (typeof talk.slides === 'function') slides = talk.slides(slides, PowerSlides)
-  return slides.map(slide => normalizeSlide(slide, talk)).filter(Boolean)
+  return slides.map(slide => normalizeSlide(slide, talk, deckStyle)).filter(Boolean)
 }
 
 function normalizeTalkModule (talkModule) {
@@ -1260,12 +1262,12 @@ function normalizeTalkModule (talkModule) {
   return talkModule.default || talkModule
 }
 
-function normalizeSlide (slide, talk) {
+function normalizeSlide (slide, talk, deckStyle) {
   if (slide == null || slide === false) return null
   if (typeof slide === 'function' || typeof slide === 'string' || isDomNode(slide)) return slide
   if (Array.isArray(slide)) return null
 
-  const rendered = renderSlideObject(slide, talk)
+  const rendered = renderSlideObject(applyDeckStyle(slide, deckStyle), talk)
   const notes = hasOwn(slide, 'notes') ? slide.notes : (hasOwn(slide, 'note') ? slide.note : undefined)
   if (notes == null) return rendered
   return attachSlideNotes(rendered, notes)
@@ -1288,6 +1290,19 @@ function getSlideNotes (slide) {
 
 function isDomNode (value) {
   return typeof Node !== 'undefined' && value instanceof Node
+}
+
+function applyDeckStyle (slide, deckStyle) {
+  if (!deckStyle || !slide || typeof slide !== 'object' || Array.isArray(slide) || isDomNode(slide)) return slide
+
+  const themed = Object.assign({}, slide)
+  themed.rootStyle = mergeStyle(deckStyle, slide.rootStyle)
+
+  if (Array.isArray(slide.columns)) {
+    themed.columns = slide.columns.map(column => applyDeckStyle(column, deckStyle))
+  }
+
+  return themed
 }
 
 export function renderSlideObject (slide, talkModule) {

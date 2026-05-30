@@ -1,30 +1,37 @@
-- title: Main point
-  subtitle: Optional subtitle
-  background: /sample.svg
-  brightness: 0.45
-  align: center
-- image: /sample.svg
-  fit: contain
-- video: /fractal-loop.mp4
-  controls: true
-  muted: true
-  loop: true
-  fit: contain
-- background: /sample.svg
-  brightness: 0.55
-  columns:
-    - iframe: https://example.com/demo
-      device: iphone
-    - title: Demo in context
-      bullets:
-        - Cross-origin page stays untouched
-        - Parent arrows remain available
-- iframe: https://example.com/demo
-  device: iphone
+title: Power Slides Starter
+style:
+  fontFamily: Inter, system-ui, sans-serif
   background: '#061018'
-- html: |
-    <div style="width:100vw;height:100vh;color:white">
-      <h1>Custom HTML</h1>
-    </div>
-- custom: particleField
-  title: Generative canvas
+  color: white
+  "--accent": '#5ffbf1'
+slides:
+  - title: Main point
+    subtitle: Optional subtitle
+    background: /sample.svg
+    brightness: 0.45
+    align: center
+  - image: /sample.svg
+    fit: contain
+  - video: /fractal-loop.mp4
+    controls: true
+    muted: true
+    loop: true
+    fit: contain
+  - background: /sample.svg
+    brightness: 0.55
+    columns:
+      - iframe: https://example.com/demo
+        device: iphone
+      - title: Demo in context
+        bullets:
+          - Cross-origin page stays untouched
+          - Parent arrows remain available
+  - iframe: https://example.com/demo
+    device: iphone
+    background: '#061018'
+  - html: |
+      <div style="width:100vw;height:100vh;color:white">
+        <h1>Custom HTML</h1>
+      </div>
+  - custom: particleField
+    title: Generative canvas
