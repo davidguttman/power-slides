@@ -405,45 +405,53 @@ function escapeHtml (value) {
 function sampleReadme () {
   return `# Talk
 
-This is a minimal power-slides talk starter. The content stays in \`slides.yaml\`, and optional custom behavior stays in the commented \`talk.js\` stub.
+This is a minimal power-slides talk starter. Start with \`slides.yaml\`; use \`talk.js\` only when a slide needs browser code; put images, video, and other static files in \`public/\`.
 
 ## Files
 
-- \`slides.yaml\` contains the seven-slide starter: default text, image, video, columns, iframe, html, and custom.
-- \`talk.js\` is a commented optional ESM stub for theming, custom renderers, and escape hatches.
-- \`public/\` is served at the web root for media such as the bundled \`sample.svg\` image.
+- \`slides.yaml\` — your deck content
+- \`talk.js\` — optional browser code for custom slides
+- \`public/\` — media and static files served by the deck
 
-The starter is intentionally YAML-only. It demonstrates the v3 slide shapes: default text with slide-level \`background\` and \`brightness\`, image, video, columns for iframe-plus-copy, full-slide iframe, and trusted HTML.
+## Run and build
 
-## Options and remote control
+\`\`\`bash
+npx power-slides dev .
+npx power-slides build .
+\`\`\`
 
-The generated dev/build shell enables the power-slides Options panel by default. Press \`o\` to reopen Options after the button fades. Click **Enable remote control** to start PeerJS, then scan the QR code or open the shown URL on your phone/controller.
+Deploy the \`public/\` folder to any static host.
 
-To disable the shell remote UI, export \`remote: false\` from \`talk.js\`. To override PeerJS/runtime options, export \`remote: { ... }\` from \`talk.js\`.
+## Edit slides.yaml
 
-## Authoring schema quick reference
+\`slides.yaml\` is a YAML array of slide objects. The starter shows text, image, video, columns, iframe, html, and custom slides.
 
-\`slides.yaml\` is a bare YAML array. There is no top-level \`slides:\` wrapper and no talk metadata mixed into the content file.
+Most decks use these shapes:
 
-Every slide object has exactly one content property:
-
-- \`title\` — words on screen; unlocks \`subtitle\`, \`eyebrow\`, \`bullets\`, and \`pullquote\`
-- \`image\` — unlocks \`fit\`
-- \`video\` — unlocks \`fit\`, \`controls\`, \`muted\`, and \`loop\`
-- \`iframe\` — unlocks \`device\`
+- \`title\` — words on screen
+- \`image\` — a full-slide image
+- \`video\` — a full-slide video
+- \`iframe\` — a web page embed
 - \`html\` — trusted inline markup
-- \`custom\` — delegates to a \`talk.js\` renderer; any other properties pass through untouched
-- \`columns\` — the only container; each column is itself a slide object, including nested \`columns\`
+- \`custom\` — a named renderer from \`talk.js\`
+- \`columns\` — a layout that combines slide objects side by side
 
-Shared properties available on any slide are \`background\`, \`brightness\`, and \`align\`. Use \`columns\` when you want to combine content types, such as iframe-plus-copy or image-plus-title. On narrow/portrait viewports, columns stack vertically in source order.
+Use \`columns\` when you want to combine content types, such as iframe-plus-copy or image-plus-title. On narrow/portrait viewports, columns stack vertically in source order.
 
-## Custom renderers in talk.js
+For the full slide schema and \`talk.js\` API, see the package README and \`docs/slide-api.md\`.
 
-\`talk.js\` exports an object. Use \`renderers\` for named custom slides, \`slides(slides, PS)\` to theme/transform all parsed slides, \`bodyStyle\` for page CSS, and \`beforeStart(PS, spec)\` for setup.
+## Remote control
+
+Run or build the deck, press \`o\` to open Options, click **Enable remote control**, then scan the QR code or open the shown URL on your phone.
+
+Keyboard, touch, URL hash navigation, and remote control all stay in the same slide state.
+
+## Optional talk.js
+
+Most talks can stay entirely in \`slides.yaml\`. Add \`talk.js\` when a slide needs browser code.
 
 \`\`\`js
 export default {
-  bodyStyle: 'margin:0;background:#000;color:white;overflow:hidden',
   renderers: {
     demo (slide, PS) {
       return PS.text({
@@ -455,9 +463,16 @@ export default {
 }
 \`\`\`
 
-See the package README for the longer reference. For custom renderers and animated slides, look at \`examples/showcase/\` in the power-slides package.
+Then reference the renderer from YAML:
 
-## Advanced: npm runners and deploys
+\`\`\`yaml
+- custom: demo
+  title: Browser-native slide
+\`\`\`
+
+For more custom-renderer examples, see \`examples/showcase/\` in the power-slides package.
+
+## Advanced: npm runners
 
 The generated \`package.json\` is there for hosts, CI, or runners that expect npm scripts:
 
@@ -467,7 +482,7 @@ npm run dev
 npm run build
 \`\`\`
 
-Those scripts call the \`powerslides\` bin alias: \`dev\` runs \`powerslides dev .\`, \`build\` runs \`powerslides build .\`, and \`start\` runs \`npm run dev\`.
+Use those scripts if your deploy flow wants npm commands; otherwise the \`npx power-slides ...\` commands above are enough.
 
 `
 }
