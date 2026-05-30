@@ -73,7 +73,7 @@ Deploy the `public/` folder to any static host.
 
 ## Slide shapes at a glance
 
-Most decks use a few simple shapes:
+Each slide can have one of the following:
 
 - `title` — words on screen, with optional `subtitle`, `eyebrow`, `bullets`, or `pullquote`
 - `image` — a full-slide image
@@ -81,9 +81,8 @@ Most decks use a few simple shapes:
 - `iframe` — a web page embed, optionally framed as a device
 - `html` — trusted inline markup
 - `custom` — a named renderer from `talk.js`
-- `columns` — a layout that combines slide objects side by side
 
-Use `columns` when you want to combine content types, such as iframe-plus-copy or image-plus-title.
+To combine types, use `columns`, such as iframe-plus-copy or image-plus-title.
 
 The full slide shape and advanced API reference lives in `docs/slide-api.md`.
 

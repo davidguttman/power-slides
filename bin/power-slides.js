@@ -426,7 +426,7 @@ Deploy the \`public/\` folder to any static host.
 
 \`slides.yaml\` is a YAML array of slide objects. Each item is one slide. The starter also shows text, image, video, columns, iframe, html, and custom slides.
 
-Most decks use these shapes:
+Each slide can have one of the following:
 
 - \`title\` — words on screen
 - \`image\` — a full-slide image
@@ -434,9 +434,8 @@ Most decks use these shapes:
 - \`iframe\` — a web page embed
 - \`html\` — trusted inline markup
 - \`custom\` — a named renderer from \`talk.js\`
-- \`columns\` — a layout that combines slide objects side by side
 
-Use \`columns\` when you want to combine content types, such as iframe-plus-copy or image-plus-title.
+To combine types, use \`columns\`, such as iframe-plus-copy or image-plus-title.
 
 For the full slide schema and \`talk.js\` API, see the package README and \`docs/slide-api.md\`.
 
