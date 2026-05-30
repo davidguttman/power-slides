@@ -337,7 +337,7 @@ function writeNew (file, content) {
 }
 
 function copyExampleStarter (target) {
-  const exampleRoot = path.join(packageRoot, 'example')
+  const exampleRoot = path.join(packageRoot, 'examples', 'starter')
   copyTreeNew(exampleRoot, target, exampleRoot)
 }
 

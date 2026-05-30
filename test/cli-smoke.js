@@ -9,7 +9,7 @@ const root = path.resolve(__dirname, '..')
 const cli = path.join(root, 'bin', 'power-slides.js')
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'power-slides-'))
 const talk = path.join(tmp, 'talk')
-const generatedExamplePeerScript = path.join(root, 'example', 'public', 'peerjs.min.js')
+const generatedExamplePeerScript = path.join(root, 'examples', 'starter', 'public', 'peerjs.min.js')
 
 function slideArray (spec) {
   return Array.isArray(spec) ? spec : (spec && spec.slides) || []
@@ -225,14 +225,14 @@ assert(!fs.existsSync(path.join(talk, 'public', 'index.html')), 'init does not c
 assert(!fs.existsSync(path.join(talk, 'public', 'peerjs.min.js')), 'init does not copy generated PeerJS runtime')
 assert(!fs.readdirSync(path.join(talk, 'public')).some(name => /^power-slides\.[a-f0-9]+\.js$/.test(name)), 'init does not copy generated public bundle')
 
-const exampleSlidesSource = fs.readFileSync(path.join(root, 'example', 'slides.yaml'), 'utf8')
-const exampleTalkSource = fs.readFileSync(path.join(root, 'example', 'talk.js'), 'utf8')
+const exampleSlidesSource = fs.readFileSync(path.join(root, 'examples', 'starter', 'slides.yaml'), 'utf8')
+const exampleTalkSource = fs.readFileSync(path.join(root, 'examples', 'starter', 'talk.js'), 'utf8')
 assert.strictEqual(fs.readFileSync(path.join(talk, 'slides.yaml'), 'utf8'), exampleSlidesSource, 'init copies packaged example slides.yaml')
 assert.strictEqual(fs.readFileSync(path.join(talk, 'talk.js'), 'utf8'), exampleTalkSource, 'init copies packaged example talk.js')
 for (const media of ['sample.svg', 'fractal-loop.mp4']) {
   assert.deepStrictEqual(
     fs.readFileSync(path.join(talk, 'public', media)),
-    fs.readFileSync(path.join(root, 'example', 'public', media)),
+    fs.readFileSync(path.join(root, 'examples', 'starter', 'public', media)),
     'init copies starter public media ' + media
   )
 }
