@@ -153,6 +153,16 @@ for (const forbidden of ['iframeTitle', 'type: overlay', 'type: title', 'type: c
   assert(!packageReadme.includes(forbidden), 'package README omits stale slide anti-pattern ' + forbidden)
 }
 assert(packageReadme.includes('default text, image, video, columns, iframe, html, and custom'), 'package README describes starter canonical shapes')
+assert(packageReadme.includes('- `slides.yaml`') && packageReadme.includes('- `talk.js`') && packageReadme.includes('- `public/`'), 'package README generated-file list names beginner-facing files')
+for (const oldFileListBullet of ['- `assets/`', '- `package.json`', '- `README.md`']) {
+  assert(!packageReadme.includes(oldFileListBullet), 'package README generated-file list omits ' + oldFileListBullet)
+}
+const packageReadmeBeginner = packageReadme.slice(packageReadme.indexOf('## Create your first deck'), packageReadme.indexOf('## Edit `slides.yaml`'))
+for (const earlyNoise of ['package.json', 'npm run', 'generated scripts']) {
+  assert(!packageReadmeBeginner.includes(earlyNoise), 'package README beginner path omits early ' + earlyNoise)
+}
+assert(packageReadme.indexOf('## Advanced: npm runners') > packageReadme.indexOf('## License'), 'package README keeps npm runner detail at the very end')
+assert(packageReadme.trim().endsWith('and `start` runs `npm run dev`.'), 'package README ends with concise npm runner detail')
 
 fs.writeFileSync(generatedExamplePeerScript, 'generated PeerJS runtime artifact\n')
 runCliWithBlockedBuildDeps(['init', talk])
@@ -179,6 +189,16 @@ for (const forbidden of ['iframeTitle', 'type: overlay', 'type: title', 'type: c
   assert(!initializedReadme.includes(forbidden), 'generated talk README omits stale slide anti-pattern ' + forbidden)
 }
 assert(initializedReadme.includes('default text, image, video, columns, iframe, html, and custom'), 'generated talk README describes starter canonical shapes')
+assert(initializedReadme.includes('- `slides.yaml`') && initializedReadme.includes('- `talk.js`') && initializedReadme.includes('- `public/`'), 'generated talk README file list names beginner-facing files')
+for (const oldFileListText of ['- `assets/`', '- `package.json`', 'local `package.json` lets']) {
+  assert(!initializedReadme.includes(oldFileListText), 'generated talk README file list/intro omits ' + oldFileListText)
+}
+const initializedReadmeBeforeAuthoring = initializedReadme.slice(0, initializedReadme.indexOf('## Authoring schema quick reference'))
+for (const earlyNoise of ['package.json', 'npm install', 'npm run', 'The scripts call']) {
+  assert(!initializedReadmeBeforeAuthoring.includes(earlyNoise), 'generated talk README keeps runner detail out of early flow: ' + earlyNoise)
+}
+assert(initializedReadme.indexOf('## Advanced: npm runners and deploys') > initializedReadme.indexOf('## Custom renderers in talk.js'), 'generated talk README moves runner detail to the end')
+assert(initializedReadme.trim().endsWith('and `start` runs `npm run dev`.'), 'generated talk README ends with concise npm runner detail')
 
 assert(fs.existsSync(path.join(talk, 'package.json')), 'init writes package.json')
 const initializedPackage = JSON.parse(fs.readFileSync(path.join(talk, 'package.json'), 'utf8'))

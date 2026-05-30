@@ -405,37 +405,15 @@ function escapeHtml (value) {
 function sampleReadme () {
   return `# Talk
 
-This is a minimal power-slides talk starter. The content stays in \`slides.yaml\`, optional custom behavior stays in the commented \`talk.js\` stub, and the local \`package.json\` lets npm-compatible runners install and run the talk.
+This is a minimal power-slides talk starter. The content stays in \`slides.yaml\`, and optional custom behavior stays in the commented \`talk.js\` stub.
 
 ## Files
 
-- \`package.json\` installs the published \`power-slides\` package as a dev dependency and exposes runner-friendly npm scripts.
 - \`slides.yaml\` contains the seven-slide starter: default text, image, video, columns, iframe, html, and custom.
 - \`talk.js\` is a commented optional ESM stub for theming, custom renderers, and escape hatches.
 - \`public/\` is served at the web root for media such as the bundled \`sample.svg\` image.
-- \`assets/\` is for source assets you do not serve directly.
 
 The starter is intentionally YAML-only. It demonstrates the v3 slide shapes: default text with slide-level \`background\` and \`brightness\`, image, video, columns for iframe-plus-copy, full-slide iframe, and trusted HTML.
-
-Install once, then run with npm scripts:
-
-\`\`\`bash
-npm install
-npm run dev
-npm run build
-\`\`\`
-
-The scripts call the \`powerslides\` bin alias:
-
-\`\`\`json
-{
-  "scripts": {
-    "dev": "powerslides dev .",
-    "build": "powerslides build .",
-    "start": "npm run dev"
-  }
-}
-\`\`\`
 
 ## Options and remote control
 
@@ -478,5 +456,18 @@ export default {
 \`\`\`
 
 See the package README for the longer reference. For custom renderers and animated slides, look at \`examples/showcase/\` in the power-slides package.
+
+## Advanced: npm runners and deploys
+
+The generated \`package.json\` is there for hosts, CI, or runners that expect npm scripts:
+
+\`\`\`bash
+npm install
+npm run dev
+npm run build
+\`\`\`
+
+Those scripts call the \`powerslides\` bin alias: \`dev\` runs \`powerslides dev .\`, \`build\` runs \`powerslides build .\`, and \`start\` runs \`npm run dev\`.
+
 `
 }

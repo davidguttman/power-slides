@@ -30,11 +30,6 @@ npx power-slides dev .
 - `slides.yaml` — default text, image, video, columns, iframe, html, and custom slide examples
 - `talk.js` — optional JavaScript hooks for custom slides
 - `public/` — files served at `/`, including starter image/video assets
-- `assets/` — source assets not served directly
-- `package.json` — optional local npm scripts for runners/deploys
-- `README.md` — talk-local authoring notes
-
-The generated `package.json` is useful when a host or runner expects npm scripts, but it is not required for the normal beginner flow. Starting from `npx` is enough.
 
 ## Run, build, and deploy
 
@@ -44,26 +39,6 @@ npx power-slides build .    # writes a static site into public/
 ```
 
 `build` writes the deployable site into `public/`: `index.html`, the bundled `power-slides` runtime, the remote-control browser bundle, and the assets already in `public/`. Deploy the `public/` folder to any static host.
-
-If you want local reproducible commands or runner-friendly scripts, use the generated npm path:
-
-```bash
-npm install
-npm run dev
-npm run build
-```
-
-The generated scripts are:
-
-```json
-{
-  "scripts": {
-    "dev": "powerslides dev .",
-    "build": "powerslides build .",
-    "start": "npm run dev"
-  }
-}
-```
 
 ## Edit `slides.yaml`
 
@@ -264,3 +239,16 @@ PRs welcome. The core runtime stays small while the reusable talk shell keeps ta
 ## License
 
 MIT © David Guttman
+
+
+## Advanced: npm runners
+
+`init` also writes a private `package.json` for hosts or CI runners that expect npm scripts:
+
+```bash
+npm install
+npm run dev
+npm run build
+```
+
+Those scripts call the `powerslides` bin alias: `dev` runs `powerslides dev .`, `build` runs `powerslides build .`, and `start` runs `npm run dev`.
