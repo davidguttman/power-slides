@@ -15,7 +15,7 @@ Write slideshows in YAML or JavaScript instead of fighting a WYSIWYG.
 power-slides dev .
 ```
 
-That's a talk. Arrow keys to navigate, deep links per slide, presenter notes on your phone, optional remote control. When YAML stops being enough — typewriter effect, live D3 visualization, WebGL toy, fetch from your own API — a slide is just a JS function that owns its DOM. Do whatever the browser can do.
+That's a talk. Arrow keys to navigate, deep links per slide, optional remote control. When YAML stops being enough — typewriter effect, live D3 visualization, WebGL toy, fetch from your own API — a slide is just a JS function that owns its DOM. Do whatever the browser can do.
 
 ## Why power-slides?
 
@@ -23,7 +23,6 @@ That's a talk. Arrow keys to navigate, deep links per slide, presenter notes on 
 - **A slide can still be a function.** Full power of the browser, per slide.
 - **Keyboard + touch nav out of the box.** Arrows, tap-edges on mobile.
 - **Deep links.** Every slide has a URL hash (`#/7`). Reload, share, jump.
-- **Presenter mode.** Split view with speaker notes underneath.
 - **Remote control.** Drive the deck from your phone over PeerJS — built into the shell, no per-talk wiring.
 - **Background preloading.** First slide renders immediately; later images/videos load while you talk.
 
@@ -302,16 +301,16 @@ export default { renderers: { custom: () => slide } }
 
 ESM entry point. Renders a v3 slide array (or a legacy object with `slides`) into `el`. The ESM `PowerSlides` object has all data-driven helpers (`text`, `image`, `video`, `columns`, `iframe`, `html`, …) attached.
 
-### `PS.start(el, slides, [isPresenter], [options])`
+### `PS.start(el, slides, [options])`
 
 Original hand-rolled API. Each entry in `slides` is one of:
 
 - a **string** → big title slide
 - a **DOM element** → appended into the slide container
 - a **function** `(slideContainer) => void` → called every time you nav to the slide; you own the DOM
-- an **array** `[slide, ...notes]` → first item is any of the above; rest are presenter notes (strings)
+- a legacy **array** `[slide, ...metadata]` → first item is any of the above; extra values are retained for compatibility but do not create local UI
 
-`isPresenter` (optional) splits the view so the slide takes the top half and notes appear underneath — sniff the UA (`/iPhone|Android/`) to flip it on for the phone. You can also pass an options object here; `options.isPresenter` is used. `options.remote` enables the built-in options + PeerJS remote-control UI: `true` for defaults, or an object with `Peer`, `peerOptions`, `peerId`, `param`, `pairParam`, `controllerStorageKey`, or `buttonHideMs`.
+`options.remote` enables the built-in options + PeerJS remote-control UI: `true` for defaults, or an object with `Peer`, `peerOptions`, `peerId`, `param`, `pairParam`, `controllerStorageKey`, or `buttonHideMs`.
 
 ```js
 const PS = require('power-slides')
@@ -380,7 +379,6 @@ For custom shells using `PS.start` directly, enable it with `remote: true`; pass
 
 ```js
 PS.start(document.body, slides, {
-  isPresenter,
   remote: true
 })
 ```
@@ -396,8 +394,6 @@ The display stays authoritative. Remote messages are navigation intents only (`p
 **Live demos.** A slide is a function, so plug in anything: a sandboxed iframe, a CodeMirror editor, a WebSocket-driven dashboard. Whatever runs in a browser tab runs on a slide.
 
 **Reactive slides.** Subscribe to `changeSlide` to pause videos, stop timers, or fire analytics when the audience moves on.
-
-**Presenter mode on your phone.** Open the deck on your laptop normally, and again on your phone with `isPresenter` flipped on (UA sniff works fine). The phone becomes your notes screen.
 
 ## Development
 

@@ -32,18 +32,12 @@ const PowerSlides = {
   preloadAssets,
   preloadSlideAssets,
 
-  start: function (target, slideNotes, isPresenter, opts) {
+  start: function (target, slideNotes, opts) {
     if (started) return this
     started = true
 
-    if (isPresenter && typeof isPresenter === 'object') {
-      opts = isPresenter
-      isPresenter = opts.isPresenter
-    }
+    opts = (opts && typeof opts === 'object') ? opts : {}
 
-    opts = opts || {}
-
-    this.isPresenter = isPresenter
     this.target = target
     this.opts = opts
 
@@ -62,9 +56,6 @@ const PowerSlides = {
 
     this.elSlide = this.createSlide()
     this.container.appendChild(this.elSlide)
-
-    this.elNote = this.createNotes()
-    this.container.appendChild(this.elNote)
 
     window.addEventListener('hashchange', this.onHashChange.bind(this))
     window.addEventListener('keyup', this.onKeyup.bind(this))
@@ -123,16 +114,6 @@ const PowerSlides = {
   changeSlide: function (n) {
     this.emit('changeSlide', n)
 
-    const note = this.notes[n - 1]
-    const elNote = this.elNote
-    elNote.innerHTML = ''
-
-    if (note && note[0]) {
-      note.forEach(function (noteItem) {
-        elNote.appendChild(element('p', {}, noteItem))
-      })
-    }
-
     const slide = this.slides[n - 1]
     if (slide) renderSlide(slide, this.elSlide)
   },
@@ -187,8 +168,6 @@ const PowerSlides = {
       alignItems: 'center'
     }
 
-    if (this.isPresenter) style.height = '50%'
-
     return element('div', { className: 'ps-slide', style })
   },
 
@@ -198,17 +177,6 @@ const PowerSlides = {
     }
 
     if (this.remoteState && this.remoteState.openOptions) return this.remoteState.openOptions()
-  },
-
-  createNotes: function () {
-    const style = {
-      width: '100%',
-      height: '50%'
-    }
-
-    if (!this.isPresenter) style.display = 'none'
-
-    return element('div', { className: 'ps-notes', style }, 'notes')
   }
 }
 
