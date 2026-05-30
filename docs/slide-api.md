@@ -66,10 +66,9 @@ CSS strings are also accepted and converted to the same camelCase properties:
   titleStyle: "color: red; font-size: 12pt"
 ```
 
-Style overrides apply after built-in defaults and shorthand fields such as
-`titleSize`, `subtitleSize`, and `subtitleOpacity`, so the explicit style value
-wins when both are present. This rule is shared by text, columns, iframe phone
-layouts, iframe/device chrome, side-copy fields, and media/image escape hatches.
+Style overrides apply after built-in defaults. This rule is shared by text,
+columns, iframe phone layouts, iframe/device chrome, side-copy fields, and
+media/image escape hatches.
 
 ## title
 

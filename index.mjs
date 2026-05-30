@@ -739,7 +739,7 @@ function iframeSideEyebrowStyle (side) {
 function iframeSideTitleStyle (side) {
   return mergeStyle({
     color: side.titleColor || 'inherit',
-    fontSize: side.titleSize || 'clamp(2.4rem, 5vw, 4.8rem)',
+    fontSize: 'clamp(2.4rem, 5vw, 4.8rem)',
     fontWeight: side.titleWeight || 900,
     lineHeight: 0.96,
     letterSpacing: side.titleLetterSpacing || '-0.055em',
@@ -751,10 +751,10 @@ function iframeSideTitleStyle (side) {
 function iframeSideSubtitleStyle (side) {
   return mergeStyle({
     color: side.subtitleColor || 'inherit',
-    fontSize: side.subtitleSize || 'clamp(1.1rem, 1.7vw, 1.55rem)',
+    fontSize: 'clamp(1.1rem, 1.7vw, 1.55rem)',
     fontWeight: side.subtitleWeight || 600,
     lineHeight: 1.35,
-    opacity: side.subtitleOpacity == null ? 0.82 : side.subtitleOpacity,
+    opacity: 0.82,
     margin: '0 0 1.3rem',
     whiteSpace: 'pre-line'
   }, side.subtitleStyle)
@@ -942,7 +942,7 @@ function eyebrowStyle (opts) {
 
 function titleStyle (opts) {
   return mergeStyle({
-    fontSize: opts.titleSize || '4.8vw',
+    fontSize: '4.8vw',
     lineHeight: 1.02,
     margin: 0,
     maxWidth: opts.maxWidth || '18em',
@@ -953,8 +953,8 @@ function titleStyle (opts) {
 
 function subtitleStyle (opts) {
   return mergeStyle({
-    fontSize: opts.subtitleSize || '1.8vw',
-    opacity: opts.subtitleOpacity == null ? 0.88 : opts.subtitleOpacity,
+    fontSize: '1.8vw',
+    opacity: 0.88,
     marginTop: '0.85em',
     maxWidth: opts.subtitleMaxWidth || '22em',
     whiteSpace: 'pre-line',
@@ -1152,7 +1152,7 @@ function columnsColumnStyle (opts) {
 
 function columnsHeadingStyle (opts) {
   return mergeStyle({
-    fontSize: opts.titleSize || opts.size || 'clamp(2.2rem, 4.6vw, 5.2rem)',
+    fontSize: opts.size || 'clamp(2.2rem, 4.6vw, 5.2rem)',
     lineHeight: opts.lineHeight || 1.05,
     margin: 0,
     whiteSpace: 'pre-line'

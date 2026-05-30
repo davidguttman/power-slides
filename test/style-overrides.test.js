@@ -9,7 +9,7 @@ async function loadPowerSlides () {
   return import(pathToFileURL(path.join(root, 'index.mjs')).href + '?style-overrides=' + Date.now())
 }
 
-test('text slides accept object and CSS string style overrides after shorthand defaults', async function () {
+test('text slides accept object and CSS string style overrides', async function () {
   const mod = await loadPowerSlides()
   withFakeBrowser(function () {
     const target = new FakeElement('section')
@@ -17,10 +17,8 @@ test('text slides accept object and CSS string style overrides after shorthand d
       eyebrow: 'Intro',
       eyebrowStyle: 'letter-spacing: 0.1em; opacity: 1',
       title: 'Styled title',
-      titleSize: '6vw',
       titleStyle: 'font-size: 12pt; color: red',
       subtitle: 'Styled subtitle',
-      subtitleOpacity: 0.25,
       subtitleStyle: { opacity: 0.9, fontSize: '20px' }
     })(target)
 
@@ -28,12 +26,33 @@ test('text slides accept object and CSS string style overrides after shorthand d
     const eyebrow = findDeep(target, el => elementText(el) === 'Intro')
     const subtitle = findDeep(target, el => elementText(el) === 'Styled subtitle')
 
-    assert.equal(title.style.fontSize, '12pt', 'CSS string titleStyle overrides titleSize')
+    assert.equal(title.style.fontSize, '12pt', 'CSS string titleStyle applies font-size')
     assert.equal(title.style.color, 'red', 'CSS string titleStyle applies camel-cased CSS')
     assert.equal(eyebrow.style.letterSpacing, '0.1em', 'CSS string eyebrowStyle applies kebab-case CSS')
     assert.equal(eyebrow.style.opacity, '1', 'CSS string eyebrowStyle can override defaults')
     assert.equal(subtitle.style.fontSize, '20px', 'object subtitleStyle preserves existing object behavior')
-    assert.equal(subtitle.style.opacity, 0.9, 'object subtitleStyle overrides subtitleOpacity')
+    assert.equal(subtitle.style.opacity, 0.9, 'object subtitleStyle applies opacity')
+  })
+})
+
+test('legacy text style size and opacity knobs are ignored', async function () {
+  const mod = await loadPowerSlides()
+  withFakeBrowser(function () {
+    const target = new FakeElement('section')
+    mod.text({
+      title: 'Default title',
+      titleSize: '6vw',
+      subtitle: 'Default subtitle',
+      subtitleSize: '99px',
+      subtitleOpacity: 0.25
+    })(target)
+
+    const title = findDeep(target, el => el.tagName === 'h1')
+    const subtitle = findDeep(target, el => elementText(el) === 'Default subtitle')
+
+    assert.equal(title.style.fontSize, '4.8vw', 'titleSize does not affect text title font size')
+    assert.equal(subtitle.style.fontSize, '1.8vw', 'subtitleSize does not affect text subtitle font size')
+    assert.equal(subtitle.style.opacity, 0.88, 'subtitleOpacity does not affect text subtitle opacity')
   })
 })
 
@@ -46,7 +65,6 @@ test('columns accept object and CSS string style overrides for copy and media es
       columns: [
         {
           title: 'Column title',
-          titleSize: '44px',
           titleStyle: { fontSize: '22px', color: 'blue' },
           text: 'Column copy',
           textStyle: 'font-size: 18px; color: green',
@@ -70,7 +88,7 @@ test('columns accept object and CSS string style overrides for copy and media es
 
     assert.equal(column.style.gap, '9px', 'CSS string columnStyle applies to column wrappers')
     assert.equal(column.style.alignItems, 'center', 'CSS string columnStyle converts kebab-case')
-    assert.equal(heading.style.fontSize, '22px', 'object titleStyle overrides titleSize in columns')
+    assert.equal(heading.style.fontSize, '22px', 'object titleStyle applies in columns')
     assert.equal(heading.style.color, 'blue', 'object titleStyle applies in columns')
     assert.equal(copy.style.fontSize, '18px', 'CSS string textStyle applies to column copy')
     assert.equal(copy.style.color, 'green', 'CSS string textStyle applies color')
@@ -78,6 +96,25 @@ test('columns accept object and CSS string style overrides for copy and media es
     assert.equal(media.style.justifyContent, 'flex-start', 'CSS string mediaStyle applies to media wrapper')
     assert.equal(image.style.maxHeight, '20vh', 'CSS string imageStyle overrides image sizing')
     assert.equal(image.style.borderRadius, '0', 'CSS string imageStyle applies image shape')
+  })
+})
+
+test('legacy column title size knob is ignored', async function () {
+  const mod = await loadPowerSlides()
+  withFakeBrowser(function () {
+    const target = new FakeElement('section')
+    mod.columns({
+      columns: [
+        {
+          title: 'Column default title',
+          titleSize: '44px'
+        }
+      ]
+    })(target)
+
+    const heading = findDeep(target, el => el.tagName === 'h2')
+
+    assert.equal(heading.style.fontSize, 'clamp(2.2rem, 4.6vw, 5.2rem)', 'titleSize does not affect column heading font size')
   })
 })
 
@@ -117,6 +154,30 @@ test('iframe device, layout, iframe, and side copy style overrides accept CSS st
     assert.equal(title.style.fontSize, '30px', 'CSS string side titleStyle applies')
     assert.equal(body.style.fontSize, '16px', 'object side bodyStyle still works')
     assert.equal(bullets.style.marginLeft, '2em', 'CSS string side bulletsStyle applies')
+  })
+})
+
+test('legacy iframe side title and subtitle knobs are ignored', async function () {
+  const mod = await loadPowerSlides()
+  withFakeBrowser(function () {
+    const target = new FakeElement('section')
+    mod.iframe('https://example.test/app', {
+      device: 'iphone',
+      side: {
+        title: 'Default side title',
+        titleSize: '44px',
+        subtitle: 'Default side subtitle',
+        subtitleSize: '22px',
+        subtitleOpacity: 0.2
+      }
+    })(target)
+
+    const title = findDeep(target, el => String(el.className).includes('ps-iframe-side-title'))
+    const subtitle = findDeep(target, el => String(el.className).includes('ps-iframe-side-subtitle'))
+
+    assert.equal(title.style.fontSize, 'clamp(2.4rem, 5vw, 4.8rem)', 'side.titleSize does not affect side title font size')
+    assert.equal(subtitle.style.fontSize, 'clamp(1.1rem, 1.7vw, 1.55rem)', 'side.subtitleSize does not affect side subtitle font size')
+    assert.equal(subtitle.style.opacity, 0.82, 'side.subtitleOpacity does not affect side subtitle opacity')
   })
 })
 

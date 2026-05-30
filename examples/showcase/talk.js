@@ -26,8 +26,8 @@ const theme = {
     phoneWidth: 'min(54vh, 30vw, 430px)'
   },
   copyWidth: 'min(62rem, 72vw)',
-  titleSize: 'clamp(3.1rem, 6vw, 6.4rem)',
-  subtitleSize: 'clamp(1.15rem, 1.55vw, 1.65rem)',
+  titleFontSize: 'clamp(3.1rem, 6vw, 6.4rem)',
+  subtitleFontSize: 'clamp(1.15rem, 1.55vw, 1.65rem)',
   bodySize: 'clamp(1rem, 1.18vw, 1.25rem)',
   eyebrowSize: 'clamp(0.78rem, 0.9vw, 0.98rem)',
   cardRadius: 'clamp(1rem, 1.6vw, 1.35rem)',
@@ -74,8 +74,8 @@ function themeSlide (slide, index) {
       backgroundColor: palette.void,
       padding: theme.padding,
       maxWidth: theme.copyWidth,
-      titleSize: theme.titleSize,
-      subtitleSize: theme.subtitleSize,
+      titleStyle: { fontSize: theme.titleFontSize },
+      subtitleStyle: { fontSize: theme.subtitleFontSize },
       subtitleMaxWidth: '36em',
       eyebrowSize: theme.eyebrowSize,
       brightness: index === 0 ? 0.58 : 0.5
@@ -511,7 +511,7 @@ function end (slide) {
         padding-left: 1rem;
         border-left: 0.22rem solid ${palette.yellow};
         color: ${palette.white};
-        font-size: ${theme.subtitleSize};
+        font-size: ${theme.subtitleFontSize};
         line-height: 1.35;
       }
     `)
@@ -563,7 +563,7 @@ function sharedCss () {
       margin: 0;
       max-width: ${theme.copyWidth};
       color: ${palette.white};
-      font-size: ${theme.titleSize};
+      font-size: ${theme.titleFontSize};
       font-weight: 900;
       line-height: 0.98;
       letter-spacing: -0.06em;
@@ -573,7 +573,7 @@ function sharedCss () {
       max-width: 38rem;
       margin: 1.15rem 0 0;
       color: ${palette.muted};
-      font-size: ${theme.subtitleSize};
+      font-size: ${theme.subtitleFontSize};
       font-weight: 650;
       line-height: 1.38;
       text-wrap: pretty;
