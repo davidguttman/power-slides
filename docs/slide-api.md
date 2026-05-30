@@ -14,7 +14,7 @@ slides:
   - image: /diagram.png
 ```
 
-`slides.yaml` can also be a bare array of slides:
+The bare array form still works unchanged:
 
 ```yaml
 - title: Main point

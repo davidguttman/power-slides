@@ -5,8 +5,8 @@ style:
   color: white
   "--accent": '#5ffbf1'
 slides:
-  - title: Main point
-    subtitle: Optional subtitle
+  - title: Your first deck
+    subtitle: Press o for remote control
     background: /sample.svg
     brightness: 0.45
     align: center

@@ -434,7 +434,23 @@ Deploy the \`public/\` folder to any static host.
 
 ## Edit slides.yaml
 
-Write one slide per YAML item. \`slides.yaml\` can be a bare array of slides. The starter also shows text, image, video, columns, iframe, html, and custom slides.
+Start with a YAML list. Each item is one slide.
+
+\`\`\`yaml
+- title: Your first deck
+  subtitle: Press o for remote control
+  background: /sample.svg
+
+- image: /sample.svg
+  fit: contain
+
+- video: /fractal-loop.mp4
+  controls: true
+  muted: true
+  loop: true
+\`\`\`
+
+The starter also shows text, image, video, columns, iframe, html, and custom slides.
 
 Each slide can have one of the following:
 
@@ -449,27 +465,15 @@ To combine types, use \`columns\`, such as iframe-plus-copy or image-plus-title.
 
 For the full slide schema and \`talk.js\` API, see the package README and \`docs/slide-api.md\`.
 
+## Theming and deck metadata
+
+For deck-wide metadata or CSS defaults, wrap the same slide list in a deck object with \`title\`, \`style\`, and \`slides\`.
+
 ## Remote control
 
 Run or build the deck, press \`o\` to open Options, click **Enable remote control**, then scan the QR code or open the shown URL on your phone.
 
 The phone remote navigates the deck.
-
-## Theming and styling
-
-Use a deck object when a talk needs a browser title or deck-wide CSS defaults. \`title\` sets the HTML document title, \`style\` applies CSS to the deck, and \`slides\` holds the same slide list.
-
-\`\`\`yaml
-title: My Talk
-style:
-  fontFamily: Inter, system-ui, sans-serif
-  background: '#061018'
-  color: white
-  "--accent": '#5ffbf1'
-slides:
-  - title: Main point
-    subtitle: Optional subtitle
-\`\`\`
 
 ## Optional talk.js
 

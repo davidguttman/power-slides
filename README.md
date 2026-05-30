@@ -9,7 +9,7 @@ Create browser-native slideshows from a small `slides.yaml` file, then use your 
 
 - image: /diagram.png
 
-- title: A slide can be anything the browser can render.
+- title: A slide can still be anything the browser can render.
   subtitle: power-slides
 ```
 
@@ -42,11 +42,11 @@ Deploy the `public/` folder to any static host.
 
 ## Edit `slides.yaml`
 
-Write one slide per YAML item. `slides.yaml` can be a bare array of slides. The starter also shows text, image, video, columns, iframe, html, and custom slides.
+Start with a YAML list. Each item is one slide.
 
 ```yaml
-- title: Main point
-  subtitle: Optional subtitle
+- title: Your first deck
+  subtitle: Press o for remote control
   background: /sample.svg
   brightness: 0.45
   align: center
@@ -86,15 +86,9 @@ To combine types, use `columns`, such as iframe-plus-copy or image-plus-title.
 
 The full slide shape and advanced API reference lives in `docs/slide-api.md`.
 
-## Remote control
+## Theming and deck metadata
 
-Run or build the deck, press `o` to open Options, click **Enable remote control**, then scan the QR code or open the shown URL on your phone.
-
-The phone remote navigates the deck.
-
-## Theming and styling
-
-Use a deck object when a talk needs a browser title or deck-wide CSS defaults. `title` sets the HTML document title, `style` applies CSS to the deck, and `slides` holds the same slide list.
+For deck-wide metadata or CSS defaults, wrap the same slide list in a deck object with `title`, `style`, and `slides`.
 
 ```yaml
 title: My Talk
@@ -104,9 +98,17 @@ style:
   color: white
   "--accent": '#5ffbf1'
 slides:
-  - title: Main point
-    subtitle: Optional subtitle
+  - title: Your first deck
+    subtitle: Press o for remote control
+
+  - image: /sample.svg
 ```
+
+## Remote control
+
+Run or build the deck, press `o` to open Options, click **Enable remote control**, then scan the QR code or open the shown URL on your phone.
+
+The phone remote navigates the deck.
 
 ## Optional `talk.js`
 
