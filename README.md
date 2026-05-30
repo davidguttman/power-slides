@@ -15,26 +15,14 @@ Write browser-native slideshows from a small `slides.yaml` file instead of fight
 
 Start a deck with the CLI, edit the YAML, and deploy the built `public/` folder anywhere static files can live.
 
-## Install
+## Create your first deck
 
-For a first deck, install the CLI once:
-
-```bash
-npm install -g power-slides
-```
-
-Prefer not to install globally? Use `npx` for the same commands:
+Use `npx` to run the CLI without installing it globally:
 
 ```bash
 npx power-slides init my-talk
-```
-
-## Create your first deck
-
-```bash
-power-slides init my-talk
 cd my-talk
-power-slides dev .
+npx power-slides dev .
 ```
 
 `init` creates a talk folder with:
@@ -46,13 +34,13 @@ power-slides dev .
 - `package.json` — optional local npm scripts for runners/deploys
 - `README.md` — talk-local authoring notes
 
-The generated `package.json` is useful when a host or runner expects npm scripts, but it is not required for the normal beginner flow. Starting from the global CLI is enough.
+The generated `package.json` is useful when a host or runner expects npm scripts, but it is not required for the normal beginner flow. Starting from `npx` is enough.
 
 ## Run, build, and deploy
 
 ```bash
-power-slides dev .      # starts a local dev server
-power-slides build .    # writes a static site into public/
+npx power-slides dev .      # starts a local dev server
+npx power-slides build .    # writes a static site into public/
 ```
 
 `build` writes the deployable site into `public/`: `index.html`, the bundled `power-slides` runtime, the remote-control browser bundle, and the assets already in `public/`. Deploy the `public/` folder to any static host.
