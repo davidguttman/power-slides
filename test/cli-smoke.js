@@ -144,13 +144,13 @@ for (const oldType of ['overlay', 'quote', 'chart', 'summary', 'citation']) {
   assert(!packageReadme.includes('#### `' + oldType + '`'), 'package README does not present ' + oldType + ' as a public slide concept')
 }
 assert(packageReadme.includes('`slides.yaml` is a YAML array of slide objects'), 'package README documents YAML-array slide specs')
-assert(packageReadme.includes('On narrow/portrait viewports, columns stack vertically'), 'package README documents mobile columns stacking')
+assert(packageReadme.includes('Each item is one slide'), 'package README explains one slide per YAML item')
 assert(packageReadme.includes('docs/slide-api.md'), 'package README points full slide/talk API reference to docs')
 assert(packageReadme.includes('For more `talk.js` hooks, see `docs/slide-api.md`'), 'package README keeps talk.js hook details behind docs link')
 for (const earlyDocNoise of ['Slide concept reference', 'Every slide object has exactly one content property', 'slides(slides, PS)', 'beforeStart(PS, spec)', 'bundled PeerJS runtime', 'remote: false']) {
   assert(!packageReadme.includes(earlyDocNoise), 'package README omits noisy detail: ' + earlyDocNoise)
 }
-for (const forbidden of ['iframeTitle', 'type: overlay', 'type: title', 'type: chart', 'type: summary', 'type: columns', 'type: image', 'type: video', 'type: iframe', 'type: html', 'side:', 'src:', 'url:', 'size: contain']) {
+for (const forbidden of ['iframeTitle', 'type: overlay', 'type: title', 'type: chart', 'type: summary', 'type: columns', 'type: image', 'type: video', 'type: iframe', 'type: html', 'side:', 'src:', 'url:', 'size: contain', 'without installing', 'globally', 'There is no top-level', 'no separate title metadata', 'Keyboard, touch, URL hash', 'Most talks can stay', 'instead of fighting', 'otherwise the `npx power-slides ...` commands above are enough']) {
   assert(!packageReadme.includes(forbidden), 'package README omits stale slide anti-pattern ' + forbidden)
 }
 assert(packageReadme.includes('- `slides.yaml`') && packageReadme.includes('- `talk.js`') && packageReadme.includes('- `public/`'), 'package README generated-file list names beginner-facing files')
@@ -162,7 +162,7 @@ for (const earlyNoise of ['package.json', 'npm run', 'generated scripts', 'PeerJ
   assert(!packageReadmeBeginner.includes(earlyNoise), 'package README beginner path omits early ' + earlyNoise)
 }
 assert(packageReadme.indexOf('## Advanced: npm runners') > packageReadme.indexOf('## License'), 'package README keeps npm runner detail after License')
-assert(packageReadme.trim().endsWith('otherwise the `npx power-slides ...` commands above are enough.'), 'package README ends with concise npm runner detail')
+assert(packageReadme.trim().endsWith('Use those scripts for hosts, CI, or deploy flows that run npm commands.'), 'package README ends with concise npm runner detail')
 
 fs.writeFileSync(generatedExamplePeerScript, 'generated PeerJS runtime artifact\n')
 runCliWithBlockedBuildDeps(['init', talk])
@@ -184,11 +184,11 @@ for (const oldType of ['overlay', 'quote', 'chart', 'summary', 'citation']) {
 assert(initializedReadme.includes('## Optional talk.js'), 'generated talk README documents optional talk.js path')
 assert(initializedReadme.includes('npx power-slides dev .') && initializedReadme.includes('npx power-slides build .'), 'generated talk README foregrounds npx run/build flow')
 assert(initializedReadme.includes('## Remote control') && initializedReadme.includes('press `o`') && initializedReadme.includes('Enable remote control'), 'generated talk README documents user-facing remote controls')
-assert(initializedReadme.includes('YAML array of slide objects') && initializedReadme.includes('docs/slide-api.md') && initializedReadme.includes('columns stack vertically'), 'generated talk README points detailed schema/API to docs')
+assert(initializedReadme.includes('YAML array of slide objects') && initializedReadme.includes('Each item is one slide') && initializedReadme.includes('docs/slide-api.md'), 'generated talk README points detailed schema/API to docs')
 for (const earlyDocNoise of ['Every slide object has exactly one content property', 'slides(slides, PS)', 'beforeStart(PS, spec)', 'bodyStyle', 'PeerJS', 'remote: false', 'runtime options']) {
   assert(!initializedReadme.includes(earlyDocNoise), 'generated talk README omits noisy detail: ' + earlyDocNoise)
 }
-for (const forbidden of ['iframeTitle', 'type: overlay', 'type: title', 'type: chart', 'type: summary', 'type: columns', 'type: image', 'type: video', 'type: iframe', 'type: html', 'side:', 'src:', 'url:', 'size: contain']) {
+for (const forbidden of ['iframeTitle', 'type: overlay', 'type: title', 'type: chart', 'type: summary', 'type: columns', 'type: image', 'type: video', 'type: iframe', 'type: html', 'side:', 'src:', 'url:', 'size: contain', 'without installing', 'globally', 'There is no top-level', 'no separate title metadata', 'Keyboard, touch, URL hash', 'Most talks can stay', 'instead of fighting', 'only when a slide needs browser code', 'otherwise the `npx power-slides ...` commands above are enough']) {
   assert(!initializedReadme.includes(forbidden), 'generated talk README omits stale slide anti-pattern ' + forbidden)
 }
 assert(initializedReadme.includes('text, image, video, columns, iframe, html, and custom'), 'generated talk README describes starter canonical shapes')
@@ -202,7 +202,7 @@ for (const earlyNoise of ['package.json', 'npm install', 'npm run', 'The scripts
   assert(!initializedReadmeBeforeAuthoring.includes(earlyNoise), 'generated talk README keeps runner/remote internals out of early flow: ' + earlyNoise)
 }
 assert(initializedReadme.indexOf('## Advanced: npm runners') > initializedReadme.indexOf('## Optional talk.js'), 'generated talk README moves runner detail to the end')
-assert(initializedReadme.trim().endsWith('otherwise the `npx power-slides ...` commands above are enough.'), 'generated talk README ends with concise npm runner detail')
+assert(initializedReadme.trim().endsWith('Use those scripts for hosts, CI, or deploy flows that run npm commands.'), 'generated talk README ends with concise npm runner detail')
 
 assert(fs.existsSync(path.join(talk, 'package.json')), 'init writes package.json')
 const initializedPackage = JSON.parse(fs.readFileSync(path.join(talk, 'package.json'), 'utf8'))

@@ -1,6 +1,6 @@
 # power-slides
 
-Write browser-native slideshows from a small `slides.yaml` file instead of fighting a WYSIWYG.
+Create browser-native slideshows from a small `slides.yaml` file.
 
 ```yaml
 - title: Hello, world
@@ -17,7 +17,7 @@ Start a deck with the CLI, edit the YAML, and deploy the built `public/` folder 
 
 ## Create your first deck
 
-Use `npx` to run the CLI without installing it globally:
+Create a deck with `npx`:
 
 ```bash
 npx power-slides init my-talk
@@ -42,7 +42,7 @@ Deploy the `public/` folder to any static host.
 
 ## Edit `slides.yaml`
 
-`slides.yaml` is a YAML array of slide objects. There is no top-level `slides:` wrapper and no separate title metadata — the title slide is just the first slide.
+`slides.yaml` is a YAML array of slide objects. Each item is one slide; make the first item your title or opening slide if desired.
 
 ```yaml
 - title: Main point
@@ -83,7 +83,7 @@ Most decks use a few simple shapes:
 - `custom` — a named renderer from `talk.js`
 - `columns` — a layout that combines slide objects side by side
 
-Use `columns` when you want to combine content types, such as iframe-plus-copy or image-plus-title. On narrow/portrait viewports, columns stack vertically in source order.
+Use `columns` when you want to combine content types, such as iframe-plus-copy or image-plus-title.
 
 The full slide shape and advanced API reference lives in `docs/slide-api.md`.
 
@@ -91,11 +91,11 @@ The full slide shape and advanced API reference lives in `docs/slide-api.md`.
 
 Run or build the deck, press `o` to open Options, click **Enable remote control**, then scan the QR code or open the shown URL on your phone.
 
-Remote commands navigate the deck. Keyboard, touch, URL hash navigation, and remote control all stay in the same slide state.
+The phone remote navigates the deck.
 
 ## Optional `talk.js`
 
-Most talks can stay entirely in `slides.yaml`. Add `talk.js` when a slide needs browser code: a typewriter effect, live D3 visualization, WebGL toy, API fetch, or anything else the browser can render.
+Use `talk.js` for slides that need browser code: a typewriter effect, live D3 visualization, WebGL toy, API fetch, or anything else the browser can render.
 
 ```js
 export default {
@@ -133,4 +133,4 @@ npm run dev
 npm run build
 ```
 
-Use those scripts if your deploy flow wants npm commands; otherwise the `npx power-slides ...` commands above are enough.
+Use those scripts for hosts, CI, or deploy flows that run npm commands.

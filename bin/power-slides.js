@@ -405,7 +405,7 @@ function escapeHtml (value) {
 function sampleReadme () {
   return `# Talk
 
-This is a minimal power-slides talk starter. Start with \`slides.yaml\`; use \`talk.js\` only when a slide needs browser code; put images, video, and other static files in \`public/\`.
+This is a minimal power-slides talk starter. Write deck content in \`slides.yaml\`, custom slide code in \`talk.js\`, and put images, video, and other static files in \`public/\`.
 
 ## Files
 
@@ -424,7 +424,7 @@ Deploy the \`public/\` folder to any static host.
 
 ## Edit slides.yaml
 
-\`slides.yaml\` is a YAML array of slide objects. The starter shows text, image, video, columns, iframe, html, and custom slides.
+\`slides.yaml\` is a YAML array of slide objects. Each item is one slide; make the first item your title or opening slide if desired. The starter also shows text, image, video, columns, iframe, html, and custom slides.
 
 Most decks use these shapes:
 
@@ -436,7 +436,7 @@ Most decks use these shapes:
 - \`custom\` — a named renderer from \`talk.js\`
 - \`columns\` — a layout that combines slide objects side by side
 
-Use \`columns\` when you want to combine content types, such as iframe-plus-copy or image-plus-title. On narrow/portrait viewports, columns stack vertically in source order.
+Use \`columns\` when you want to combine content types, such as iframe-plus-copy or image-plus-title.
 
 For the full slide schema and \`talk.js\` API, see the package README and \`docs/slide-api.md\`.
 
@@ -444,11 +444,11 @@ For the full slide schema and \`talk.js\` API, see the package README and \`docs
 
 Run or build the deck, press \`o\` to open Options, click **Enable remote control**, then scan the QR code or open the shown URL on your phone.
 
-Keyboard, touch, URL hash navigation, and remote control all stay in the same slide state.
+The phone remote navigates the deck.
 
 ## Optional talk.js
 
-Most talks can stay entirely in \`slides.yaml\`. Add \`talk.js\` when a slide needs browser code.
+Use \`talk.js\` for slides that need browser code.
 
 \`\`\`js
 export default {
@@ -482,7 +482,7 @@ npm run dev
 npm run build
 \`\`\`
 
-Use those scripts if your deploy flow wants npm commands; otherwise the \`npx power-slides ...\` commands above are enough.
+Use those scripts for hosts, CI, or deploy flows that run npm commands.
 
 `
 }
