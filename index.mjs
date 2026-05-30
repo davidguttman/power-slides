@@ -1069,9 +1069,28 @@ function columnIframe (opts) {
     }))
   })
 
-  return usesPhoneFrame(opts)
+  const chrome = usesPhoneFrame(opts)
     ? iphoneFrame(frame, Object.assign({ deviceWidth: 'min(46vh, 30vw, 390px)' }, opts, { background: iframeBackground }))
     : frame
+
+  if (opts.navigationControls === false) return chrome
+
+  return element('div', {
+    className: 'ps-columns-iframe-shell',
+    style: Object.assign({
+      position: 'relative',
+      width: '100%',
+      height: '100%',
+      minWidth: 0,
+      minHeight: 0,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }, opts.iframeShellStyle || {})
+  }, [
+    chrome,
+    iframeNavigationControls(opts)
+  ])
 }
 
 function renderColumnCopy (column, opts, hasImage) {

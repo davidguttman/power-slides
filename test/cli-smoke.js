@@ -638,6 +638,40 @@ import(path.join(root, 'index.mjs')).then(async mod => {
     assert.strictEqual(prevCount, 2, 'same-origin iframe ArrowLeft forwards to deck')
     assert(rootEl.focused, 'same-origin iframe Escape returns focus to deck')
 
+    const columnIframeTarget = new FakeElement('section')
+    mod.columns({
+      columns: [
+        { iframe: 'https://example.test/column-app', device: 'iphone' },
+        { title: 'Column copy' }
+      ]
+    })(columnIframeTarget)
+    const columnIframeRoot = columnIframeTarget.children[0]
+    const columnIframeFrame = findDeep(columnIframeRoot, child => child.tagName === 'iframe')
+    const columnIframeDevice = findDeep(columnIframeRoot, child => String(child.className).includes('ps-iframe-device-iphone'))
+    const columnIframeControls = findDeep(columnIframeRoot, child => String(child.className).includes('ps-iframe-nav-controls'))
+    const columnIframePrevButton = findDeep(columnIframeRoot, child => String(child.className).includes('ps-iframe-nav-prev'))
+    const columnIframeNextButton = findDeep(columnIframeRoot, child => String(child.className).includes('ps-iframe-nav-next'))
+    assert.strictEqual(columnIframeFrame.attributes.src, 'https://example.test/column-app', 'columns iframe media preserves external src URL')
+    assert(columnIframeControls && columnIframeControls.style.pointerEvents === 'none', 'columns iframe media renders parent-level navigation controls by default')
+    assert(columnIframePrevButton && columnIframePrevButton.style.pointerEvents === 'auto', 'columns iframe previous arrow remains clickable')
+    assert(columnIframeNextButton && columnIframeNextButton.style.pointerEvents === 'auto', 'columns iframe next arrow remains clickable')
+    assert(columnIframeDevice && !containsDeep(columnIframeDevice, columnIframeControls), 'columns iframe keeps arrow controls outside the device frame')
+    assert(!containsDeep(columnIframeFrame, columnIframeControls), 'columns iframe keeps nav controls outside the iframe element')
+    columnIframePrevButton.onclick(fakeKey('click'))
+    columnIframeNextButton.onclick(fakeKey('click'))
+    assert.strictEqual(prevCount, 3, 'columns iframe previous arrow calls PowerSlides.prevSlide')
+    assert.strictEqual(nextCount, 3, 'columns iframe next arrow calls PowerSlides.nextSlide')
+
+    const disabledColumnIframeTarget = new FakeElement('section')
+    mod.columns({
+      navigationControls: false,
+      columns: [
+        { iframe: 'https://example.test/no-column-controls' },
+        { title: 'No controls' }
+      ]
+    })(disabledColumnIframeTarget)
+    assert(!findDeep(disabledColumnIframeTarget, child => String(child.className).includes('ps-iframe-nav-controls')), 'columns iframe navigation controls can be disabled')
+
     mod.default.nextSlide = originalNext
     mod.default.prevSlide = originalPrev
   } finally {
