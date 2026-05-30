@@ -28,33 +28,49 @@ That's a talk. Arrow keys to navigate, deep links per slide, optional remote con
 
 ## Install
 
-For a first deck, install the CLI once and run it directly:
+For a first deck, install the CLI once:
 
 ```bash
 npm install -g power-slides
+```
+
+Prefer not to install globally? Use `npx` in the commands below:
+
+```bash
+npx power-slides init my-talk
+```
+
+The package ships a CLI (`power-slides` / `powerslides`) and an ESM runtime.
+
+## Create your first deck
+
+Start with `init`, then run the deck from the talk folder:
+
+```bash
 power-slides init my-talk
 cd my-talk
 power-slides dev .
 ```
 
-Prefer not to install globally? Use `npx`:
+`init` creates a talk folder by generating the local `package.json` and copying the packaged minimal `example/` starter authoring files:
+
+- `package.json` — local npm scripts plus a dev dependency on the published `power-slides` package
+- `slides.yaml` — seven starter slides: default text, image, video, columns, iframe, html, and custom
+- `talk.js` — commented optional ESM hooks; no custom animated slides in the starter
+- `public/` — files served at `/`, including the starter `sample.svg` image and `fractal-loop.mp4` video assets
+- `assets/` — source assets not served directly
+- `README.md` — talk-local authoring notes
+
+It refuses to run in a non-empty directory unless you pass `--force`, and it does not overwrite existing files. It copies only the minimal starter media, not the richer animated showcase assets. See `examples/showcase/` for custom renderers and animated slides. It does **not** copy a lockfile, `node_modules`, generated bundles, or `public/index.html` into the talk.
+
+## Run, build, and deploy
 
 ```bash
-npx power-slides init my-talk
-cd my-talk
-npx power-slides dev .
+power-slides dev .      # starts a local dev server
+power-slides build .    # writes a static site into public/
 ```
 
-The package ships a CLI (`power-slides`), an ESM runtime, and a CommonJS runtime for older decks.
-
-## Quickstart — YAML + CLI
-
-Create `slides.yaml`, put assets in `public/`, and run the deck from the talk folder:
-
-```bash
-power-slides dev .      # starts budo
-power-slides build .    # writes public/index.html + cache-busted bundle
-```
+`build` turns the talk into static files: `public/index.html`, a cache-busted `power-slides.<hash>.js` bundle, the bundled PeerJS browser runtime for remote control, and whatever assets are already in `public/`. Deploy the `public/` folder to any static host. If your host or runner expects npm scripts, use the generated `package.json` path below.
 
 `init` also generates a small `package.json` with npm scripts. That is useful for runners, deploys, and projects that want local reproducible commands, but it is not the beginner path:
 
@@ -82,30 +98,6 @@ npm run build
 
 `power-slides dev .` / `powerslides dev .` picks its port from `--port <port>`, then `$PORT`, then `9966`. The CLI dev/build shell turns on the built-in Options panel and loads a bundled PeerJS runtime before the deck. Press `o` to reopen Options, then click **Enable remote control** to show the QR code / URL. Export `remote: false` from `talk.js` to disable it, or `remote: { ... }` for PeerJS/options overrides.
 
-`init` creates a talk folder by generating the local `package.json` and copying the packaged minimal `example/` starter authoring files:
-
-- `package.json` — local npm scripts plus a dev dependency on the published `power-slides` package
-- `slides.yaml` — seven starter slides: default text, image, video, columns, iframe, html, and custom
-- `talk.js` — commented optional ESM hooks; no custom animated slides in the starter
-- `public/` — files served at `/`, including the starter `sample.svg` image and `fractal-loop.mp4` video assets
-- `assets/` — source assets not served directly
-- `README.md` — talk-local authoring notes
-
-It refuses to run in a non-empty directory unless you pass `--force`, and it does not overwrite existing files. It copies only the minimal starter media, not the richer animated showcase assets. See `examples/showcase/` for custom renderers and animated slides. It does **not** copy a lockfile, `node_modules`, generated bundles, or `public/index.html` into the talk.
-
-## Quickstart — ESM
-
-```js
-import PowerSlides, { text, image, startTalk } from 'power-slides'
-
-startTalk(document.body, [
-  { title: 'Hello', subtitle: 'Reusable talks' },
-  { image: '/diagram.png', fit: 'contain' }
-])
-```
-
-CommonJS `require('power-slides')` still works for older decks, but new talks should use ESM and/or the CLI-generated entry.
-
 ## slides.yaml
 
 `docs/slide-api-v3.md` is the canonical v3 slide spec. A slide spec is a bare YAML or JSON array of slides — no top-level `slides:` wrapper and no talk metadata mixed into the content file. The title slide is just the first slide.
@@ -118,6 +110,8 @@ Without `--slides`, the CLI picks `slides.yaml`, then `slides.yml`, then `slides
   background: /sample.svg
   brightness: 0.45
   align: center
+  notes:
+    - Open by saying why this matters now.
 
 - image: /sample.svg
   fit: contain
@@ -164,9 +158,10 @@ Every slide object has exactly one content property. Most are leaf content types
 
 `columns` is different: it is the container form. A `columns` slide holds an array of slide objects, and each column is rendered by the same slide renderer. You can think of a normal non-`columns` slide as shorthand for `columns` with one member: omitting `columns` means “render this one slide full-frame.”
 
-Shared properties available on any slide are `background`, `brightness`, and `align`. Use `columns` when you want to combine content types, such as iframe-plus-copy or image-plus-title. On narrow/portrait viewports, columns stack vertically in source order.
+Shared properties available on any slide are `background`, `brightness`, `align`, and `notes`/`note`. Use `columns` when you want to combine content types, such as iframe-plus-copy or image-plus-title. On narrow/portrait viewports, columns stack vertically in source order.
 
-The runtime still tolerates some older helper fields and explicit `type` values for existing decks, but public examples and new docs should use the content-property model above.
+`notes` is speaker-note metadata for the current slide. It can be a string or an array of strings, is not shown on the projected slide, and stays attached to the slide for remote/controller surfaces.
+
 
 ### Slide concept reference
 
@@ -188,6 +183,17 @@ The runtime still tolerates some older helper fields and explicit `type` values 
     - JS handles special moments
   pullquote: Build static files to share.
 ```
+
+#### speaker notes
+
+```yaml
+- title: Main point
+  notes:
+    - Pause here.
+    - Then show the demo.
+```
+
+Use `notes` or `note` for slide-private speaker notes. They are metadata, not visible slide content.
 
 #### `image`
 
@@ -257,6 +263,24 @@ Treat `html` as trusted content; do not put untrusted user input here.
 
 Any extra fields are passed through to the renderer.
 
+## Remote control
+
+`power-slides` bundles an app-shell-level options panel and PeerJS remote control, so the shared CLI shell enables it once and each talk stays content-only. CLI dev/build entries copy the PeerJS browser runtime into the output and load it before the deck. Custom shells can pass a constructor as `remote.Peer`, or expose `window.Peer` before enabling remote control.
+
+For custom shells, pass `remote: true` to `startTalk`; pass `remote: { Peer }` when your app bundles PeerJS itself:
+
+```js
+startTalk(document.body, slides, {
+  remote: true
+})
+```
+
+The Options button appears at boot and fades after about 5 seconds; press `o` to reopen it. Remote hosting does not start until you click **Enable remote control** in Options for that browser session. The deck then creates a PeerJS host, generates a one-time `pairKey`, and shows a QR code and URL. The URL uses query parameters (`ps-remote=<peer id>&ps-pair=<pairKey>` by default), leaving the hash for normal slide deep links.
+
+The first controller opened from that URL stores a generated `clientId` in its `localStorage` and sends `{ type: 'hello', pairKey, clientId }`. If the pair key matches and the deck is not already locked, the deck stores that `clientId` in `sessionStorage` as the winning controller. The default lock key is based on the stable deck URL (`origin + pathname`, query/hash stripped), so it survives display reloads even when PeerJS assigns a new peer id; override it with `remote.controllerStorageKey`. After that, the deck accepts only the same `clientId`; other controllers receive `{ type: 'locked' }` and are closed. A reconnecting controller replaces its old connection.
+
+The display stays authoritative. Remote messages are navigation intents only (`prev`, `next`, `goto`); the deck clamps and validates slide numbers, changes its own state, and sends state back. The controller view is minimal: full-width current-slide preview, full-width next-slide preview, then Prev/Next buttons, each preview scaled to fit a 16:9 viewport rather than cropped. Because it operates on `PowerSlides` navigation state, it works for both data-driven decks and custom `talk.js` slides, and remote commands use the same fast nav path as keyboard/touch — no waiting on per-slide preloading.
+
 ## Optional talk.js
 
 `talk.js` is ESM. Export custom renderers when YAML is not enough:
@@ -295,41 +319,24 @@ slide.assets = ['https://cdn.example.com/background.png']
 export default { renderers: { custom: () => slide } }
 ```
 
+## Imported module usage
+
+```js
+import PowerSlides, { text, image, startTalk } from 'power-slides'
+
+startTalk(document.body, [
+  { title: 'Hello', subtitle: 'Reusable talks' },
+  { image: '/diagram.png', fit: 'contain' }
+])
+```
+
+New talks should use ESM and/or the CLI-generated entry.
+
 ## API
 
 ### `startTalk(el, slidesOrSpec, [options])`
 
-ESM entry point. Renders a v3 slide array (or a legacy object with `slides`) into `el`. The ESM `PowerSlides` object has all data-driven helpers (`text`, `image`, `video`, `columns`, `iframe`, `html`, …) attached.
-
-### `PS.start(el, slides, [options])`
-
-Original hand-rolled API. Each entry in `slides` is one of:
-
-- a **string** → big title slide
-- a **DOM element** → appended into the slide container
-- a **function** `(slideContainer) => void` → called every time you nav to the slide; you own the DOM
-- a legacy **array** `[slide, ...metadata]` → first item is any of the above; extra values are retained for compatibility but do not create local UI
-
-`options.remote` enables the built-in options + PeerJS remote-control UI: `true` for defaults, or an object with `Peer`, `peerOptions`, `peerId`, `param`, `pairParam`, `controllerStorageKey`, or `buttonHideMs`.
-
-```js
-const PS = require('power-slides')
-
-PS.start(document.body, [
-  'Hello, world',
-  PS.image('/cat.gif'),
-  PS.video('/clip.mp4'),
-  function (slide) {
-    slide.innerHTML = '<h1>Anything you can do in JS, you can do on a slide.</h1>'
-  }
-])
-```
-
-`PowerSlides` is an event emitter:
-
-```js
-PS.on('changeSlide', n => console.log('now on slide', n))
-```
+ESM entry point. Renders a v3 slide array into `el`. The ESM `PowerSlides` object has all data-driven helpers (`text`, `image`, `video`, `columns`, `iframe`, `html`, …) attached.
 
 ### `PS.image(url, [backgroundSize])`
 
@@ -370,24 +377,6 @@ PS.layeredTitle(
 - Touch — tap the left 20% / right 20% of the screen.
 - URL hash — `#/3` jumps to slide 3, and the hash updates as you navigate.
 - Options — when the built-in options UI is enabled, the visible Options button hides after about 5 seconds; press `o` to reopen it.
-
-## Remote control
-
-`power-slides` bundles an app-shell-level options panel and PeerJS remote control, so the shared CLI shell enables it once and each talk stays content-only. CLI dev/build entries copy the PeerJS browser runtime into the output and load it before the deck. Custom shells can pass a constructor as `remote.Peer`, or expose `window.Peer` before enabling remote control.
-
-For custom shells using `PS.start` directly, enable it with `remote: true`; pass `remote: { Peer }` when your app bundles PeerJS itself:
-
-```js
-PS.start(document.body, slides, {
-  remote: true
-})
-```
-
-The Options button appears at boot and fades after about 5 seconds; press `o` to reopen it. Remote hosting does not start until you click **Enable remote control** in Options for that browser session. The deck then creates a PeerJS host, generates a one-time `pairKey`, and shows a QR code and URL. The URL uses query parameters (`ps-remote=<peer id>&ps-pair=<pairKey>` by default), leaving the hash for normal slide deep links.
-
-The first controller opened from that URL stores a generated `clientId` in its `localStorage` and sends `{ type: 'hello', pairKey, clientId }`. If the pair key matches and the deck is not already locked, the deck stores that `clientId` in `sessionStorage` as the winning controller. The default lock key is based on the stable deck URL (`origin + pathname`, query/hash stripped), so it survives display reloads even when PeerJS assigns a new peer id; override it with `remote.controllerStorageKey`. After that, the deck accepts only the same `clientId`; other controllers receive `{ type: 'locked' }` and are closed. A reconnecting controller replaces its old connection.
-
-The display stays authoritative. Remote messages are navigation intents only (`prev`, `next`, `goto`); the deck clamps and validates slide numbers, changes its own state, and sends state back. The controller view is minimal: full-width current-slide preview, full-width next-slide preview, then Prev/Next buttons, each preview scaled to fit a 16:9 viewport rather than cropped. Because it operates on `PowerSlides` navigation state, it works for both data-driven decks and custom `talk.js` slides, and remote commands use the same fast nav path as keyboard/touch — no waiting on per-slide preloading.
 
 ## Patterns
 
