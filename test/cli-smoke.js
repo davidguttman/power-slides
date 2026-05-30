@@ -126,13 +126,13 @@ const help = runCliWithBlockedBuildDeps(['--help'])
 assert(help.includes('Dev server port (default: $PORT, then 9966)'), 'help documents $PORT dev port fallback')
 assert(help.includes('default: slides.yaml, slides.yml, or slides.json'), 'help documents YAML default lookup order')
 
-const canonicalShapeDoc = fs.readFileSync(path.join(root, 'docs', 'slide-api-v3.md'), 'utf8')
+const slideApiDoc = fs.readFileSync(path.join(root, 'docs', 'slide-api.md'), 'utf8')
 const canonicalShapeNames = ['title', 'image', 'video', 'iframe', 'html', 'custom', 'columns']
 for (const shape of canonicalShapeNames) {
-  assert(canonicalShapeDoc.includes('## ' + shape), 'canonical v3 doc lists ' + shape + ' shape')
+  assert(slideApiDoc.includes('## ' + shape), 'slide API doc lists ' + shape + ' shape')
 }
 for (const forbidden of ['type: title', 'type: columns', 'type: image', 'type: video', 'type: iframe', 'type: html', 'type: overlay', 'type: quote', 'type: chart', 'type: summary', 'attribution:', 'iframeTitle:', 'side:', 'src:', 'url:', 'size: contain']) {
-  assert(!canonicalShapeDoc.includes(forbidden), 'canonical v3 doc omits legacy field pattern ' + forbidden)
+  assert(!slideApiDoc.includes(forbidden), 'slide API doc omits legacy field pattern ' + forbidden)
 }
 
 const packageReadme = fs.readFileSync(path.join(root, 'README.md'), 'utf8')
@@ -144,13 +144,13 @@ for (const oldType of ['overlay', 'quote', 'chart', 'summary', 'citation']) {
   assert(!packageReadme.includes('#### `' + oldType + '`'), 'package README does not present ' + oldType + ' as a public slide concept')
 }
 assert(packageReadme.includes('bare YAML or JSON array of slides'), 'package README documents bare-array slide specs')
-assert(packageReadme.includes('Every slide object has exactly one content property'), 'package README documents the v3 content-property model')
+assert(packageReadme.includes('Every slide object has exactly one content property'), 'package README documents the content-property slide model')
 assert(packageReadme.includes('On narrow/portrait viewports, columns stack vertically'), 'package README documents mobile columns stacking')
 assert(packageReadme.includes('slides(slides, PS)') && packageReadme.includes('renderers'), 'package README documents talk.js hooks')
 assert(packageReadme.includes('npm install') && packageReadme.includes('npm run dev') && packageReadme.includes('powerslides dev .'), 'package README documents npm install/scripts flow')
 assert(packageReadme.includes('bundled PeerJS runtime') && packageReadme.includes('remote: false') && packageReadme.includes('Enable remote control'), 'package README documents CLI remote/options defaults')
 for (const forbidden of ['iframeTitle', 'type: overlay', 'type: title', 'type: chart', 'type: summary', 'type: columns', 'type: image', 'type: video', 'type: iframe', 'type: html', 'side:', 'src:', 'url:', 'size: contain']) {
-  assert(!packageReadme.includes(forbidden), 'package README omits stale v3 anti-pattern ' + forbidden)
+  assert(!packageReadme.includes(forbidden), 'package README omits stale slide anti-pattern ' + forbidden)
 }
 assert(packageReadme.includes('default text, image, video, columns, iframe, html, and custom'), 'package README describes starter canonical shapes')
 
@@ -174,9 +174,9 @@ for (const oldType of ['overlay', 'quote', 'chart', 'summary', 'citation']) {
 assert(initializedReadme.includes('Custom renderers in talk.js'), 'generated talk README documents custom renderers')
 assert(initializedReadme.includes('npm install') && initializedReadme.includes('npm run dev') && initializedReadme.includes('powerslides dev .'), 'generated talk README documents npm scripts flow')
 assert(initializedReadme.includes('Options and remote control') && initializedReadme.includes('remote: false') && initializedReadme.includes('Enable remote control'), 'generated talk README documents remote/options controls')
-assert(initializedReadme.includes('bare YAML array') && initializedReadme.includes('exactly one content property') && initializedReadme.includes('columns stack vertically'), 'generated talk README documents v3 content-property rules')
+assert(initializedReadme.includes('bare YAML array') && initializedReadme.includes('exactly one content property') && initializedReadme.includes('columns stack vertically'), 'generated talk README documents content-property slide rules')
 for (const forbidden of ['iframeTitle', 'type: overlay', 'type: title', 'type: chart', 'type: summary', 'type: columns', 'type: image', 'type: video', 'type: iframe', 'type: html', 'side:', 'src:', 'url:', 'size: contain']) {
-  assert(!initializedReadme.includes(forbidden), 'generated talk README omits stale v3 anti-pattern ' + forbidden)
+  assert(!initializedReadme.includes(forbidden), 'generated talk README omits stale slide anti-pattern ' + forbidden)
 }
 assert(initializedReadme.includes('default text, image, video, columns, iframe, html, and custom'), 'generated talk README describes starter canonical shapes')
 
@@ -444,8 +444,8 @@ import(path.join(root, 'index.mjs')).then(async mod => {
     { title: 'Speaker notes', notes: ['Pause here', 'Then continue'] },
     { title: 'Note alias', note: 'Alias note' }
   ])
-  assert(!Array.isArray(speakerNoteSlides[0]), 'notes metadata does not wrap the rendered v3 slide in an array')
-  assert(!Array.isArray(speakerNoteSlides[1]), 'note alias metadata does not wrap the rendered v3 slide in an array')
+  assert(!Array.isArray(speakerNoteSlides[0]), 'notes metadata does not wrap the rendered slide in an array')
+  assert(!Array.isArray(speakerNoteSlides[1]), 'note alias metadata does not wrap the rendered slide in an array')
   assert.deepStrictEqual(mod.createTalk([['Legacy slide', 'legacy note']]), [], 'old array metadata is not converted into a slide')
 
   const previousDocument = global.document
@@ -487,8 +487,8 @@ import(path.join(root, 'index.mjs')).then(async mod => {
       { title: 'Remote-enabled ESM deck' }
     ], { remote: { Peer, buttonHideMs: 1 } })
     const optionsButton = findDeep(remoteTarget, child => String(child.className).includes('ps-remote-options-button'))
-    assert.deepStrictEqual(deck.notes[0], ['Pause here', 'Then continue'], 'v3 notes metadata attaches to deck state')
-    assert.deepStrictEqual(deck.notes[1], ['Alias note'], 'v3 note metadata attaches to deck state')
+    assert.deepStrictEqual(deck.notes[0], ['Pause here', 'Then continue'], 'notes metadata attaches to deck state')
+    assert.deepStrictEqual(deck.notes[1], ['Alias note'], 'note metadata attaches to deck state')
     assert.strictEqual(deck.notes[2], undefined, 'slides without notes do not attach deck notes')
     assert(deck.remoteState, 'ESM startTalk initializes remote/options state when remote is enabled')
     assert.strictEqual(deck.opts.remote.Peer, Peer, 'ESM startTalk keeps the bundled PeerJS constructor in remote options')

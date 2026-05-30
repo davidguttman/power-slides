@@ -1,4 +1,4 @@
-# power-slides v3 slide shapes
+# power-slides slide API
 
 A slide spec is a bare YAML array of slides. There are no top-level fields.
 

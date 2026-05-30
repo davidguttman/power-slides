@@ -7,7 +7,7 @@ const { execFileSync } = require('node:child_process')
 const root = path.resolve(__dirname, '..')
 
 test('public docs do not advertise presenter mode or isPresenter', function () {
-  for (const file of ['README.md', 'docs/slide-api-v3.md']) {
+  for (const file of ['README.md', 'docs/slide-api.md']) {
     const text = fs.readFileSync(path.join(root, file), 'utf8')
     assert.equal(/isPresenter/.test(text), false, file + ' omits isPresenter')
     assert.equal(/presenter/i.test(text), false, file + ' omits presenter mode language')
