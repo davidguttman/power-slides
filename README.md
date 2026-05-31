@@ -8,8 +8,15 @@ Start with one `slides.yaml` file, then reveal that it is still just the browser
   background: /title.png
   brightness: 0.35
 
-- image: /github-render.png
-  fit: contain
+- columns:
+    - image: /github-render.png
+      fit: contain
+    - title: Static assets are first-class.
+      subtitle: Drop screenshots, renders, and diagrams into public/ and reference them from YAML.
+      bullets:
+        - Generated images ship with the deck
+        - Static files stay beside the story
+        - Image primitives work inside designed layouts
 
 - iframe: about:blank
   srcdoc: <main>Live web in a phone frame</main>
@@ -57,8 +64,15 @@ Start with a YAML list. Each item is one slide.
   brightness: 0.35
   align: center
 
-- image: /github-render.png
-  fit: contain
+- columns:
+    - image: /github-render.png
+      fit: contain
+    - title: Static assets are first-class.
+      subtitle: Drop screenshots, renders, and diagrams into public/ and reference them from YAML.
+      bullets:
+        - Generated images ship with the deck
+        - Static files stay beside the story
+        - Image primitives work inside designed layouts
 
 - video: /fractal-loop.mp4
   controls: true
@@ -72,11 +86,20 @@ Start with a YAML list. Each item is one slide.
     - image: /workflow.png
       fit: contain
     - title: Composition is the model
-      bullets:
-        - Every column is another slide
-        - Mix assets, copy, media, and embeds without glue code
-        - Keep the story readable while the layout gets richer
+      subtitle: Every column is another slide.
       pullquote: YAML stays declarative; the browser does the stage work.
+
+- title: Mix assets, copy, media, and embeds without glue code.
+  subtitle: Keep rich slides as content instead of wiring layouts by hand.
+  background: /build-it.png
+  brightness: 0.72
+  align: center
+
+- title: Keep the story readable while the layout gets richer.
+  subtitle: Split dense ideas into clean moments, then move on to live web.
+  background: /build-it.png
+  brightness: 0.72
+  align: center
 
 - iframe: about:blank
   srcdoc: <main>Live web in a phone frame</main>
@@ -89,7 +112,7 @@ Start with a YAML list. Each item is one slide.
 Each slide can have one of the following:
 
 - `title` — words on screen, with optional `subtitle`, `eyebrow`, `bullets`, or `pullquote`
-- `image` — a full-slide image
+- `image` — static assets as full-slide images or media inside designed layouts
 - `video` — a full-slide video
 - `iframe` — a web page embed, optionally framed as a device
 - `html` — trusted inline markup
@@ -116,7 +139,10 @@ slides:
     background: /title.png
     brightness: 0.35
 
-  - image: /github-render.png
+  - columns:
+      - image: /github-render.png
+        fit: contain
+      - title: Static assets are first-class.
 ```
 
 ## Remote control

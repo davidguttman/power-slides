@@ -443,8 +443,15 @@ Start with a YAML list. Each item is one slide.
   brightness: 0.35
   align: center
 
-- image: /github-render.png
-  fit: contain
+- columns:
+    - image: /github-render.png
+      fit: contain
+    - title: Static assets are first-class.
+      subtitle: Drop screenshots, renders, and diagrams into public/ and reference them from YAML.
+      bullets:
+        - Generated images ship with the deck
+        - Static files stay beside the story
+        - Image primitives work inside designed layouts
 
 - video: /fractal-loop.mp4
   controls: true
@@ -458,10 +465,19 @@ Start with a YAML list. Each item is one slide.
     - image: /workflow.png
       fit: contain
     - title: Composition is the model
-      bullets:
-        - Every column is another slide
-        - Mix assets, copy, media, and embeds without glue code
-        - Keep the story readable while the layout gets richer
+      subtitle: Every column is another slide.
+
+- title: Mix assets, copy, media, and embeds without glue code.
+  subtitle: Keep rich slides as content instead of wiring layouts by hand.
+  background: /build-it.png
+  brightness: 0.72
+  align: center
+
+- title: Keep the story readable while the layout gets richer.
+  subtitle: Split dense ideas into clean moments, then move on to live web.
+  background: /build-it.png
+  brightness: 0.72
+  align: center
 \`\`\`
 
 The starter also shows text, image, video, columns, iframe, html, and custom slides.
