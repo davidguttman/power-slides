@@ -250,7 +250,7 @@ const exampleSlidesSource = fs.readFileSync(path.join(root, 'examples', 'starter
 const exampleTalkSource = fs.readFileSync(path.join(root, 'examples', 'starter', 'talk.js'), 'utf8')
 assert.strictEqual(fs.readFileSync(path.join(talk, 'slides.yaml'), 'utf8'), exampleSlidesSource, 'init copies packaged example slides.yaml')
 assert.strictEqual(fs.readFileSync(path.join(talk, 'talk.js'), 'utf8'), exampleTalkSource, 'init copies packaged example talk.js')
-for (const media of ['sample.svg', 'fractal-loop.mp4']) {
+for (const media of ['sample.svg', 'title.png', 'deploy.png', 'github-render.png', 'build-it.png', 'workflow.png', 'fractal-loop.mp4']) {
   assert.deepStrictEqual(
     fs.readFileSync(path.join(talk, 'public', media)),
     fs.readFileSync(path.join(root, 'examples', 'starter', 'public', media)),
@@ -268,17 +268,20 @@ assert.strictEqual(initializedSpec.style.color, 'white', 'starter deck has top-l
 assert.strictEqual(initializedSpec.style['--accent'], '#5ffbf1', 'starter deck demonstrates quoted CSS custom property style')
 const initializedSlides = slideArray(initializedSpec)
 assert.strictEqual(initializedSlides.length, 7, 'init starter has the seven canonical shapes')
-assert.strictEqual(initializedSlides[0].title, 'Your first deck', 'starter first slide introduces the deck')
-assert.strictEqual(initializedSlides[0].subtitle, 'Plain content in slides.yaml. Press o for remote control.', 'starter title slide tells users how to open remote control')
-assert.strictEqual(initializedSlides[0].background, '/sample.svg', 'starter title slide demonstrates background')
-assert.strictEqual(initializedSlides[0].brightness, 0.45, 'starter title slide demonstrates brightness')
-assert.strictEqual(initializedSlides[1].image, '/sample.svg', 'starter second slide is image')
+assert.strictEqual(initializedSlides[0].title, 'One YAML file. Full browser power.', 'starter first slide introduces the deck')
+assert.strictEqual(initializedSlides[0].subtitle, 'Start with slides.yaml, then press o for remote control.', 'starter title slide tells users how to open remote control')
+assert.strictEqual(initializedSlides[0].background, '/title.png', 'starter title slide uses previous-talk opening background')
+assert.strictEqual(initializedSlides[0].brightness, 0.35, 'starter title slide demonstrates brightness')
+assert.strictEqual(initializedSlides[1].image, '/github-render.png', 'starter second slide is a copied generated image asset')
 assert.strictEqual(initializedSlides[2].video, '/fractal-loop.mp4', 'starter third slide is video')
-assert.strictEqual(initializedSlides[3].columns[0].image, '/sample.svg', 'starter fourth slide composes media with copy')
+assert.strictEqual(initializedSlides[3].background, '/build-it.png', 'starter fourth slide demonstrates background image with brightness')
+assert.strictEqual(initializedSlides[3].columns[0].image, '/workflow.png', 'starter fourth slide composes media with copy')
 assert.strictEqual(initializedSlides[3].columns[1].title, 'Composition is the model', 'starter columns has copy column')
-assert.strictEqual(initializedSlides[4].iframe, 'https://example.com/demo', 'starter fifth slide is full iframe')
+assert.strictEqual(initializedSlides[4].iframe, 'about:blank', 'starter fifth slide is full iframe')
+assert(initializedSlides[4].srcdoc.includes('Live web in a phone frame'), 'starter fifth slide embeds live srcdoc web content')
+assert(initializedSlides[4].background.includes('/deploy.png'), 'starter fifth slide uses previous-talk deploy background')
 assert.strictEqual(initializedSlides[4].device, 'iphone', 'starter iframe demonstrates phone frame')
-assert(initializedSlides[5].html.includes('Trusted HTML gets you unstuck'), 'starter sixth slide is html')
+assert(initializedSlides[5].html.includes('Bring your own markup'), 'starter sixth slide is rich html')
 assert.strictEqual(initializedSlides[6].custom, 'particleField', 'starter seventh slide is custom')
 assertNoPublicLegacyFields(initializedSlides, 'starter')
 
@@ -331,8 +334,8 @@ assert(generatedEntry.includes('talk.js bodyStyle win'), 'generated entry docume
 assert(generatedEntry.includes('remoteOptions') && generatedEntry.includes('remote: remoteOptions'), 'generated entry enables remote/options shell by default')
 assert(html.includes('<script src="./peerjs.min.js"></script>') && html.indexOf('peerjs.min.js') < html.indexOf(match[0]), 'build HTML loads bundled PeerJS before the deck bundle')
 assert(fs.existsSync(path.join(publicDir, 'peerjs.min.js')), 'build copies bundled PeerJS into public output')
-assert(!generatedEntry.includes('Your first deck'), 'generated entry does not bake slide title content')
-assert(!generatedEntry.includes('Plain content in slides.yaml. Press o for remote control.'), 'generated entry does not bake slide subtitle content')
+assert(!generatedEntry.includes('One YAML file. Full browser power.'), 'generated entry does not bake slide title content')
+assert(!generatedEntry.includes('Start with slides.yaml, then press o for remote control.'), 'generated entry does not bake slide subtitle content')
 assert.deepStrictEqual(generatedSlides, initializedSpec, 'generated slides.json matches parsed YAML spec')
 assert.strictEqual(generatedSlides.style['--accent'], '#5ffbf1', 'generated slides.json preserves top-level CSS custom property key')
 
@@ -363,7 +366,9 @@ try {
   assert.strictEqual(installedTalkPackage.devDependencies['power-slides'], '^' + rootPackage.version, 'installed power-slides init uses current package version in generated devDependency')
   assert.strictEqual(installedTalkPackage.scripts.dev, 'powerslides dev .', 'installed power-slides init writes powerslides dev script')
   assert.strictEqual(installedTalkPackage.scripts.build, 'powerslides build .', 'installed power-slides init writes powerslides build script')
-  assert(fs.existsSync(path.join(installedTalk, 'public', 'sample.svg')), 'installed power-slides init copies starter image media')
+  assert(fs.existsSync(path.join(installedTalk, 'public', 'github-render.png')), 'installed power-slides init copies starter image media')
+  assert(fs.existsSync(path.join(installedTalk, 'public', 'title.png')), 'installed power-slides init copies starter title background')
+  assert(fs.existsSync(path.join(installedTalk, 'public', 'deploy.png')), 'installed power-slides init copies starter deploy background')
   assert(fs.existsSync(path.join(installedTalk, 'public', 'fractal-loop.mp4')), 'installed power-slides init copies starter video media')
   assert(!fs.existsSync(path.join(installedTalk, 'public', 'index.html')), 'installed power-slides init excludes generated public index')
   const installedAliasTalk = path.join(tmp, 'installed-alias-talk')
@@ -720,7 +725,7 @@ import(path.join(root, 'index.mjs')).then(async mod => {
     assert.strictEqual(mod.inferSlideType(showcaseSlides[5]), 'html', 'showcase shape 6 is html')
     assert.strictEqual(showcaseSlides[6].custom, 'particleField', 'showcase shape 7 is custom')
     assert(showcaseSlides.some(slide => slide.video === '/fractal-loop.mp4'), 'showcase includes video shape')
-    assert(showcaseSlides.some(slide => slide.html && slide.html.includes('Trusted HTML gets you unstuck')), 'showcase includes html shape')
+    assert(showcaseSlides.some(slide => slide.html && slide.html.includes('Bring your own markup')), 'showcase includes html shape')
     assert(showcaseSlides.some(slide => slide.custom === 'particleField'), 'showcase includes custom shape')
     assertNoPublicLegacyFields(showcaseSlides, 'showcase')
 

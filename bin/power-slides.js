@@ -437,26 +437,31 @@ Deploy the \`public/\` folder to any static host.
 Start with a YAML list. Each item is one slide.
 
 \`\`\`yaml
-- title: Your first deck
-  subtitle: Plain content in slides.yaml. Press o for remote control.
-  background: /sample.svg
+- title: One YAML file. Full browser power.
+  subtitle: Start with slides.yaml, then press o for remote control.
+  background: /title.png
+  brightness: 0.35
+  align: center
 
-- image: /sample.svg
+- image: /github-render.png
   fit: contain
 
 - video: /fractal-loop.mp4
   controls: true
   muted: true
   loop: true
+  fit: contain
 
-- background: /sample.svg
+- background: /build-it.png
+  brightness: 0.66
   columns:
-    - image: /sample.svg
+    - image: /workflow.png
       fit: contain
     - title: Composition is the model
       bullets:
-        - Columns hold slide-shaped things
-        - Images, copy, and embeds stay separate
+        - Every column is another slide
+        - Mix assets, copy, media, and embeds without glue code
+        - Keep the story readable while the layout gets richer
 \`\`\`
 
 The starter also shows text, image, video, columns, iframe, html, and custom slides.
@@ -493,8 +498,8 @@ export default {
   renderers: {
     demo (slide, PS) {
       return PS.text({
-        title: slide.title || 'Demo',
-        subtitle: 'Rendered by talk.js'
+        title: slide.title || 'Custom renderer',
+        subtitle: 'Rendered by talk.js, the browser-code escape hatch'
       })
     }
   }

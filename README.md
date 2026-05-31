@@ -3,15 +3,18 @@
 Start with one `slides.yaml` file, then reveal that it is still just the browser underneath.
 
 ```yaml
-- title: Your first deck
-  subtitle: Plain content in slides.yaml. Press o for remote control.
-  background: /hero.png
+- title: One YAML file. Full browser power.
+  subtitle: Start with slides.yaml, then press o for remote control.
+  background: /title.png
+  brightness: 0.35
 
-- image: /diagram.png
+- image: /github-render.png
   fit: contain
 
-- iframe: https://example.com/demo
+- iframe: about:blank
+  srcdoc: <main>Live web in a phone frame</main>
   device: iphone
+  background: "center / cover no-repeat url('/deploy.png')"
 
 - custom: particleField
 ```
@@ -48,13 +51,13 @@ Deploy the `public/` folder to any static host.
 Start with a YAML list. Each item is one slide.
 
 ```yaml
-- title: Your first deck
-  subtitle: Plain content in slides.yaml. Press o for remote control.
-  background: /sample.svg
-  brightness: 0.45
+- title: One YAML file. Full browser power.
+  subtitle: Start with slides.yaml, then press o for remote control.
+  background: /title.png
+  brightness: 0.35
   align: center
 
-- image: /sample.svg
+- image: /github-render.png
   fit: contain
 
 - video: /fractal-loop.mp4
@@ -63,18 +66,22 @@ Start with a YAML list. Each item is one slide.
   loop: true
   fit: contain
 
-- background: /sample.svg
-  brightness: 0.55
+- background: /build-it.png
+  brightness: 0.66
   columns:
-    - image: /sample.svg
+    - image: /workflow.png
       fit: contain
     - title: Composition is the model
       bullets:
-        - Columns hold slide-shaped things
-        - Images, copy, and embeds stay separate
+        - Every column is another slide
+        - Mix assets, copy, media, and embeds without glue code
+        - Keep the story readable while the layout gets richer
+      pullquote: YAML stays declarative; the browser does the stage work.
 
-- iframe: https://example.com/demo
+- iframe: about:blank
+  srcdoc: <main>Live web in a phone frame</main>
   device: iphone
+  background: "center / cover no-repeat url('/deploy.png')"
 ```
 
 ## Slide shapes at a glance
@@ -104,10 +111,12 @@ style:
   color: white
   "--accent": '#5ffbf1'
 slides:
-  - title: Your first deck
-    subtitle: Plain content in slides.yaml. Press o for remote control.
+  - title: One YAML file. Full browser power.
+    subtitle: Start with slides.yaml, then press o for remote control.
+    background: /title.png
+    brightness: 0.35
 
-  - image: /sample.svg
+  - image: /github-render.png
 ```
 
 ## Remote control
