@@ -472,8 +472,7 @@ Start with a YAML list. Each item is one slide.
     - title: No limits on power.
       subtitle: Compose layouts, media, and browser primitives.
 
-- iframe: about:blank
-  srcdoc: <main>Live web in a phone frame</main>
+- iframe: https://david.app
   device: iphone
   background: "center / cover no-repeat url('/deploy.png')"
 \`\`\`

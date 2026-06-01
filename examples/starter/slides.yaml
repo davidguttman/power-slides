@@ -57,34 +57,7 @@ slides:
       - "This slide explains why the deck can be this sparse: the phone shows the full speaker notes while the audience sees only the high-impact message."
       - "Call out the next-slide preview before advancing. Use it to transition cleanly instead of glancing back at the projected screen."
       - "Start the talk timer if it is not already running, then watch the slide timer reset on each advance."
-  - iframe: about:blank
-    srcdoc: |
-      <!doctype html>
-      <html>
-        <head>
-          <meta name="viewport" content="width=device-width,initial-scale=1">
-          <style>
-            body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(circle at 30% 20%,#5ffbf155,transparent 34%),linear-gradient(145deg,#061018,#150a2d);color:white;font:700 16px Inter,system-ui,sans-serif;}
-            main{width:min(78vw,280px);display:grid;gap:18px;text-align:center;}
-            .card{padding:22px;border:1px solid #ffffff26;border-radius:28px;background:#ffffff12;box-shadow:0 24px 60px #0008;backdrop-filter:blur(12px);}
-            .pulse{width:74px;height:74px;margin:auto;border-radius:50%;background:conic-gradient(from 0deg,#ff6ec7,#5ffbf1,#f9f871,#ff6ec7);animation:spin 3s linear infinite;box-shadow:0 0 34px #5ffbf188;}
-            h1{font-size:30px;line-height:.95;margin:16px 0 8px;letter-spacing:-.06em;}
-            p{margin:0;color:#d8ffff;line-height:1.35;font-weight:600;}
-            button{border:0;border-radius:999px;padding:12px 18px;background:#5ffbf1;color:#061018;font-weight:900;}
-            @keyframes spin{to{transform:rotate(1turn)}}
-          </style>
-        </head>
-        <body>
-          <main>
-            <section class="card">
-              <div class="pulse"></div>
-              <h1>Live web in a phone frame</h1>
-              <p>Embed the thing instead of describing it.</p>
-            </section>
-            <button>Tap-ready demo</button>
-          </main>
-        </body>
-      </html>
+  - iframe: https://david.app
     device: iphone
     background: "linear-gradient(90deg, rgba(6,16,24,.92), rgba(6,16,24,.35)), center / cover no-repeat url('/deploy.png')"
     screenBackground: '#061018'
