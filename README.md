@@ -1,19 +1,36 @@
 # power-slides
 
-Create browser-native slideshows from a small `slides.yaml` file, then use your phone as a remote control.
+Start simple: one `slides.yaml` file and one command. Then use the phone remote for the real control view while the projected slides stay sparse and high-impact.
 
 ```yaml
-- title: Hello, world
-  subtitle: A talk that's just a file
-  background: /hero.png
+- title: Simple to start.
+  subtitle: One slides.yaml file. One command.
+  background: /title.png
+  brightness: 0.35
+  notes:
+    - The wall gets the headline. Your phone gets the full story.
 
-- image: /diagram.png
+- title: "Checkpoint: use your phone."
+  subtitle: Press o → Enable remote control → scan → continue here.
+  notes:
+    - Drive the deck from the phone after this slide.
+    - The remote shows notes, navigation, current and next-slide previews, and talk/slide timers.
 
-- title: A slide can be anything the browser can render.
-  subtitle: power-slides
+- columns:
+    - image: /github-render.png
+      fit: contain
+    - title: One folder. Real assets.
+      subtitle: public/ ships with the deck.
+
+- iframe: about:blank
+  srcdoc: <main>Live web in a phone frame</main>
+  device: iphone
+  background: "center / cover no-repeat url('/deploy.png')"
+
+- custom: particleField
 ```
 
-Start a deck with the CLI, edit the YAML, and deploy the built `public/` folder anywhere static files can live.
+Start a deck with the CLI, edit the YAML, drop static assets into `public/`, present from your phone, and deploy the built `public/` folder anywhere static files can live.
 
 ## Create your first deck
 
@@ -27,7 +44,7 @@ npx power-slides dev .
 
 `init` creates a talk folder with:
 
-- `slides.yaml` — deck content
+- `slides.yaml` — deck content and speaker notes
 - `talk.js` — optional browser code for custom slides
 - `public/` — media and static files served by the deck
 
@@ -42,17 +59,29 @@ Deploy the `public/` folder to any static host.
 
 ## Edit `slides.yaml`
 
-Write one slide per YAML item. `slides.yaml` can be a bare array of slides. The starter also shows text, image, video, columns, iframe, html, and custom slides.
+Start with a YAML list. Each item is one slide.
 
 ```yaml
-- title: Main point
-  subtitle: Optional subtitle
-  background: /sample.svg
-  brightness: 0.45
+- title: Simple to start.
+  subtitle: One slides.yaml file. One command.
+  background: /title.png
+  brightness: 0.35
   align: center
+  notes:
+    - Simple to start, but no limits on power.
+    - Keep the audience slide sparse; put the speaker story here.
 
-- image: /sample.svg
-  fit: contain
+- title: "Checkpoint: use your phone."
+  subtitle: Press o → Enable remote control → scan → continue here.
+  notes:
+    - Stop here, enable the remote, then keep presenting from the phone.
+    - Use notes for the script, previews for transitions, and timers for pacing.
+
+- columns:
+    - image: /github-render.png
+      fit: contain
+    - title: One folder. Real assets.
+      subtitle: public/ ships with the deck.
 
 - video: /fractal-loop.mp4
   controls: true
@@ -60,23 +89,26 @@ Write one slide per YAML item. `slides.yaml` can be a bare array of slides. The 
   loop: true
   fit: contain
 
-- background: /sample.svg
-  brightness: 0.55
+- background: /build-it.png
+  brightness: 0.66
   columns:
-    - iframe: https://david.app
-      device: iphone
-    - title: Demo in context
-      bullets:
-        - Cross-origin page stays untouched
-        - Parent arrows remain available
+    - image: /workflow.png
+      fit: contain
+    - title: No limits on power.
+      subtitle: Compose layouts, media, and browser primitives.
+
+- iframe: about:blank
+  srcdoc: <main>Live web in a phone frame</main>
+  device: iphone
+  background: "center / cover no-repeat url('/deploy.png')"
 ```
 
 ## Slide shapes at a glance
 
 Each slide can have one of the following:
 
-- `title` — words on screen, with optional `subtitle`, `eyebrow`, `bullets`, or `pullquote`
-- `image` — a full-slide image
+- `title` — words on screen, with optional `subtitle`, `eyebrow`, `bullets`, `pullquote`, or `notes`
+- `image` — static assets as full-slide images or media inside designed layouts
 - `video` — a full-slide video
 - `iframe` — a web page embed, optionally framed as a device
 - `html` — trusted inline markup
@@ -86,15 +118,9 @@ To combine types, use `columns`, such as iframe-plus-copy or image-plus-title.
 
 The full slide shape and advanced API reference lives in `docs/slide-api.md`.
 
-## Remote control
+## Theming and deck metadata
 
-Run or build the deck, press `o` to open Options, click **Enable remote control**, then scan the QR code or open the shown URL on your phone.
-
-The phone remote navigates the deck.
-
-## Theming and styling
-
-Use a deck object when a talk needs a browser title or deck-wide CSS defaults. `title` sets the HTML document title, `style` applies CSS to the deck, and `slides` holds the same slide list.
+For deck-wide metadata or CSS defaults, wrap the same slide list in a deck object with `title`, `style`, and `slides`.
 
 ```yaml
 title: My Talk
@@ -104,9 +130,20 @@ style:
   color: white
   "--accent": '#5ffbf1'
 slides:
-  - title: Main point
-    subtitle: Optional subtitle
+  - title: Simple to start.
+    subtitle: One slides.yaml file. One command.
+    background: /title.png
+    brightness: 0.35
+
+  - title: "Checkpoint: use your phone."
+    subtitle: Press o → Enable remote control → scan → continue here.
 ```
+
+## Remote control
+
+Run or build the deck, press `o` to open Options, click **Enable remote control**, then scan the QR code or open the shown URL on your phone.
+
+The phone remote is the control surface: it navigates the deck, shows the full notes for the current slide, previews the current and next slide, and keeps talk/slide timers visible for pacing.
 
 ## Optional `talk.js`
 

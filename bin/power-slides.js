@@ -415,11 +415,11 @@ function escapeHtml (value) {
 function sampleReadme () {
   return `# Talk
 
-This is a minimal power-slides talk starter. Write deck content in \`slides.yaml\`, custom slide code in \`talk.js\`, and put images, video, and other static files in \`public/\`.
+This is a minimal power-slides talk starter. Write deck content and speaker notes in \`slides.yaml\`, custom slide code in \`talk.js\`, and put images, video, and other static files in \`public/\`.
 
 ## Files
 
-- \`slides.yaml\` — your deck content
+- \`slides.yaml\` — your deck content and speaker notes
 - \`talk.js\` — optional browser code for custom slides
 - \`public/\` — media and static files served by the deck
 
@@ -434,11 +434,55 @@ Deploy the \`public/\` folder to any static host.
 
 ## Edit slides.yaml
 
-Write one slide per YAML item. \`slides.yaml\` can be a bare array of slides. The starter also shows text, image, video, columns, iframe, html, and custom slides.
+Start with a YAML list. Each item is one slide.
+
+\`\`\`yaml
+- title: Simple to start.
+  subtitle: One slides.yaml file. One command.
+  background: /title.png
+  brightness: 0.35
+  align: center
+  notes:
+    - Simple to start, but no limits on power.
+    - Keep the audience slide sparse; put the speaker story here.
+
+- title: "Checkpoint: use your phone."
+  subtitle: Press o → Enable remote control → scan → continue here.
+  notes:
+    - Stop here, enable the remote, then keep presenting from the phone.
+    - Use notes for the script, previews for transitions, and timers for pacing.
+
+- columns:
+    - image: /github-render.png
+      fit: contain
+    - title: One folder. Real assets.
+      subtitle: public/ ships with the deck.
+
+- video: /fractal-loop.mp4
+  controls: true
+  muted: true
+  loop: true
+  fit: contain
+
+- background: /build-it.png
+  brightness: 0.66
+  columns:
+    - image: /workflow.png
+      fit: contain
+    - title: No limits on power.
+      subtitle: Compose layouts, media, and browser primitives.
+
+- iframe: about:blank
+  srcdoc: <main>Live web in a phone frame</main>
+  device: iphone
+  background: "center / cover no-repeat url('/deploy.png')"
+\`\`\`
+
+The starter also shows text, image, video, columns, iframe, html, and custom slides.
 
 Each slide can have one of the following:
 
-- \`title\` — words on screen
+- \`title\` — words on screen, with optional \`notes\`
 - \`image\` — a full-slide image
 - \`video\` — a full-slide video
 - \`iframe\` — a web page embed
@@ -449,27 +493,15 @@ To combine types, use \`columns\`, such as iframe-plus-copy or image-plus-title.
 
 For the full slide schema and \`talk.js\` API, see the package README and \`docs/slide-api.md\`.
 
+## Theming and deck metadata
+
+For deck-wide metadata or CSS defaults, wrap the same slide list in a deck object with \`title\`, \`style\`, and \`slides\`.
+
 ## Remote control
 
 Run or build the deck, press \`o\` to open Options, click **Enable remote control**, then scan the QR code or open the shown URL on your phone.
 
-The phone remote navigates the deck.
-
-## Theming and styling
-
-Use a deck object when a talk needs a browser title or deck-wide CSS defaults. \`title\` sets the HTML document title, \`style\` applies CSS to the deck, and \`slides\` holds the same slide list.
-
-\`\`\`yaml
-title: My Talk
-style:
-  fontFamily: Inter, system-ui, sans-serif
-  background: '#061018'
-  color: white
-  "--accent": '#5ffbf1'
-slides:
-  - title: Main point
-    subtitle: Optional subtitle
-\`\`\`
+The phone remote is the control surface: it navigates the deck, shows the full notes for the current slide, previews the current and next slide, and keeps talk/slide timers visible for pacing.
 
 ## Optional talk.js
 
@@ -480,8 +512,8 @@ export default {
   renderers: {
     demo (slide, PS) {
       return PS.text({
-        title: slide.title || 'Demo',
-        subtitle: 'Rendered by talk.js'
+        title: slide.title || 'Custom renderer',
+        subtitle: 'Rendered by talk.js, the browser-code escape hatch'
       })
     }
   }

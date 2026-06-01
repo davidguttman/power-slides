@@ -5,33 +5,114 @@ style:
   color: white
   "--accent": '#5ffbf1'
 slides:
-  - title: Main point
-    subtitle: Optional subtitle
-    background: /sample.svg
-    brightness: 0.45
+  - title: Simple to start.
+    subtitle: One slides.yaml file. One command.
+    background: /title.png
+    brightness: 0.35
     align: center
-  - image: /sample.svg
-    fit: contain
+    notes:
+      - "Story spine: simple to start, but no limits on power. This opening should feel almost too small: one YAML file, one dev command, one browser tab."
+      - "Then set the hook: the rest of the demo proves that this simple file can still drive real media, live web, custom browser code, and a speaker workflow from your phone."
+  - title: "Checkpoint: use your phone."
+    subtitle: Press o → Enable remote control → scan → continue here.
+    background: "linear-gradient(135deg, rgba(6,16,24,.94), rgba(6,16,24,.48)), center / cover no-repeat url('/title.png')"
+    align: center
+    notes:
+      - "Stop on this slide until the phone is connected. Press o on the keyboard, choose Enable remote control, then scan the QR code or open the shown URL on your phone."
+      - "From here, drive the deck from the phone. The remote is the real control view: it gives navigation, current and next-slide previews, these notes, the slide and talk timers for pacing."
+      - "If you keep presenting from the keyboard, you are missing the point of the demo. The phone makes the sparse wall slides make sense."
+  - columns:
+      - image: /github-render.png
+        fit: contain
+      - title: One folder. Real assets.
+        subtitle: public/ ships with the deck.
+    notes:
+      - "Static assets are first-class. Drop screenshots, renders, and diagrams into public/ and reference them from YAML."
+      - "The wall stays sparse; the phone can carry the detailed speaker story about where the asset lives, why it matters, and what to point out."
   - video: /fractal-loop.mp4
     controls: true
     muted: true
     loop: true
     fit: contain
-  - background: /sample.svg
-    brightness: 0.55
+    notes:
+      - "Video is just another slide. No special app, no separate media mode, no ceremony."
+      - "Use the slide timer on the phone to decide when the visual has landed and it is time to move on."
+  - background: /build-it.png
+    brightness: 0.66
     columns:
-      - iframe: https://example.com/demo
-        device: iphone
-      - title: Demo in context
-        bullets:
-          - Cross-origin page stays untouched
-          - Parent arrows remain available
-  - iframe: https://example.com/demo
+      - image: /workflow.png
+        fit: contain
+      - title: No limits on power.
+        subtitle: Compose layouts, media, and browser primitives.
+        pullquote: Simple files can still make rich moments.
+    notes:
+      - "This is the pivot: Power Slides starts as content, but it does not trap you in a toy slide model."
+      - "Columns are composed from slide primitives, backgrounds can be designed, and the browser underneath is still available when the talk needs more."
+  - title: The remote carries the story.
+    subtitle: Notes off the wall. Pacing in your hand.
+    background: /build-it.png
+    brightness: 0.72
+    align: center
+    notes:
+      - "This slide explains why the deck can be this sparse: the phone shows the full speaker notes while the audience sees only the high-impact message."
+      - "Call out the next-slide preview before advancing. Use it to transition cleanly instead of glancing back at the projected screen."
+      - "Start the talk timer if it is not already running, then watch the slide timer reset on each advance."
+  - iframe: about:blank
+    srcdoc: |
+      <!doctype html>
+      <html>
+        <head>
+          <meta name="viewport" content="width=device-width,initial-scale=1">
+          <style>
+            body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(circle at 30% 20%,#5ffbf155,transparent 34%),linear-gradient(145deg,#061018,#150a2d);color:white;font:700 16px Inter,system-ui,sans-serif;}
+            main{width:min(78vw,280px);display:grid;gap:18px;text-align:center;}
+            .card{padding:22px;border:1px solid #ffffff26;border-radius:28px;background:#ffffff12;box-shadow:0 24px 60px #0008;backdrop-filter:blur(12px);}
+            .pulse{width:74px;height:74px;margin:auto;border-radius:50%;background:conic-gradient(from 0deg,#ff6ec7,#5ffbf1,#f9f871,#ff6ec7);animation:spin 3s linear infinite;box-shadow:0 0 34px #5ffbf188;}
+            h1{font-size:30px;line-height:.95;margin:16px 0 8px;letter-spacing:-.06em;}
+            p{margin:0;color:#d8ffff;line-height:1.35;font-weight:600;}
+            button{border:0;border-radius:999px;padding:12px 18px;background:#5ffbf1;color:#061018;font-weight:900;}
+            @keyframes spin{to{transform:rotate(1turn)}}
+          </style>
+        </head>
+        <body>
+          <main>
+            <section class="card">
+              <div class="pulse"></div>
+              <h1>Live web in a phone frame</h1>
+              <p>Embed the thing instead of describing it.</p>
+            </section>
+            <button>Tap-ready demo</button>
+          </main>
+        </body>
+      </html>
     device: iphone
-    background: '#061018'
+    background: "linear-gradient(90deg, rgba(6,16,24,.92), rgba(6,16,24,.35)), center / cover no-repeat url('/deploy.png')"
+    screenBackground: '#061018'
+    notes:
+      - "An iframe can carry docs, a dashboard, a product surface, or a tiny app. The phone frame makes the embedded web moment legible in the room."
+      - "The remote next preview should already be showing the HTML slide after this one, so you can tee up the transition before tapping forward."
   - html: |
-      <div style="width:100vw;height:100vh;color:white">
-        <h1>Custom HTML</h1>
-      </div>
+      <section style="box-sizing:border-box;width:100vw;height:100vh;padding:clamp(3rem,7vh,5.5rem) clamp(3rem,7vw,7rem);display:grid;align-items:center;background:radial-gradient(circle at 78% 20%,rgba(95,251,241,.2),transparent 28%),linear-gradient(135deg,#061018,#1a0c30);color:white;font-family:Inter,system-ui,sans-serif;">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(20rem,.72fr);gap:clamp(2rem,5vw,5rem);align-items:center;">
+          <div>
+            <p style="margin:0 0 1rem;letter-spacing:.18em;text-transform:uppercase;color:#5ffbf1;font-weight:900;">HTML escape hatch</p>
+            <h1 style="margin:0;font-size:clamp(3rem,6vw,6.5rem);line-height:.92;letter-spacing:-.07em;">Bring your own markup.</h1>
+            <p style="max-width:34rem;margin:1.4rem 0 0;color:rgba(255,255,255,.76);font-size:clamp(1rem,1.4vw,1.35rem);line-height:1.45;">When a slide needs exact structure, keep it local to the deck.</p>
+          </div>
+          <div style="display:grid;gap:1rem;">
+            <div style="padding:1.2rem;border:1px solid rgba(255,255,255,.16);border-radius:1.2rem;background:rgba(255,255,255,.09);box-shadow:0 1.5rem 4rem rgba(0,0,0,.35);"><strong style="color:#f9f871;">01</strong><br>Paste rich layout</div>
+            <div style="padding:1.2rem;border:1px solid rgba(255,255,255,.16);border-radius:1.2rem;background:rgba(255,255,255,.09);box-shadow:0 1.5rem 4rem rgba(0,0,0,.35);"><strong style="color:#ff6ec7;">02</strong><br>Keep it one slide</div>
+            <div style="padding:1.2rem;border:1px solid rgba(255,255,255,.16);border-radius:1.2rem;background:rgba(255,255,255,.09);box-shadow:0 1.5rem 4rem rgba(0,0,0,.35);"><strong style="color:#5ffbf1;">03</strong><br>Ship static</div>
+          </div>
+        </div>
+      </section>
+    notes:
+      - "HTML is the escape hatch for art-directed slides: badges, cards, weird grids, or one-off structure that should not become a slide primitive."
+      - "The important constraint is still owned assets and local content. Keep the deck self-contained so build output can be deployed anywhere."
   - custom: particleField
-    title: Generative canvas
+    eyebrow: JavaScript escape hatch
+    title: Deploy anywhere.
+    subtitle: Static output. Browser power intact.
+    notes:
+      - "Custom renderers in talk.js are the final escape hatch: canvas, DOM, animation, data transforms, or anything else the browser can render."
+      - "Close the story where it started: simple to start, no ceiling when the talk needs power, phone-based remote control for presenting, and a static public/ folder you can deploy anywhere."

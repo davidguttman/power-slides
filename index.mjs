@@ -4,6 +4,7 @@ let started = false
 
 const listeners = Object.create(null)
 const slideNotesKey = Symbol.for('power-slides.notes')
+const defaultPhoneViewport = { width: 390, height: 844 }
 
 const PowerSlides = {
   title,
@@ -615,9 +616,10 @@ function iframeRootStyle (opts, phoneFramed) {
 }
 
 function iframeStyle (opts) {
+  const viewport = usesPhoneFrame(opts) ? phoneViewport(opts) : null
   return mergeStyle({
-    width: '100%',
-    height: '100%',
+    width: viewport ? viewport.width : '100%',
+    height: viewport ? viewport.height : '100%',
     border: 0,
     background: opts.background || '#000'
   }, opts.iframeStyle)
@@ -636,6 +638,7 @@ function usesPhoneFrame (opts) {
 }
 
 function iphoneFrame (frame, opts) {
+  const viewport = phoneViewport(opts)
   return element('div', {
     className: 'ps-iframe-device ps-iframe-device-iphone',
     style: mergeStyle({
@@ -653,6 +656,8 @@ function iphoneFrame (frame, opts) {
   }, element('div', {
     className: 'ps-iframe-device-screen',
     style: {
+      position: 'relative',
+      containerType: 'size',
       width: '100%',
       height: '100%',
       borderRadius: opts.screenRadius || '3.7vh',
@@ -660,7 +665,37 @@ function iphoneFrame (frame, opts) {
       background: opts.screenBackground || opts.background || '#000',
       boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.08)'
     }
-  }, frame))
+  }, element('div', {
+    className: 'ps-iframe-device-viewport',
+    style: mergeStyle({
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      width: viewport.width,
+      height: viewport.height,
+      transformOrigin: 'center center',
+      transform: 'translate(-50%, -50%) scale(' + viewport.scale + ')'
+    }, opts.viewportStyle || opts.deviceViewportStyle)
+  }, frame)))
+}
+
+function phoneViewport (opts) {
+  const viewport = opts.deviceViewport && typeof opts.deviceViewport === 'object' ? opts.deviceViewport : {}
+  const width = viewport.width || opts.viewportWidth || defaultPhoneViewport.width
+  const height = viewport.height || opts.viewportHeight || defaultPhoneViewport.height
+  const widthPx = cssPx(width)
+  const heightPx = cssPx(height)
+  return {
+    width: widthPx,
+    height: heightPx,
+    scale: 'min(calc(100cqw / ' + widthPx + '), calc(100cqh / ' + heightPx + '))'
+  }
+}
+
+function cssPx (value) {
+  if (typeof value === 'number' && isFinite(value)) return value + 'px'
+  if (typeof value === 'string' && value.trim()) return value.trim()
+  return '0px'
 }
 
 function iframePhoneLayout (opts) {
