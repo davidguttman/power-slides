@@ -618,7 +618,7 @@ function iframeRootStyle (opts, phoneFramed) {
 function iframeStyle (opts) {
   const viewport = usesPhoneFrame(opts) ? phoneViewport(opts) : null
   const style = {
-    width: viewport ? viewport.iframeWidth : '100%',
+    width: viewport ? viewport.width : '100%',
     height: viewport ? viewport.height : '100%',
     border: 0,
     background: opts.background || '#000'
@@ -628,8 +628,6 @@ function iframeStyle (opts) {
     style.display = 'block'
     style.maxWidth = 'none'
     style.margin = 0
-    style.scrollbarWidth = 'none'
-    style.msOverflowStyle = 'none'
   }
 
   return mergeStyle(style, opts.iframeStyle)
@@ -698,12 +696,9 @@ function phoneViewport (opts) {
   const height = viewport.height || opts.viewportHeight || defaultPhoneViewport.height
   const widthPx = cssPx(width)
   const heightPx = cssPx(height)
-  const scrollbarGutterClip = cssPx(viewport.scrollbarGutterClip || opts.scrollbarGutterClip || opts.iframeScrollbarGutterClip || 18)
   return {
     width: widthPx,
     height: heightPx,
-    iframeWidth: 'calc(' + widthPx + ' + ' + scrollbarGutterClip + ')',
-    scrollbarGutterClip,
     scale: 'max(calc(100cqw / ' + widthPx + '), calc(100cqh / ' + heightPx + '))'
   }
 }
