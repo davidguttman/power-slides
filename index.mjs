@@ -617,12 +617,20 @@ function iframeRootStyle (opts, phoneFramed) {
 
 function iframeStyle (opts) {
   const viewport = usesPhoneFrame(opts) ? phoneViewport(opts) : null
-  return mergeStyle({
+  const style = {
     width: viewport ? viewport.width : '100%',
     height: viewport ? viewport.height : '100%',
     border: 0,
     background: opts.background || '#000'
-  }, opts.iframeStyle)
+  }
+
+  if (viewport) {
+    style.display = 'block'
+    style.maxWidth = 'none'
+    style.margin = 0
+  }
+
+  return mergeStyle(style, opts.iframeStyle)
 }
 
 function iframeChrome (frame, opts, phoneLayout) {
@@ -673,6 +681,9 @@ function iphoneFrame (frame, opts) {
       left: '50%',
       width: viewport.width,
       height: viewport.height,
+      overflow: 'hidden',
+      display: 'block',
+      lineHeight: 0,
       transformOrigin: 'center center',
       transform: 'translate(-50%, -50%) scale(' + viewport.scale + ')'
     }, opts.viewportStyle || opts.deviceViewportStyle)
@@ -688,7 +699,7 @@ function phoneViewport (opts) {
   return {
     width: widthPx,
     height: heightPx,
-    scale: 'min(calc(100cqw / ' + widthPx + '), calc(100cqh / ' + heightPx + '))'
+    scale: 'max(calc(100cqw / ' + widthPx + '), calc(100cqh / ' + heightPx + '))'
   }
 }
 
