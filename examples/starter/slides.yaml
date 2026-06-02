@@ -63,29 +63,83 @@ slides:
     screenBackground: '#061018'
     notes:
       - "An iframe can carry docs, a dashboard, a product surface, or a tiny app. The phone frame makes the embedded web moment legible in the room."
-      - "The remote next preview should already be showing the HTML slide after this one, so you can tee up the transition before tapping forward."
-  - html: |
-      <section style="box-sizing:border-box;width:100vw;height:100vh;padding:clamp(3rem,7vh,5.5rem) clamp(3rem,7vw,7rem);display:grid;align-items:center;background:radial-gradient(circle at 78% 20%,rgba(95,251,241,.2),transparent 28%),linear-gradient(135deg,#061018,#1a0c30);color:white;font-family:Inter,system-ui,sans-serif;">
-        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(20rem,.72fr);gap:clamp(2rem,5vw,5rem);align-items:center;">
-          <div>
-            <p style="margin:0 0 1rem;letter-spacing:.18em;text-transform:uppercase;color:#5ffbf1;font-weight:900;">HTML escape hatch</p>
-            <h1 style="margin:0;font-size:clamp(3rem,6vw,6.5rem);line-height:.92;letter-spacing:-.07em;">Bring your own markup.</h1>
-            <p style="max-width:34rem;margin:1.4rem 0 0;color:rgba(255,255,255,.76);font-size:clamp(1rem,1.4vw,1.35rem);line-height:1.45;">When a slide needs exact structure, keep it local to the deck.</p>
-          </div>
-          <div style="display:grid;gap:1rem;">
-            <div style="padding:1.2rem;border:1px solid rgba(255,255,255,.16);border-radius:1.2rem;background:rgba(255,255,255,.09);box-shadow:0 1.5rem 4rem rgba(0,0,0,.35);"><strong style="color:#f9f871;">01</strong><br>Paste rich layout</div>
-            <div style="padding:1.2rem;border:1px solid rgba(255,255,255,.16);border-radius:1.2rem;background:rgba(255,255,255,.09);box-shadow:0 1.5rem 4rem rgba(0,0,0,.35);"><strong style="color:#ff6ec7;">02</strong><br>Keep it one slide</div>
-            <div style="padding:1.2rem;border:1px solid rgba(255,255,255,.16);border-radius:1.2rem;background:rgba(255,255,255,.09);box-shadow:0 1.5rem 4rem rgba(0,0,0,.35);"><strong style="color:#5ffbf1;">03</strong><br>Ship static</div>
-          </div>
-        </div>
-      </section>
-    notes:
-      - "HTML is the escape hatch for art-directed slides: badges, cards, weird grids, or one-off structure that should not become a slide primitive."
-      - "The important constraint is still owned assets and local content. Keep the deck self-contained so build output can be deployed anywhere."
+      - "The remote next preview should already be showing the custom renderer after this one, so you can tee up the transition before tapping forward."
   - custom: particleField
     eyebrow: JavaScript escape hatch
     title: Deploy anywhere.
     subtitle: Static output. Browser power intact.
     notes:
       - "Custom renderers in talk.js are the final escape hatch: canvas, DOM, animation, data transforms, or anything else the browser can render."
-      - "Close the story where it started: simple to start, no ceiling when the talk needs power, phone-based remote control for presenting, and a static public/ folder you can deploy anywhere."
+      - "The remote next preview should already be showing the HTML slide, with the long markup safely tucked at the bottom of this file."
+  - html: |
+      <section class="ps-starter-html-slide">
+        <style>
+          .ps-starter-html-slide {
+            box-sizing: border-box;
+            width: 100vw;
+            height: 100vh;
+            overflow: auto;
+            display: grid;
+            place-items: center;
+            padding: clamp(1.25rem, 5vmin, 4.5rem);
+            background: radial-gradient(circle at 82% 18%, rgba(95,251,241,.24), transparent 28%), linear-gradient(135deg, #061018, #1a0c30);
+            color: white;
+            font-family: Inter, system-ui, sans-serif;
+          }
+          .ps-starter-html-layout {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
+            gap: clamp(1rem, 5vw, 4rem);
+            align-items: center;
+            width: min(100%, 88rem);
+          }
+          .ps-starter-html-title {
+            margin: 0;
+            font-size: clamp(2.7rem, 8vw, 6.5rem);
+            line-height: .92;
+            letter-spacing: -.07em;
+          }
+          .ps-starter-html-kicker {
+            margin: 0 0 .8rem;
+            color: #5ffbf1;
+            font-weight: 900;
+            letter-spacing: .16em;
+            text-transform: uppercase;
+          }
+          .ps-starter-html-copy {
+            max-width: 34rem;
+            margin: 1.1rem 0 0;
+            color: rgba(255,255,255,.76);
+            font-size: clamp(1rem, 2vw, 1.35rem);
+            line-height: 1.45;
+          }
+          .ps-starter-html-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+            gap: .8rem;
+          }
+          .ps-starter-html-card {
+            padding: clamp(.9rem, 2.5vmin, 1.25rem);
+            border: 1px solid rgba(255,255,255,.16);
+            border-radius: 1.1rem;
+            background: rgba(255,255,255,.09);
+            box-shadow: 0 1.2rem 3rem rgba(0,0,0,.34);
+          }
+          .ps-starter-html-card strong { color: var(--accent); }
+        </style>
+        <div class="ps-starter-html-layout">
+          <div>
+            <p class="ps-starter-html-kicker">HTML escape hatch</p>
+            <h1 class="ps-starter-html-title">Bring your own markup.</h1>
+            <p class="ps-starter-html-copy">When a slide needs exact structure, keep it local to the deck.</p>
+          </div>
+          <div class="ps-starter-html-cards">
+            <div class="ps-starter-html-card" style="--accent:#f9f871"><strong>01</strong><br>Paste rich layout</div>
+            <div class="ps-starter-html-card" style="--accent:#ff6ec7"><strong>02</strong><br>Keep it one slide</div>
+            <div class="ps-starter-html-card" style="--accent:#5ffbf1"><strong>03</strong><br>Ship static</div>
+          </div>
+        </div>
+      </section>
+    notes:
+      - "HTML is the escape hatch for art-directed slides: badges, cards, weird grids, or one-off structure that should not become a slide primitive."
+      - "The important constraint is still owned assets and local content. Keep the deck self-contained so build output can be deployed anywhere."

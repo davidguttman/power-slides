@@ -6,9 +6,7 @@
   "scripts": {
     "example": "node bin/power-slides.js dev examples/starter",
     "build": "node bin/power-slides.js build examples/starter",
-    "test": "standard && node --test && node test/cli-smoke.js",
-    "showcase": "node bin/power-slides.js dev examples/showcase",
-    "build:showcase": "node bin/power-slides.js build examples/showcase"
+    "test": "standard && node --test && node test/cli-smoke.js"
   },
   "keywords": [
     "slides",
@@ -82,15 +80,6 @@
     "examples/starter/public/build-it.png",
     "examples/starter/public/workflow.png",
     "examples/starter/public/fractal-loop.mp4",
-    "examples/showcase/slides.yaml",
-    "examples/showcase/talk.js",
-    "examples/showcase/assets",
-    "examples/showcase/public/title.png",
-    "examples/showcase/public/deploy.png",
-    "examples/showcase/public/github-render.png",
-    "examples/showcase/public/build-it.png",
-    "examples/showcase/public/workflow.png",
-    "examples/showcase/public/fractal-loop.mp4",
     "README.md"
   ]
 }

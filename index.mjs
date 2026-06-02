@@ -5,6 +5,8 @@ let started = false
 const listeners = Object.create(null)
 const slideNotesKey = Symbol.for('power-slides.notes')
 const defaultPhoneViewport = { width: 390, height: 844 }
+const defaultPhoneFrameWidth = 'min(85vw, calc(85vh * 390 / 844), 430px)'
+const defaultColumnPhoneFrameWidth = 'min(85vw, calc(85vh * 390 / 844), 390px)'
 
 const PowerSlides = {
   title,
@@ -651,7 +653,7 @@ function iphoneFrame (frame, opts) {
     className: 'ps-iframe-device ps-iframe-device-iphone',
     style: mergeStyle({
       position: 'relative',
-      width: opts.deviceWidth || opts.frameWidth || 'min(42vh, 34vw, 430px)',
+      width: phoneFrameWidth(opts),
       aspectRatio: opts.deviceAspectRatio || '390 / 844',
       boxSizing: 'border-box',
       padding: opts.devicePadding || '1.1vh',
@@ -688,6 +690,10 @@ function iphoneFrame (frame, opts) {
       transform: 'translate(-50%, -50%) scale(' + viewport.scale + ')'
     }, opts.viewportStyle || opts.deviceViewportStyle)
   }, frame)))
+}
+
+function phoneFrameWidth (opts) {
+  return opts.deviceWidth || opts.frameWidth || opts.defaultDeviceWidth || defaultPhoneFrameWidth
 }
 
 function phoneViewport (opts) {
@@ -1134,7 +1140,10 @@ function columnIframe (opts) {
   })
 
   const chrome = usesPhoneFrame(opts)
-    ? iphoneFrame(frame, Object.assign({ deviceWidth: 'min(46vh, 30vw, 390px)' }, opts, { background: iframeBackground }))
+    ? iphoneFrame(frame, Object.assign({}, opts, {
+      background: iframeBackground,
+      defaultDeviceWidth: defaultColumnPhoneFrameWidth
+    }))
     : frame
 
   if (opts.navigationControls === false) return chrome

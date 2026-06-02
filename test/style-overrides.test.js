@@ -1,7 +1,9 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
+const fs = require('node:fs')
 const path = require('node:path')
 const { pathToFileURL } = require('node:url')
+const yaml = require('js-yaml')
 
 const root = path.resolve(__dirname, '..')
 
@@ -157,6 +159,141 @@ test('iframe device, layout, iframe, and side copy style overrides accept CSS st
   })
 })
 
+test('iphone iframe defaults fit portrait mobile viewports without a tiny vw cap', async function () {
+  const mod = await loadPowerSlides()
+  withFakeBrowser(function () {
+    global.window.innerWidth = 390
+    global.window.innerHeight = 844
+    const target = new FakeElement('section')
+    mod.iframe('https://example.test/app', { device: 'iphone' })(target)
+
+    const device = findDeep(target, el => String(el.className).includes('ps-iframe-device-iphone'))
+
+    assert.equal(device.style.width, 'min(85vw, calc(85vh * 390 / 844), 430px)', 'default iPhone frame uses the available portrait viewport instead of a tiny vw cap')
+    assert.equal(device.style.aspectRatio, '390 / 844', 'default iPhone frame preserves iPhone proportions')
+  })
+})
+
+test('starter iframe slide uses mobile-friendly runtime iPhone frame width', async function () {
+  const mod = await loadPowerSlides()
+  const talk = await import(pathToFileURL(path.join(root, 'examples', 'starter', 'talk.js')).href + '?starter-theme=' + Date.now())
+  const spec = yaml.load(fs.readFileSync(path.join(root, 'examples', 'starter', 'slides.yaml'), 'utf8'))
+  const slides = mod.createTalk(spec, talk)
+
+  withFakeBrowser(function () {
+    global.window.innerWidth = 390
+    global.window.innerHeight = 844
+    const target = new FakeElement('section')
+    slides[6](target)
+
+    const device = findDeep(target, el => String(el.className).includes('ps-iframe-device-iphone'))
+
+    assert(device, 'starter iframe slide renders an iPhone device frame')
+    assert.notEqual(device.style.width, 'min(54vh, 30vw, 430px)', 'starter no longer applies the old portrait-hostile 30vw cap')
+    assert.equal(device.style.width, 'min(85vw, calc(85vh * 390 / 844), 430px)', 'starter uses the mobile-friendly runtime iPhone width')
+    assert.equal(device.style.aspectRatio, '390 / 844', 'starter phone frame preserves iPhone proportions')
+  })
+})
+
+test('starter HTML escape hatch slide uses intrinsic responsive layout CSS', function () {
+  const spec = yaml.load(fs.readFileSync(path.join(root, 'examples', 'starter', 'slides.yaml'), 'utf8'))
+  const slides = spec.slides
+  const slide = slides.find(slide => slide.html && slide.html.includes('HTML escape hatch'))
+
+  assert.equal(slides[slides.length - 2].custom, 'particleField', 'starter keeps custom renderer before the long HTML block')
+  assert(slides[slides.length - 1].html, 'starter keeps the long HTML block at the bottom')
+  assert(slide, 'starter includes the HTML escape hatch slide')
+  assert(slide.html.includes('grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr))'), 'main HTML layout reflows with auto-fit/minmax instead of fixed columns')
+  assert(slide.html.includes('grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr))'), 'card grid also uses intrinsic responsive columns')
+  assert(slide.html.includes('padding: clamp('), 'HTML slide uses clamp for bounded responsive spacing')
+  assert(slide.html.includes('font-size: clamp('), 'HTML slide uses clamp for bounded responsive type')
+  assert(!slide.html.includes('@media'), 'HTML escape hatch stays responsive without a media-query block')
+  assert(!slide.html.includes('grid-template-columns: minmax(0, 1fr) minmax'), 'HTML slide no longer depends on a fixed desktop-only two-column grid')
+})
+
+test('starter particle field slide uses intrinsic mobile-readable layout CSS', async function () {
+  const mod = await loadPowerSlides()
+  const talk = await import(pathToFileURL(path.join(root, 'examples', 'starter', 'talk.js')).href + '?starter-particles=' + Date.now())
+  const spec = yaml.load(fs.readFileSync(path.join(root, 'examples', 'starter', 'slides.yaml'), 'utf8'))
+  const particleIndex = spec.slides.findIndex(slide => slide.custom === 'particleField')
+  const slides = mod.createTalk(spec, talk)
+
+  withFakeBrowser(function () {
+    global.window.innerWidth = 390
+    global.window.innerHeight = 844
+    const target = new FakeElement('section')
+    slides[particleIndex](target)
+
+    const root = findDeep(target, el => String(el.className).includes('starter-particle-field'))
+    const markup = root && root.innerHTML
+
+    assert(root, 'starter custom particle slide renders the scoped particle-field root')
+    assert(markup.includes('class="starter-particle-copy"'), 'starter custom particle slide renders the copy card')
+    assert(!markup.includes('@media'), 'particle slide uses intrinsic sizing instead of a mobile media-query wall')
+    assert(markup.includes('width: min(43rem, calc(100vw - clamp(2rem, 10vw, 4rem)))'), 'particle copy card fits narrow portrait viewports')
+    assert(markup.includes('max-height: calc(100vh'), 'particle copy card is constrained to the viewport')
+    assert(markup.includes('overflow: auto'), 'particle copy card can scroll instead of clipping on short screens')
+    assert(markup.includes('font-size: clamp(2.35rem, 10vw, 5.4rem)'), 'particle title gets a readable responsive size')
+  })
+})
+
+test('iphone iframe explicit sizing overrides still win', async function () {
+  const mod = await loadPowerSlides()
+  withFakeBrowser(function () {
+    const deviceWidthTarget = new FakeElement('section')
+    mod.iframe('https://example.test/app', { device: 'iphone', deviceWidth: '312px' })(deviceWidthTarget)
+    const deviceWidthFrame = findDeep(deviceWidthTarget, el => String(el.className).includes('ps-iframe-device-iphone'))
+
+    const frameWidthTarget = new FakeElement('section')
+    mod.iframe('https://example.test/app', { device: 'iphone', frameWidth: '320px' })(frameWidthTarget)
+    const frameWidthFrame = findDeep(frameWidthTarget, el => String(el.className).includes('ps-iframe-device-iphone'))
+
+    const deviceStyleTarget = new FakeElement('section')
+    mod.iframe('https://example.test/app', { device: 'iphone', deviceStyle: { width: '330px' } })(deviceStyleTarget)
+    const deviceStyleFrame = findDeep(deviceStyleTarget, el => String(el.className).includes('ps-iframe-device-iphone'))
+
+    assert.equal(deviceWidthFrame.style.width, '312px', 'deviceWidth overrides the default iPhone frame width')
+    assert.equal(frameWidthFrame.style.width, '320px', 'frameWidth overrides the default iPhone frame width')
+    assert.equal(deviceStyleFrame.style.width, '330px', 'deviceStyle can still override the rendered iPhone frame width')
+  })
+})
+
+test('column iphone iframe defaults fit stacked portrait mobile layouts', async function () {
+  const mod = await loadPowerSlides()
+  withFakeBrowser(function () {
+    global.window.innerWidth = 390
+    global.window.innerHeight = 844
+    const target = new FakeElement('section')
+    mod.columns({
+      columns: [
+        { title: 'Copy', text: 'Stacked copy' },
+        { iframe: 'https://example.test/app', device: 'iphone' }
+      ]
+    })(target)
+
+    const device = findDeep(target, el => String(el.className).includes('ps-iframe-device-iphone'))
+
+    assert.equal(device.style.width, 'min(85vw, calc(85vh * 390 / 844), 390px)', 'column iPhone frame avoids the old tiny mobile vw cap')
+    assert.equal(device.style.aspectRatio, '390 / 844', 'column iPhone frame preserves iPhone proportions')
+  })
+})
+
+test('column iphone iframe explicit frameWidth override wins over column default', async function () {
+  const mod = await loadPowerSlides()
+  withFakeBrowser(function () {
+    const target = new FakeElement('section')
+    mod.columns({
+      columns: [
+        { iframe: 'https://example.test/app', device: 'iphone', frameWidth: '340px' }
+      ]
+    })(target)
+
+    const device = findDeep(target, el => String(el.className).includes('ps-iframe-device-iphone'))
+
+    assert.equal(device.style.width, '340px', 'column frameWidth overrides the column iPhone frame default')
+  })
+})
+
 test('legacy iframe side title and subtitle knobs are ignored', async function () {
   const mod = await loadPowerSlides()
   withFakeBrowser(function () {
@@ -271,6 +408,8 @@ function createFakeWindow () {
   return {
     innerWidth: 1024,
     innerHeight: 768,
+    devicePixelRatio: 1,
+    requestAnimationFrame () {},
     location: {
       hash: '',
       search: '',
@@ -291,9 +430,11 @@ class FakeElement {
     this.listeners = {}
     this.style = createFakeStyle()
     this.className = ''
+    this._queryMatches = {}
     this.nodeType = tagName === '#text' ? 3 : 1
     this.nodeName = tagName === '#text' ? '#text' : String(tagName).toUpperCase()
     if (tagName === 'iframe') this.contentWindow = createFakeContentWindow()
+    if (tagName === 'canvas') this.getContext = () => createFakeCanvasContext()
   }
 
   appendChild (child) {
@@ -304,6 +445,16 @@ class FakeElement {
 
   setAttribute (key, value) {
     this.attributes[key] = value
+  }
+
+  querySelector (selector) {
+    if (!this._queryMatches[selector]) {
+      const tagName = ['canvas', 'h1', 'p'].includes(selector) ? selector : 'div'
+      const el = new FakeElement(tagName)
+      if (selector.startsWith('.')) el.className = selector.slice(1)
+      this._queryMatches[selector] = el
+    }
+    return this._queryMatches[selector]
   }
 
   addEventListener (name, fn) {
@@ -323,5 +474,19 @@ function createFakeStyle () {
 function createFakeContentWindow () {
   return {
     addEventListener () {}
+  }
+}
+
+function createFakeCanvasContext () {
+  return {
+    setTransform () {},
+    clearRect () {},
+    fillRect () {},
+    beginPath () {},
+    arc () {},
+    fill () {},
+    createRadialGradient () {
+      return { addColorStop () {} }
+    }
   }
 }

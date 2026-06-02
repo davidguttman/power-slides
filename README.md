@@ -1,5 +1,7 @@
 # power-slides
 
+Live example: https://powerslides.david.app
+
 Start simple: one `slides.yaml` file and one command. Then use the phone remote for the real control view while the projected slides stay sparse and high-impact.
 
 ```yaml
@@ -166,7 +168,7 @@ Then reference the renderer from YAML:
   title: Browser-native slide
 ```
 
-For more `talk.js` hooks, see `docs/slide-api.md`. For custom renderers and animated slides, see `examples/showcase/`.
+For more `talk.js` hooks, see `docs/slide-api.md`. The packaged `examples/starter/` deck is the maintained example and init template.
 
 ## License
 

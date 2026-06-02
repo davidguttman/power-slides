@@ -52,13 +52,15 @@ function particleField (slide) {
         }
         .starter-particle-copy {
           position: absolute;
-          left: clamp(3rem, 7vw, 7rem);
-          bottom: clamp(3rem, 8vh, 6rem);
-          max-width: min(45rem, 58vw);
-          padding: clamp(1.2rem, 2.4vw, 2rem);
+          left: clamp(1rem, 7vw, 7rem);
+          bottom: clamp(1rem, 7vh, 6rem);
+          width: min(43rem, calc(100vw - clamp(2rem, 10vw, 4rem)));
+          max-height: calc(100vh - clamp(2rem, 10vw, 5.5rem));
+          overflow: auto;
+          padding: clamp(1.15rem, 4vw, 2rem);
           border: 1px solid rgba(255, 255, 255, 0.16);
-          border-radius: clamp(1.2rem, 2vw, 1.8rem);
-          background: rgba(6, 16, 24, 0.62);
+          border-radius: clamp(1.1rem, 4vw, 1.8rem);
+          background: rgba(6, 16, 24, 0.68);
           box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.36);
           backdrop-filter: blur(14px);
         }
@@ -73,7 +75,7 @@ function particleField (slide) {
         .starter-particle-copy h1 {
           margin: 0;
           max-width: 10em;
-          font-size: clamp(3rem, 6vw, 6.3rem);
+          font-size: clamp(2.35rem, 10vw, 5.4rem);
           line-height: 0.92;
           letter-spacing: -0.07em;
         }
@@ -81,7 +83,7 @@ function particleField (slide) {
           margin: 1rem 0 0;
           max-width: 34em;
           color: rgba(255,255,255,0.76);
-          font-size: clamp(1rem, 1.35vw, 1.35rem);
+          font-size: clamp(1rem, 3.8vw, 1.35rem);
           line-height: 1.45;
         }
       </style>

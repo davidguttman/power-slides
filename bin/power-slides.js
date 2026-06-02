@@ -526,7 +526,7 @@ Then reference the renderer from YAML:
   title: Browser-native slide
 \`\`\`
 
-For more custom-renderer examples, see \`examples/showcase/\` in the power-slides package.
+For more custom-renderer details, see the package README and \`docs/slide-api.md\`. The packaged \`examples/starter/\` deck is the maintained example and init template.
 
 ## Advanced: npm runners
 
