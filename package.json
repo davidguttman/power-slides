@@ -77,8 +77,10 @@
     "examples/starter/public/title.png",
     "examples/starter/public/deploy.png",
     "examples/starter/public/github-render.png",
+    "examples/starter/public/remote-control.png",
     "examples/starter/public/build-it.png",
     "examples/starter/public/workflow.png",
+    "examples/starter/public/generated",
     "examples/starter/public/fractal-loop.mp4",
     "README.md"
   ]

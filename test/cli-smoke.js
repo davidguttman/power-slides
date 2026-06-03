@@ -52,12 +52,17 @@ function assertNoPublicLegacyFields (slides, label) {
   })
 }
 
-function cleanupGeneratedExampleArtifacts () {
-  fs.rmSync(generatedExamplePeerScript, { force: true })
+function withGeneratedExamplePeerScript (content, fn) {
+  const existed = fs.existsSync(generatedExamplePeerScript)
+  const previous = existed ? fs.readFileSync(generatedExamplePeerScript) : null
+  fs.writeFileSync(generatedExamplePeerScript, content)
+  try {
+    return fn()
+  } finally {
+    if (existed) fs.writeFileSync(generatedExamplePeerScript, previous)
+    else fs.rmSync(generatedExamplePeerScript, { force: true })
+  }
 }
-
-cleanupGeneratedExampleArtifacts()
-process.on('exit', cleanupGeneratedExampleArtifacts)
 
 function runCliWithBlockedBuildDeps (args) {
   const script = `
@@ -182,9 +187,9 @@ for (const earlyNoise of ['package.json', 'npm run', 'generated scripts', 'PeerJ
 assert(packageReadme.indexOf('## Advanced: npm runners') > packageReadme.indexOf('## License'), 'package README keeps npm runner detail after License')
 assert(packageReadme.trim().endsWith('Use those scripts for hosts, CI, or deploy flows that run npm commands.'), 'package README ends with concise npm runner detail')
 
-fs.writeFileSync(generatedExamplePeerScript, 'generated PeerJS runtime artifact\n')
-runCliWithBlockedBuildDeps(['init', talk])
-cleanupGeneratedExampleArtifacts()
+withGeneratedExamplePeerScript('generated PeerJS runtime artifact\n', function () {
+  runCliWithBlockedBuildDeps(['init', talk])
+})
 
 assert(fs.existsSync(path.join(talk, 'slides.yaml')), 'init writes slides.yaml')
 assert(!fs.existsSync(path.join(talk, 'slides.yml')), 'init does not write slides.yml by default')
@@ -250,7 +255,7 @@ const exampleSlidesSource = fs.readFileSync(path.join(root, 'examples', 'starter
 const exampleTalkSource = fs.readFileSync(path.join(root, 'examples', 'starter', 'talk.js'), 'utf8')
 assert.strictEqual(fs.readFileSync(path.join(talk, 'slides.yaml'), 'utf8'), exampleSlidesSource, 'init copies packaged example slides.yaml')
 assert.strictEqual(fs.readFileSync(path.join(talk, 'talk.js'), 'utf8'), exampleTalkSource, 'init copies packaged example talk.js')
-for (const media of ['sample.svg', 'title.png', 'deploy.png', 'github-render.png', 'build-it.png', 'workflow.png', 'fractal-loop.mp4']) {
+for (const media of ['sample.svg', 'title.png', 'deploy.png', 'github-render.png', 'build-it.png', 'workflow.png', 'fractal-loop.mp4', 'generated/plain-text-16bit.png', 'generated/plain-text-card.png', 'generated/title-16bit.png', 'generated/remote-control-16bit.png', 'generated/video-intro-16bit.png', 'generated/iframe-16bit.png', 'generated/custom-renderer-16bit.png', 'generated/install.png']) {
   assert.deepStrictEqual(
     fs.readFileSync(path.join(talk, 'public', media)),
     fs.readFileSync(path.join(root, 'examples', 'starter', 'public', media)),
@@ -267,32 +272,41 @@ assert.strictEqual(initializedSpec.style.background, '#061018', 'starter deck ha
 assert.strictEqual(initializedSpec.style.color, 'white', 'starter deck has top-level color style')
 assert.strictEqual(initializedSpec.style['--accent'], '#5ffbf1', 'starter deck demonstrates quoted CSS custom property style')
 const initializedSlides = slideArray(initializedSpec)
-assert.strictEqual(initializedSlides.length, 9, 'init starter splits the canonical story into focused moments')
-assert.strictEqual(initializedSlides[0].title, 'Simple to start.', 'starter first slide introduces the simple-start story')
-assert.strictEqual(initializedSlides[0].subtitle, 'One slides.yaml file. One command.', 'starter first slide keeps on-screen copy sparse')
-assert.strictEqual(initializedSlides[0].background, '/title.png', 'starter title slide uses previous-talk opening background')
-assert.strictEqual(initializedSlides[0].brightness, 0.35, 'starter title slide demonstrates brightness')
-assert(initializedSlides[0].notes.join(' ').includes('simple to start, but no limits on power'), 'starter first slide moves the story spine into notes')
-assert.strictEqual(initializedSlides[1].title, 'Checkpoint: use your phone.', 'starter second slide forces the remote-control flow')
-assert(initializedSlides[1].subtitle.includes('Press o') && initializedSlides[1].subtitle.includes('Enable remote control'), 'starter remote checkpoint gives user-facing remote instructions')
-assert(initializedSlides[1].notes.join(' ').includes('next-slide previews') && initializedSlides[1].notes.join(' ').includes('talk timer'), 'starter remote checkpoint notes explain previews and timers')
-assert.strictEqual(initializedSlides[2].columns[0].image, '/github-render.png', 'starter third slide uses a copied generated image asset inside a designed columns moment')
-assert.strictEqual(initializedSlides[2].columns[1].title, 'One folder. Real assets.', 'starter third slide keeps static-asset copy sparse')
-assert.strictEqual(initializedSlides[2].columns[1].bullets, undefined, 'starter asset slide keeps detailed guidance out of projected bullets')
-assert.strictEqual(initializedSlides[3].video, '/fractal-loop.mp4', 'starter fourth slide is video')
-assert.strictEqual(initializedSlides[4].background, '/build-it.png', 'starter fifth slide demonstrates background image with brightness')
-assert.strictEqual(initializedSlides[4].columns[0].image, '/workflow.png', 'starter fifth slide composes media with copy')
-assert.strictEqual(initializedSlides[4].columns[1].title, 'No limits on power.', 'starter composition slide carries the power story')
-assert.strictEqual(initializedSlides[4].columns[1].bullets, undefined, 'starter composition column does not render the old bullet list')
-assert.strictEqual(initializedSlides[5].title, 'The remote carries the story.', 'starter sixth slide makes phone notes essential')
-assert(initializedSlides[5].notes.join(' ').includes('next-slide preview') && initializedSlides[5].notes.join(' ').includes('slide timer'), 'starter remote story notes call out previews and pacing')
-assert.strictEqual(initializedSlides[6].iframe, 'https://david.app', 'starter seventh slide loads david.app in a full iframe')
-assert(!Object.prototype.hasOwnProperty.call(initializedSlides[6], 'srcdoc'), 'starter seventh slide does not use conflicting srcdoc demo content')
-assert(initializedSlides[6].background.includes('/deploy.png'), 'starter seventh slide uses previous-talk deploy background')
-assert.strictEqual(initializedSlides[6].device, 'iphone', 'starter iframe demonstrates phone frame')
-assert.strictEqual(initializedSlides[7].custom, 'particleField', 'starter eighth slide is custom')
-assert.strictEqual(initializedSlides[7].title, 'Deploy anywhere.', 'starter custom slide closes on deploy-anywhere before the long HTML block')
-assert(initializedSlides[8].html.includes('Bring your own markup'), 'starter ninth slide is rich html')
+assert.strictEqual(initializedSlides.length, 8, 'init starter splits the canonical story into focused moments')
+assert.strictEqual(initializedSlides[0].title, 'Power Slides', 'starter first slide introduces the product')
+assert.strictEqual(initializedSlides[0].eyebrow, 'Introducing', 'starter first slide uses a sparse setup eyebrow')
+assert.strictEqual(initializedSlides[0].subtitle, 'Agent-friendly deck creation', 'starter first slide leads with the agent-friendly pitch')
+assert(initializedSlides[0].notes.join(' ').includes('agent can create and revise the deck'), 'starter first slide moves the agent-friendly story into notes')
+assert.strictEqual(initializedSlides[1].columns[0].title, 'Focused slides in plain text', 'starter second slide introduces plain-text deck authoring')
+assert.strictEqual(initializedSlides[1].columns[0].eyebrow, 'Start simple with', 'starter second slide keeps the start-simple framing')
+assert.strictEqual(initializedSlides[1].background, '/generated/plain-text-16bit.png', 'starter second slide preserves the plain-text background')
+assert.strictEqual(initializedSlides[1].columns[1].image, '/generated/plain-text-card.png', 'starter second slide puts the uploaded plain-text image in the second column')
+assert(initializedSlides[1].notes.join(' ').includes('review the diff'), 'starter plain-text notes explain agent editability')
+assert.strictEqual(initializedSlides[2].columns[0].image, '/remote-control.png', 'starter phone-remote columns slide uses the remote-control asset')
+assert.strictEqual(initializedSlides[2].columns[1].eyebrow, 'Use your phone as a', 'starter phone-remote slide uses requested eyebrow copy')
+assert.strictEqual(initializedSlides[2].columns[1].title, 'Remote Control', 'starter phone-remote slide uses requested title copy')
+assert.strictEqual(initializedSlides[2].columns[1].bullets, undefined, 'starter phone-remote slide keeps detailed guidance out of projected bullets')
+assert(initializedSlides[2].notes.join(' ').includes('next-slide preview') && initializedSlides[2].notes.join(' ').includes('pacing timers'), 'starter remote notes call out previews and pacing')
+assert.strictEqual(initializedSlides[3].title, 'Full screen video', 'starter fourth slide introduces the media helper')
+assert.strictEqual(initializedSlides[3].eyebrow, 'Media helpers like', 'starter media setup slide uses the helper framing')
+assert.strictEqual(initializedSlides[4].video, '/fractal-loop.mp4', 'starter fifth slide is video')
+assert.strictEqual(initializedSlides[5].columns[0].eyebrow, 'Interact with live web apps using the', 'starter iframe slide uses requested sentence capitalization')
+assert.strictEqual(initializedSlides[5].columns[0].title, 'Iframe Helper', 'starter iframe slide uses requested title capitalization')
+assert.strictEqual(initializedSlides[5].columns[0].subtitle, 'Power Slides gives you both mobile and desktop options', 'starter iframe slide uses product-name capitalization')
+assert.strictEqual(initializedSlides[5].columns[1].iframe, 'https://david.app', 'starter iframe slide loads david.app in a phone frame')
+assert(!Object.prototype.hasOwnProperty.call(initializedSlides[5].columns[1], 'srcdoc'), 'starter iframe slide does not use conflicting srcdoc demo content')
+assert.strictEqual(initializedSlides[5].columns[1].device, 'iphone', 'starter iframe demonstrates phone frame')
+assert.strictEqual(initializedSlides[6].custom, 'particleField', 'starter seventh slide is custom')
+assert.strictEqual(initializedSlides[6].eyebrow, 'Custom renderers', 'starter custom slide introduces custom renderers')
+assert.strictEqual(initializedSlides[6].title, 'Bring browser code into the deck', 'starter custom slide is about browser-code rendering')
+assert.strictEqual(initializedSlides[6].subtitle, 'Canvas, animation, data, DOM — rendered from talk.js', 'starter custom slide points to talk.js rendering')
+assert(initializedSlides[7].html.includes('ps-install-terminal'), 'starter eighth slide is the install terminal HTML slide')
+assert(initializedSlides[7].html.includes('value="Best Talk Ever"') && !initializedSlides[7].html.includes('Commands use:'), 'starter rich html slide defaults the talk name cleanly')
+assert(initializedSlides[7].html.includes('npx power-slides init best-talk-ever'), 'starter rich html slide shows the install command')
+assert(initializedSlides[7].html.includes('cd best-talk-ever'), 'starter rich html slide shows the cd command')
+assert(initializedSlides[7].html.includes('npx power-slides dev .'), 'starter rich html slide shows the dev command')
+assert(initializedSlides[7].html.includes('navigator.clipboard.writeText(commands)') && initializedSlides[7].html.includes(".join('\\n')") && initializedSlides[7].html.includes('Copy All'), 'starter rich html slide includes copy-all command behavior')
+assert(initializedSlides[7].html.includes(".replace(/[^a-z0-9._-]+/g, '-')") && initializedSlides[7].html.includes("return safe || 'best-talk-ever'"), 'starter rich html slide sanitizes name your talks with a default fallback')
 assertNoPublicLegacyFields(initializedSlides, 'starter')
 
 const nonEmpty = path.join(tmp, 'non-empty')
@@ -377,6 +391,7 @@ try {
   assert.strictEqual(installedTalkPackage.scripts.dev, 'powerslides dev .', 'installed power-slides init writes powerslides dev script')
   assert.strictEqual(installedTalkPackage.scripts.build, 'powerslides build .', 'installed power-slides init writes powerslides build script')
   assert(fs.existsSync(path.join(installedTalk, 'public', 'github-render.png')), 'installed power-slides init copies starter image media')
+  assert(fs.existsSync(path.join(installedTalk, 'public', 'generated', 'plain-text-16bit.png')), 'installed power-slides init copies generated starter background images')
   assert(fs.existsSync(path.join(installedTalk, 'public', 'title.png')), 'installed power-slides init copies starter title background')
   assert(fs.existsSync(path.join(installedTalk, 'public', 'deploy.png')), 'installed power-slides init copies starter deploy background')
   assert(fs.existsSync(path.join(installedTalk, 'public', 'fractal-loop.mp4')), 'installed power-slides init copies starter video media')

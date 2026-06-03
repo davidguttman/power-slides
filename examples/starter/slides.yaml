@@ -3,143 +3,292 @@ style:
   fontFamily: Inter, system-ui, sans-serif
   background: '#061018'
   color: white
-  "--accent": '#5ffbf1'
+  --accent: '#5ffbf1'
 slides:
-  - title: Simple to start.
-    subtitle: One slides.yaml file. One command.
-    background: /title.png
-    brightness: 0.35
-    align: center
-    notes:
-      - "Story spine: simple to start, but no limits on power. This opening should feel almost too small: one YAML file, one dev command, one browser tab."
-      - "Then set the hook: the rest of the demo proves that this simple file can still drive real media, live web, custom browser code, and a speaker workflow from your phone."
-  - title: "Checkpoint: use your phone."
-    subtitle: Press o → Enable remote control → scan → continue here.
-    background: "linear-gradient(135deg, rgba(6,16,24,.94), rgba(6,16,24,.48)), center / cover no-repeat url('/title.png')"
-    align: center
-    notes:
-      - "Stop on this slide until the phone is connected. Press o on the keyboard, choose Enable remote control, then scan the QR code or open the shown URL on your phone."
-      - "From here, drive the deck from the phone. The remote is the real control view: it gives navigation, current and next-slide previews, these notes, the slide and talk timers for pacing."
-      - "If you keep presenting from the keyboard, you are missing the point of the demo. The phone makes the sparse wall slides make sense."
-  - columns:
-      - image: /github-render.png
-        fit: contain
-      - title: One folder. Real assets.
-        subtitle: public/ ships with the deck.
-    notes:
-      - "Static assets are first-class. Drop screenshots, renders, and diagrams into public/ and reference them from YAML."
-      - "The wall stays sparse; the phone can carry the detailed speaker story about where the asset lives, why it matters, and what to point out."
-  - video: /fractal-loop.mp4
-    controls: true
-    muted: true
-    loop: true
+- title: Power Slides
+  eyebrow: Introducing
+  subtitle: Agent-friendly deck creation
+  align: center
+  background: /generated/title-16bit.png
+  notes:
+  - This is the whole pitch in one line. Power Slides is built so an agent can create and revise the deck while you focus on the talk.
+  - 'It stays small: one slides.yaml file, one command, one browser tab. The next slides show why plain text is so easy for agents to work with, and how the phone remote drives the talk.'
+- columns:
+  - eyebrow: Start simple with
+    title: Focused slides in plain text
+    subtitle: Easy for agents to edit, reorder, and reuse
+  - image: /generated/plain-text-card.png
     fit: contain
-    notes:
-      - "Video is just another slide. No special app, no separate media mode, no ceremony."
-      - "Use the slide timer on the phone to decide when the visual has landed and it is time to move on."
-  - background: /build-it.png
-    brightness: 0.66
-    columns:
-      - image: /workflow.png
-        fit: contain
-      - title: No limits on power.
-        subtitle: Compose layouts, media, and browser primitives.
-        pullquote: Simple files can still make rich moments.
-    notes:
-      - "This is the pivot: Power Slides starts as content, but it does not trap you in a toy slide model."
-      - "Columns are composed from slide primitives, backgrounds can be designed, and the browser underneath is still available when the talk needs more."
-  - title: The remote carries the story.
-    subtitle: Notes off the wall. Pacing in your hand.
-    background: /build-it.png
-    brightness: 0.72
-    align: center
-    notes:
-      - "This slide explains why the deck can be this sparse: the phone shows the full speaker notes while the audience sees only the high-impact message."
-      - "Call out the next-slide preview before advancing. Use it to transition cleanly instead of glancing back at the projected screen."
-      - "Start the talk timer if it is not already running, then watch the slide timer reset on each advance."
+  background: /generated/plain-text-16bit.png
+  notes:
+  - 'Each slide is a few lines of plain-text YAML, which is exactly what an agent is good at: editing copy, reordering slides, and reusing pieces across decks without touching a binary editor.'
+  - Because the deck is just text, you can ask an agent to draft, tighten, or restructure it, then review the diff like any other change.
+- columns:
+  - image: /remote-control.png
+    fit: contain
+  - eyebrow: Use your phone as a
+    title: Remote Control
+    subtitle: Next slide preview, notes, pacing timers
+    pullquote: You see the next beat before the room does
+  background: /generated/remote-control-16bit.png
+  notes:
+  - 'This is the presenter workflow: the phone is the real control surface. Enable remote control, scan the QR code, and drive the whole deck from your hand.'
+  - The remote holds the next-slide preview, your notes, and the pacing timers, so the projected slide stays focused while everything you need to deliver the talk lives on your phone.
+- eyebrow: Media helpers like
+  title: Full screen video
+  subtitle: (on the next slide)
+  align: center
+  background: /generated/video-intro-16bit.png
+  notes:
+  - Media is a first-class slide type, not a special mode. The next slide drops in a video that plays full-frame straight from the deck.
+  - 'Point the room at what is coming: the video carries the moment, and the helpers keep it focused with no extra ceremony.'
+- video: /fractal-loop.mp4
+  controls: true
+  muted: true
+  loop: true
+  fit: contain
+  notes:
+  - 'Media is just another slide: drop in a video and it plays full-frame, with no separate media mode or ceremony.'
+  - Notice this slide carries no text. The notes that would clutter it live on your phone instead, which is what keeps every slide focused on one thing.
+- columns:
+  - eyebrow: Interact with live web apps using the
+    title: Iframe Helper
+    subtitle: Power Slides gives you both mobile and desktop options
   - iframe: https://david.app
     device: iphone
-    background: "linear-gradient(90deg, rgba(6,16,24,.92), rgba(6,16,24,.35)), center / cover no-repeat url('/deploy.png')"
     screenBackground: '#061018'
-    notes:
-      - "An iframe can carry docs, a dashboard, a product surface, or a tiny app. The phone frame makes the embedded web moment legible in the room."
-      - "The remote next preview should already be showing the custom renderer after this one, so you can tee up the transition before tapping forward."
-  - custom: particleField
-    eyebrow: JavaScript escape hatch
-    title: Deploy anywhere.
-    subtitle: Static output. Browser power intact.
-    notes:
-      - "Custom renderers in talk.js are the final escape hatch: canvas, DOM, animation, data transforms, or anything else the browser can render."
-      - "The remote next preview should already be showing the HTML slide, with the long markup safely tucked at the bottom of this file."
-  - html: |
-      <section class="ps-starter-html-slide">
-        <style>
-          .ps-starter-html-slide {
-            box-sizing: border-box;
-            width: 100vw;
-            height: 100vh;
-            overflow: auto;
-            display: grid;
-            place-items: center;
-            padding: clamp(1.25rem, 5vmin, 4.5rem);
-            background: radial-gradient(circle at 82% 18%, rgba(95,251,241,.24), transparent 28%), linear-gradient(135deg, #061018, #1a0c30);
-            color: white;
-            font-family: Inter, system-ui, sans-serif;
-          }
-          .ps-starter-html-layout {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
-            gap: clamp(1rem, 5vw, 4rem);
-            align-items: center;
-            width: min(100%, 88rem);
-          }
-          .ps-starter-html-title {
-            margin: 0;
-            font-size: clamp(2.7rem, 8vw, 6.5rem);
-            line-height: .92;
-            letter-spacing: -.07em;
-          }
-          .ps-starter-html-kicker {
-            margin: 0 0 .8rem;
-            color: #5ffbf1;
-            font-weight: 900;
-            letter-spacing: .16em;
-            text-transform: uppercase;
-          }
-          .ps-starter-html-copy {
-            max-width: 34rem;
-            margin: 1.1rem 0 0;
-            color: rgba(255,255,255,.76);
-            font-size: clamp(1rem, 2vw, 1.35rem);
-            line-height: 1.45;
-          }
-          .ps-starter-html-cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
-            gap: .8rem;
-          }
-          .ps-starter-html-card {
-            padding: clamp(.9rem, 2.5vmin, 1.25rem);
-            border: 1px solid rgba(255,255,255,.16);
-            border-radius: 1.1rem;
-            background: rgba(255,255,255,.09);
-            box-shadow: 0 1.2rem 3rem rgba(0,0,0,.34);
-          }
-          .ps-starter-html-card strong { color: var(--accent); }
-        </style>
-        <div class="ps-starter-html-layout">
-          <div>
-            <p class="ps-starter-html-kicker">HTML escape hatch</p>
-            <h1 class="ps-starter-html-title">Bring your own markup.</h1>
-            <p class="ps-starter-html-copy">When a slide needs exact structure, keep it local to the deck.</p>
-          </div>
-          <div class="ps-starter-html-cards">
-            <div class="ps-starter-html-card" style="--accent:#f9f871"><strong>01</strong><br>Paste rich layout</div>
-            <div class="ps-starter-html-card" style="--accent:#ff6ec7"><strong>02</strong><br>Keep it one slide</div>
-            <div class="ps-starter-html-card" style="--accent:#5ffbf1"><strong>03</strong><br>Ship static</div>
-          </div>
+  background: /generated/iframe-16bit.png
+  notes:
+  - An iframe can carry docs, a dashboard, a product surface, or a live app. The device frame makes the embedded web legible in the room.
+  - Your phone's next preview already shows the custom slide coming up, so you can tee up the transition before you tap forward.
+- custom: particleField
+  eyebrow: Custom renderers
+  title: Bring browser code into the deck
+  subtitle: Canvas, animation, data, DOM — rendered from talk.js
+  background: /generated/custom-renderer-16bit.png
+  notes:
+  - This slide is not a built-in primitive. It is rendered by the particleField function in talk.js, using canvas and browser APIs while the slide still lives in slides.yaml.
+  - Use custom renderers when a talk needs motion, data, interaction, or a one-off visual system that should stay as code instead of becoming a new slide type.
+- html: |
+    <section class="ps-install-terminal">
+      <style>
+        .ps-install-terminal {
+          box-sizing: border-box;
+          width: 100vw;
+          height: 100vh;
+          padding: clamp(1rem, 4vmin, 3rem);
+          display: grid;
+          place-items: center;
+          background-image:
+            radial-gradient(circle at 20% 15%, rgba(95, 251, 241, .22), transparent 26rem),
+            linear-gradient(135deg, rgba(6, 16, 24, .48) 0%, rgba(11, 18, 32, .42) 60%, rgba(5, 7, 13, .62) 100%),
+            url("/generated/custom-renderer-16bit.png");
+          background-size: auto, auto, cover;
+          background-position: center, center, center;
+          background-repeat: no-repeat;
+          color: #e8fff9;
+          font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+        }
+        .ps-install-terminal .window {
+          width: min(74rem, calc(100vw - clamp(2rem, 8vw, 6rem)));
+          border: 1px solid rgba(95, 251, 241, .28);
+          border-radius: clamp(1rem, 2vw, 1.6rem);
+          overflow: hidden;
+          background: rgba(5, 12, 20, .74);
+          box-shadow: 0 2rem 6rem rgba(0, 0, 0, .55), inset 0 1px rgba(255, 255, 255, .08);
+        }
+        .ps-install-terminal .chrome {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 1rem;
+          padding: .85rem 1rem;
+          background: rgba(255, 255, 255, .06);
+          border-bottom: 1px solid rgba(255, 255, 255, .08);
+          color: rgba(232, 255, 249, .72);
+          font-size: clamp(.75rem, 1.2vw, .95rem);
+          letter-spacing: .06em;
+          text-transform: uppercase;
+        }
+        .ps-install-terminal .dots {
+          display: flex;
+          gap: .48rem;
+        }
+        .ps-install-terminal .dots span {
+          width: .72rem;
+          height: .72rem;
+          border-radius: 999px;
+          background: #ff5f57;
+        }
+        .ps-install-terminal .dots span:nth-child(2) { background: #ffbd2e; }
+        .ps-install-terminal .dots span:nth-child(3) { background: #28c840; }
+        .ps-install-terminal .body {
+          display: grid;
+          gap: clamp(1.2rem, 2.8vw, 2.2rem);
+          padding: clamp(1.4rem, 4vw, 3.2rem);
+        }
+        .ps-install-terminal h1 {
+          margin: 0;
+          max-width: 12ch;
+          font-size: clamp(2.5rem, 7vw, 6rem);
+          line-height: .9;
+          letter-spacing: -.07em;
+        }
+        .ps-install-terminal .lede {
+          margin: 0;
+          max-width: 46rem;
+          color: rgba(232, 255, 249, .78);
+          font-size: clamp(1rem, 2vw, 1.45rem);
+          line-height: 1.35;
+        }
+        .ps-install-terminal .lede.cta {
+          margin-top: 1.1rem;
+        }
+        .ps-install-terminal .talk-name {
+          display: grid;
+          gap: .45rem;
+          max-width: 26rem;
+        }
+        .ps-install-terminal label {
+          color: rgba(232, 255, 249, .68);
+          font-size: clamp(.78rem, 1.2vw, .95rem);
+          font-weight: 800;
+          letter-spacing: .04em;
+        }
+        .ps-install-terminal input {
+          box-sizing: border-box;
+          width: 100%;
+          border: 1px solid rgba(95, 251, 241, .32);
+          border-radius: .8rem;
+          padding: .75rem .9rem;
+          background: rgba(255, 255, 255, .06);
+          color: #e8fff9;
+          font: 800 clamp(1rem, 2vw, 1.25rem) ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+          outline: none;
+        }
+        .ps-install-terminal input:focus {
+          border-color: #5ffbf1;
+          box-shadow: 0 0 0 .18rem rgba(95, 251, 241, .16);
+        }
+        .ps-install-terminal .safe-name {
+          color: rgba(232, 255, 249, .62);
+          font-size: clamp(.78rem, 1.2vw, .95rem);
+        }
+        .ps-install-terminal .command-card {
+          display: grid;
+          grid-template-columns: 1fr auto;
+          align-items: end;
+          gap: .9rem;
+          padding: clamp(.85rem, 1.8vw, 1.2rem);
+          border: 1px solid rgba(95, 251, 241, .25);
+          border-radius: 1rem;
+          background: #03070d;
+        }
+        .ps-install-terminal .commands {
+          display: grid;
+          gap: .55rem;
+        }
+        .ps-install-terminal code {
+          color: #9fffea;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+          font-size: clamp(.9rem, 2vw, 1.32rem);
+          line-height: 1.35;
+          overflow-wrap: anywhere;
+        }
+        .ps-install-terminal .prompt {
+          color: #5ffbf1;
+          margin-right: .45rem;
+        }
+        .ps-install-terminal button {
+          appearance: none;
+          border: 0;
+          border-radius: .8rem;
+          padding: .8rem 1rem;
+          background: #5ffbf1;
+          color: #041018;
+          font: 800 .95rem Inter, system-ui, sans-serif;
+          cursor: pointer;
+          box-shadow: 0 .6rem 1.4rem rgba(95, 251, 241, .2);
+        }
+        .ps-install-terminal button.copied {
+          background: #b7ff7a;
+        }
+        .ps-install-terminal .copy-status {
+          min-height: 1.2em;
+          color: #b7ff7a;
+          font-weight: 800;
+        }
+      </style>
+      <div class="window">
+        <div class="chrome">
+          <div class="dots" aria-hidden="true"><span></span><span></span><span></span></div>
         </div>
-      </section>
-    notes:
-      - "HTML is the escape hatch for art-directed slides: badges, cards, weird grids, or one-off structure that should not become a slide primitive."
-      - "The important constraint is still owned assets and local content. Keep the deck self-contained so build output can be deployed anywhere."
+        <div class="body">
+          <div>
+            <h1>Want Interactive Elements?</h1>
+            <p class="lede">Your agent can easily inline HTML, CSS, and JS without making a custom renderer if it wants to.</p>
+                <p class="lede cta">Ready to give it a try?</p>
+          </div>
+          <div class="talk-name">
+            <label for="ps-talk-name">Name Your Talk</label>
+            <input id="ps-talk-name" type="text" value="Best Talk Ever" spellcheck="false" autocomplete="off" oninput="
+              const root = this.closest('.ps-install-terminal');
+              const cleanTalkName = (value) => {
+                const safe = value.trim().toLowerCase()
+                  .replace(/[^a-z0-9._-]+/g, '-')
+                  .replace(/-{2,}/g, '-')
+                  .replace(/^[.-]+|[.-]+$/g, '');
+                return safe || 'best-talk-ever';
+              };
+              const talkName = cleanTalkName(this.value);
+              const commands = [
+                'npx power-slides init ' + talkName,
+                'cd ' + talkName,
+                'npx power-slides dev .'
+              ];
+              root.querySelectorAll('[data-command-line]').forEach((line, index) => {
+                line.textContent = commands[index];
+              });
+            ">
+          </div>
+          <div class="command-card">
+            <div class="commands" aria-label="Power Slides install commands">
+              <code><span class="prompt">$</span><span data-command-line>npx power-slides init best-talk-ever</span></code>
+              <code><span class="prompt">$</span><span data-command-line>cd best-talk-ever</span></code>
+              <code><span class="prompt">$</span><span data-command-line>npx power-slides dev .</span></code>
+            </div>
+            <button type="button" data-copy-command onclick="
+              const button = this;
+              const root = button.closest('.ps-install-terminal');
+              const status = root.querySelector('.copy-status');
+              const commands = Array.from(root.querySelectorAll('[data-command-line]'))
+                .map((line) => line.textContent)
+                .join('\n');
+              const done = () => {
+                button.textContent = 'Copied!';
+                button.classList.add('copied');
+                status.textContent = 'Copied All Commands';
+                setTimeout(() => {
+                  button.textContent = 'Copy All';
+                  button.classList.remove('copied');
+                  status.textContent = '';
+                }, 1400);
+              };
+              const fallback = () => {
+                prompt('Copy Commands', commands);
+                done();
+              };
+              if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(commands).then(done).catch(fallback);
+              } else {
+                fallback();
+              }
+            ">Copy All</button>
+          </div>
+          <span class="copy-status" aria-live="polite"></span>
+        </div>
+      </div>
+    </section>
+  notes:
+  - This final slide is inline HTML, CSS, and JavaScript written directly inside slides.yaml. The terminal window, command card, and button are markup and styles in the deck file.
+  - The Copy button works because Power Slides renders the deck in the browser. That means starter decks can include real UI behavior without exporting a screenshot or leaving plain text.

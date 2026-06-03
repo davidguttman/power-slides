@@ -2,33 +2,56 @@
 
 Live example: https://powerslides.david.app
 
-Start simple: one `slides.yaml` file and one command. Then use the phone remote for the real control view while the projected slides stay sparse and high-impact.
+Agent-friendly deck creation: one `slides.yaml` file and one command. Slides are plain text, so an agent can edit, reorder, and reuse them — then you present from your phone, where the remote shows your notes, the next slide before the room sees it, and timers that keep your pacing honest.
 
 ```yaml
-- title: Simple to start.
-  subtitle: One slides.yaml file. One command.
-  background: /title.png
-  brightness: 0.35
+- title: Power Slides
+  eyebrow: Introducing
+  subtitle: Agent-friendly deck creation
   notes:
-    - The wall gets the headline. Your phone gets the full story.
-
-- title: "Checkpoint: use your phone."
-  subtitle: Press o → Enable remote control → scan → continue here.
-  notes:
-    - Drive the deck from the phone after this slide.
-    - The remote shows notes, navigation, current and next-slide previews, and talk/slide timers.
+    - Built so an agent can create and revise the deck while you focus on the talk.
 
 - columns:
-    - image: /github-render.png
+    - title: Focused slides in plain text
+      eyebrow: Start simple with
+      subtitle: Easy for agents to edit, reorder, and reuse
+    - image: /generated/plain-text-card.png
       fit: contain
-    - title: One folder. Real assets.
-      subtitle: public/ ships with the deck.
+  background: /generated/plain-text-16bit.png
+  notes:
+    - Each slide is a few lines of YAML, exactly what an agent is good at editing.
 
-- iframe: https://david.app
-  device: iphone
-  background: "center / cover no-repeat url('/deploy.png')"
+- columns:
+    - image: /remote-control.png
+      fit: contain
+    - title: Remote Control
+      eyebrow: Use your phone as a
+      subtitle: Next slide preview, notes, pacing timers
+
+- title: Full screen video
+  eyebrow: Media helpers like
+  subtitle: (on the next slide)
+
+- video: /fractal-loop.mp4
+  controls: true
+  muted: true
+  loop: true
+  fit: contain
+
+- columns:
+    - title: Iframe Helper
+      eyebrow: Interact with live web apps using the
+      subtitle: Power Slides gives you both mobile and desktop options
+    - iframe: https://david.app
+      device: iphone
+      screenBackground: '#061018'
 
 - custom: particleField
+
+- html: |
+    <section class="ps-install-terminal">
+      <!-- terminal-shaped install card with a talk-name input, generated commands, and Copy All -->
+    </section>
 ```
 
 Start a deck with the CLI, edit the YAML, drop static assets into `public/`, present from your phone, and deploy the built `public/` folder anywhere static files can live.
@@ -38,8 +61,8 @@ Start a deck with the CLI, edit the YAML, drop static assets into `public/`, pre
 Create a deck with `npx`:
 
 ```bash
-npx power-slides init my-talk
-cd my-talk
+npx power-slides init best-talk-ever
+cd best-talk-ever
 npx power-slides dev .
 ```
 
@@ -63,26 +86,35 @@ Deploy the `public/` folder to any static host.
 Start with a YAML list. Each item is one slide.
 
 ```yaml
-- title: Simple to start.
-  subtitle: One slides.yaml file. One command.
-  background: /title.png
-  brightness: 0.35
+- title: Power Slides
+  eyebrow: Introducing
+  subtitle: Agent-friendly deck creation
   align: center
   notes:
-    - Simple to start, but no limits on power.
-    - Keep the audience slide sparse; put the speaker story here.
-
-- title: "Checkpoint: use your phone."
-  subtitle: Press o → Enable remote control → scan → continue here.
-  notes:
-    - Stop here, enable the remote, then keep presenting from the phone.
-    - Use notes for the script, previews for transitions, and timers for pacing.
+    - Plain text means an agent can draft and revise the deck for you.
+    - Keep each slide focused; put the speaker story in the notes.
 
 - columns:
-    - image: /github-render.png
+    - title: Focused slides in plain text
+      eyebrow: Start simple with
+      subtitle: Easy for agents to edit, reorder, and reuse
+    - image: /generated/plain-text-card.png
       fit: contain
-    - title: One folder. Real assets.
-      subtitle: public/ ships with the deck.
+  background: /generated/plain-text-16bit.png
+  notes:
+    - Each slide is a few lines of YAML, exactly what an agent is good at editing.
+    - Ask an agent to restructure the deck, then review the diff like any change.
+
+- columns:
+    - image: /remote-control.png
+      fit: contain
+    - title: Remote Control
+      eyebrow: Use your phone as a
+      subtitle: Next slide preview, notes, pacing timers
+
+- title: Full screen video
+  eyebrow: Media helpers like
+  subtitle: (on the next slide)
 
 - video: /fractal-loop.mp4
   controls: true
@@ -90,17 +122,20 @@ Start with a YAML list. Each item is one slide.
   loop: true
   fit: contain
 
-- background: /build-it.png
-  brightness: 0.66
-  columns:
-    - image: /workflow.png
-      fit: contain
-    - title: No limits on power.
-      subtitle: Compose layouts, media, and browser primitives.
+- columns:
+    - title: Iframe Helper
+      eyebrow: Interact with live web apps using the
+      subtitle: Power Slides gives you both mobile and desktop options
+    - iframe: https://david.app
+      device: iphone
+      screenBackground: '#061018'
 
-- iframe: https://david.app
-  device: iphone
-  background: "center / cover no-repeat url('/deploy.png')"
+- custom: particleField
+
+- html: |
+    <section class="ps-install-terminal">
+      <!-- terminal-shaped install card with a talk-name input, generated commands, and Copy All -->
+    </section>
 ```
 
 ## Slide shapes at a glance
@@ -123,27 +158,33 @@ The full slide shape and advanced API reference lives in `docs/slide-api.md`.
 For deck-wide metadata or CSS defaults, wrap the same slide list in a deck object with `title`, `style`, and `slides`.
 
 ```yaml
-title: My Talk
+title: Best Talk Ever
 style:
   fontFamily: Inter, system-ui, sans-serif
   background: '#061018'
   color: white
   "--accent": '#5ffbf1'
 slides:
-  - title: Simple to start.
-    subtitle: One slides.yaml file. One command.
-    background: /title.png
-    brightness: 0.35
+  - title: Power Slides
+    eyebrow: Introducing
+    subtitle: Agent-friendly deck creation
 
-  - title: "Checkpoint: use your phone."
-    subtitle: Press o → Enable remote control → scan → continue here.
+  - title: Focused slides in plain text
+    eyebrow: Start simple with
+    subtitle: Easy for agents to edit, reorder, and reuse
 ```
 
 ## Remote control
 
 Run or build the deck, press `o` to open Options, click **Enable remote control**, then scan the QR code or open the shown URL on your phone.
 
-The phone remote is the control surface: it navigates the deck, shows the full notes for the current slide, previews the current and next slide, and keeps talk/slide timers visible for pacing.
+The phone remote is the real control surface, and each piece of it earns its place:
+
+- **Next-slide preview** so you are never surprised by your own deck and never spoil the next beat — you set up the transition before you tap forward.
+- **Slide timer** so you can feel your pacing on the current slide instead of guessing.
+- **Talk timer** so you protect the ending and don't rush the close after losing track of time.
+- **Estimated duration** from your per-slide timers, so you know the talk fits its slot before you ever present.
+- **Notes on the phone** so the projected slide stays focused on a single point.
 
 ## Optional `talk.js`
 

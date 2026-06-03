@@ -284,7 +284,43 @@ ${scripts}
 }
 
 function copyPeerScript (outDir) {
-  fs.copyFileSync(require.resolve('peerjs/dist/peerjs.min.js'), path.join(outDir, peerScriptName))
+  const source = require.resolve('peerjs/dist/peerjs.min.js')
+  const target = path.join(outDir, peerScriptName)
+  const temp = path.join(outDir, '.' + peerScriptName + '.' + process.pid + '.' + Date.now() + '.tmp')
+
+  try {
+    fs.copyFileSync(source, temp)
+    replaceGeneratedFile(temp, target)
+    assertNonEmptyFile(target, 'bundled PeerJS runtime')
+  } catch (err) {
+    cleanupFile(temp)
+    throw err
+  }
+}
+
+function replaceGeneratedFile (source, target) {
+  try {
+    fs.renameSync(source, target)
+  } catch {
+    try {
+      fs.rmSync(target, { force: true })
+      fs.renameSync(source, target)
+    } catch (replaceErr) {
+      replaceErr.message = 'Failed to replace generated file at ' + target + ': ' + replaceErr.message
+      throw replaceErr
+    }
+  }
+}
+
+function assertNonEmptyFile (file, label) {
+  const stat = fs.statSync(file)
+  if (!stat.isFile() || stat.size === 0) throw new Error('Missing ' + label + ' after build: ' + file)
+}
+
+function cleanupFile (file) {
+  try {
+    fs.rmSync(file, { force: true })
+  } catch {}
 }
 
 function readSlidesSpec (talkDir, explicitPath) {
@@ -437,26 +473,35 @@ Deploy the \`public/\` folder to any static host.
 Start with a YAML list. Each item is one slide.
 
 \`\`\`yaml
-- title: Simple to start.
-  subtitle: One slides.yaml file. One command.
-  background: /title.png
-  brightness: 0.35
+- title: Power Slides
+  eyebrow: Introducing
+  subtitle: Agent-friendly deck creation
   align: center
   notes:
-    - Simple to start, but no limits on power.
-    - Keep the audience slide sparse; put the speaker story here.
-
-- title: "Checkpoint: use your phone."
-  subtitle: Press o → Enable remote control → scan → continue here.
-  notes:
-    - Stop here, enable the remote, then keep presenting from the phone.
-    - Use notes for the script, previews for transitions, and timers for pacing.
+    - Plain text means an agent can draft and revise the deck for you.
+    - Keep each slide focused; put the speaker story in the notes.
 
 - columns:
-    - image: /github-render.png
+    - title: Focused slides in plain text
+      eyebrow: Start simple with
+      subtitle: Easy for agents to edit, reorder, and reuse
+    - image: /generated/plain-text-card.png
       fit: contain
-    - title: One folder. Real assets.
-      subtitle: public/ ships with the deck.
+  background: /generated/plain-text-16bit.png
+  notes:
+    - Each slide is a few lines of YAML, exactly what an agent is good at editing.
+    - Ask an agent to restructure the deck, then review the diff like any change.
+
+- columns:
+    - image: /remote-control.png
+      fit: contain
+    - title: Remote Control
+      eyebrow: Use your phone as a
+      subtitle: Next slide preview, notes, pacing timers
+
+- title: Full screen video
+  eyebrow: Media helpers like
+  subtitle: (on the next slide)
 
 - video: /fractal-loop.mp4
   controls: true
@@ -464,17 +509,20 @@ Start with a YAML list. Each item is one slide.
   loop: true
   fit: contain
 
-- background: /build-it.png
-  brightness: 0.66
-  columns:
-    - image: /workflow.png
-      fit: contain
-    - title: No limits on power.
-      subtitle: Compose layouts, media, and browser primitives.
+- columns:
+    - title: Iframe Helper
+      eyebrow: Interact with live web apps using the
+      subtitle: Power Slides gives you both mobile and desktop options
+    - iframe: https://david.app
+      device: iphone
+      screenBackground: '#061018'
 
-- iframe: https://david.app
-  device: iphone
-  background: "center / cover no-repeat url('/deploy.png')"
+- custom: particleField
+
+- html: |
+    <section class="ps-install-terminal">
+      <!-- terminal-shaped install card with a talk-name input, generated commands, and Copy All -->
+    </section>
 \`\`\`
 
 The starter also shows text, image, video, columns, iframe, html, and custom slides.
